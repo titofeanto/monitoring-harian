@@ -38,15 +38,19 @@
   </div></header>
 
   <div class="identity-strip">
-    <span>Masuk dengan kode akses tim</span>
+    <span id="loginAs">Masuk dengan kode akses tim</span>
     <button type="button" id="logoutBtn">Ganti / Keluar</button>
   </div>
 
-  <div class="sec" style="margin-bottom:14px">
+  <div class="sec" id="dtSec" style="margin-bottom:10px" hidden>
+    <div class="chips" id="dtChips" role="group" aria-label="Pilih DT"></div>
+  </div>
+
+  <div class="sec" id="dsrSec" style="margin-bottom:14px">
     <div class="chips" id="dsrChips" role="group" aria-label="Pilih DSR"></div>
   </div>
 
-  <nav class="tabs" role="tablist" aria-label="Bagian">
+  <nav class="tabs" id="tabsNav" role="tablist" aria-label="Bagian">
     <button role="tab" id="tab-ring" aria-controls="p-ring" aria-selected="true">📊 Ringkasan</button>
     <button role="tab" id="tab-sim" aria-controls="p-sim" aria-selected="false">🧮 Simulator</button>
     <button role="tab" id="tab-fruit" aria-controls="p-fruit" aria-selected="false">🎯 Low Hanging Fruit</button>
@@ -55,7 +59,7 @@
   <!-- RINGKASAN -->
   <section class="panel" id="p-ring" role="tabpanel" aria-labelledby="tab-ring">
     <div class="sec">
-      <h2>Semua DSR</h2>
+      <h2 id="ovTitle">Semua DSR</h2>
       <div class="scroll"><table id="tOverview"></table></div>
     </div>
     <div class="sec">

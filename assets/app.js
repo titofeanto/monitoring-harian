@@ -395,19 +395,21 @@ if (typeof module !== 'undefined') {
   const $ = id => document.getElementById(id);
   const M = window.MonitoringHarian;
   let MODEL = null, CUR = 0;
+  let PUSAT = null; // mode pusat: [{kode, nama, model, err}], VIEW 'all' atau indeks DT
+  let VIEW = 'all';
   let SIM = []; // satu zeroSim() per DSR, indeks sinkron dengan MODEL.dsrList
 
-  function apiUrl(code) {
+  function apiUrl(code, dt) {
     const base = (window.APP_CONFIG && window.APP_CONFIG.APPS_SCRIPT_URL) || '';
-    return base + (base.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(code);
+    return base + (base.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(code) + (dt ? '&dt=' + encodeURIComponent(dt) : '');
   }
 
   /* Apps Script kadang membalas 404 sesaat walau skripnya jalan normal. Coba ulang sampai 4 kali. */
-  async function fetchApi(code) {
+  async function fetchApi(code, dt) {
     let last;
     for (let i = 0; i < 4; i++) {
       try {
-        const res = await fetch(apiUrl(code));
+        const res = await fetch(apiUrl(code, dt));
         if (res.ok) return await res.json();
         last = new Error('http_' + res.status);
       } catch (err) { last = err; }
@@ -428,9 +430,22 @@ if (typeof module !== 'undefined') {
       if (data.error === 'invalid_code') { showLoginError('Kode akses salah.'); return false; }
       if (data.error === 'missing_code') { showLoginError('Isi kode akses dulu.'); return false; }
       if (data.error) { showLoginError('Server Apps Script bermasalah: ' + (data.message || data.error)); return false; }
-      MODEL = M.buildModel(data);
-      SIM = MODEL.dsrList.map(() => M.zeroSim());
-      CUR = 0;
+      if (data.mode === 'pusat') {
+        if (!silent) $('loginBtn').textContent = `Memuat ${data.dts.length} DT…`;
+        // Tiap DT diambil terpisah supaya respons kecil dan cache per DT tetap terpakai.
+        PUSAT = await Promise.all(data.dts.map(async d => {
+          try {
+            const x = await fetchApi(code, d.kode);
+            if (x.error) throw new Error(x.message || x.error);
+            return { kode: d.kode, nama: d.nama, model: M.buildModel(x), err: '' };
+          } catch (err) { return { kode: d.kode, nama: d.nama, model: null, err: err.message }; }
+        }));
+        VIEW = 'all';
+        MODEL = null;
+      } else {
+        PUSAT = null;
+        setModel(M.buildModel(data));
+      }
       try { localStorage.setItem(LS_CODE, code); } catch {}
       showApp();
       return true;
@@ -451,17 +466,105 @@ if (typeof module !== 'undefined') {
     tryLogin(code, false);
   });
 
+  function setModel(m) {
+    MODEL = m;
+    SIM = MODEL.dsrList.map(() => M.zeroSim());
+    CUR = 0;
+  }
+
   function showApp() {
     $('loginScreen').hidden = true;
     $('appScreen').hidden = false;
+    $('loginAs').textContent = PUSAT ? `Masuk sebagai PUSAT · ${PUSAT.length} DT` : 'Masuk dengan kode akses DT';
+    $('dtSec').hidden = !PUSAT;
+    if (PUSAT) renderDtChips();
+    renderView();
+  }
+
+  /* Tampilan satu DT atau gabungan semua DT (mode pusat). */
+  function renderView() {
+    const all = PUSAT && VIEW === 'all';
+    $('dsrSec').hidden = all;
+    $('tabsNav').hidden = all;
+    $('ovTitle').textContent = all ? 'Per DT' : 'Semua DSR';
+    if (all) {
+      openTab($('tab-ring'));
+      renderHeaderAll();
+      renderAllDt();
+      return;
+    }
     renderHeader();
     renderDsrChips();
     renderAll();
   }
 
+  function renderDtChips() {
+    const items = [['all', 'Semua DT']].concat(PUSAT.map((d, i) => [String(i), d.nama || d.kode]));
+    $('dtChips').innerHTML = items.map(([k, l]) => `<button type="button" class="chip" data-k="${k}" aria-pressed="${String(VIEW) === k}">${M.esc(l)}</button>`).join('');
+    document.querySelectorAll('#dtChips .chip').forEach(b => b.onclick = () => {
+      const k = b.dataset.k, d = k === 'all' ? null : PUSAT[+k];
+      if (d && !d.model) { alert(`Data ${d.nama} gagal dimuat: ${d.err}`); return; }
+      VIEW = k === 'all' ? 'all' : +k;
+      if (d) setModel(d.model);
+      document.querySelectorAll('#dtChips .chip').forEach(x => x.setAttribute('aria-pressed', x === b));
+      renderView();
+    });
+  }
+
+  function renderHeaderAll() {
+    $('dtName').textContent = 'Semua DT';
+    $('dtIcon').textContent = 'ALL';
+    const bulan = [...new Set(PUSAT.filter(d => d.model).map(d => d.model.bulan).filter(Boolean))].join(', ');
+    $('dtSub').textContent = [PUSAT.length + ' DT', bulan].filter(Boolean).join(' · ');
+    const tgl = PUSAT.filter(d => d.model && d.model.tanggalData).map(d => d.model.tanggalData).sort();
+    $('dtUpdated').textContent = tgl.length ? 'Data paling lama per ' + tgl[0] : '';
+    $('dtSepMid').hidden = !$('dtUpdated').textContent;
+  }
+
+  function renderAllDt() {
+    const rows = PUSAT.map((d, i) => {
+      if (!d.model) return { d, i, err: d.err };
+      const m = d.model, cs = m.dsrList.map(x => ({ x, c: M.calc(x, m.rules, M.zeroSim()) }));
+      const sum = f => cs.reduce((s, o) => s + f(o), 0);
+      return {
+        d, i, m,
+        ssT: sum(o => o.x.ss.target), ssA: sum(o => o.x.ss.aktual),
+        asT: sum(o => o.x.asrt.target), asA: sum(o => o.x.asrt.aktual),
+        ecoP: sum(o => o.x.eco.pjp), ecoT: sum(o => o.x.eco.tx),
+        inc: sum(o => o.c.total), nDsr: cs.length,
+        bands: ['GREEN', 'AMBER', 'RED'].map(b => cs.filter(o => o.c.band === b).length),
+        warn: m.warn.length, tf: m.hkTotal ? m.hkRun / m.hkTotal : 0,
+      };
+    });
+    const ok = rows.filter(r => !r.err), tot = f => ok.reduce((s, r) => s + r[f], 0);
+    const T = { ssT: tot('ssT'), ssA: tot('ssA'), asT: tot('asT'), asA: tot('asA'), ecoP: tot('ecoP'), ecoT: tot('ecoT'), inc: tot('inc'), nDsr: tot('nDsr') };
+    const ach = (a, t) => t ? a / t : NaN;
+    const band = r => `<span class="tag g">${r.bands[0]}</span> <span class="tag a">${r.bands[1]}</span> <span class="tag r">${r.bands[2]}</span>`;
+    $('tOverview').innerHTML = `<thead><tr><th>DT</th><th class="n">SS</th><th class="n">Timegone</th><th class="n">Assortment</th><th class="n">ECO</th><th class="n">DSR</th><th>Status DSR</th><th class="n">Insentif</th></tr></thead><tbody>`
+      + rows.map(r => r.err
+        ? `<tr><td>${M.esc(r.d.nama)}</td><td colspan="7" class="muted">Gagal dimuat: ${M.esc(r.err)}</td></tr>`
+        : `<tr><td><button type="button" class="btn plain" data-dt="${r.i}" style="padding:2px 8px">${M.esc(r.d.nama)}</button>${r.warn ? ' <span class="tag r" title="Ada data yang perlu dicek">!</span>' : ''}</td><td class="n">${pct(ach(r.ssA, r.ssT))}</td><td class="n">${pct(r.tf)}</td><td class="n">${pct(ach(r.asA, r.asT))}</td><td class="n">${pct(ach(r.ecoT, r.ecoP))}</td><td class="n">${r.nDsr}</td><td>${band(r)}</td><td class="n">${M.rpFull(r.inc)}</td></tr>`).join('')
+      + `<tr class="tot"><td>Total</td><td class="n">${pct(ach(T.ssA, T.ssT))}</td><td></td><td class="n">${pct(ach(T.asA, T.asT))}</td><td class="n">${pct(ach(T.ecoT, T.ecoP))}</td><td class="n">${T.nDsr}</td><td></td><td class="n">${M.rpFull(T.inc)}</td></tr></tbody>`;
+    document.querySelectorAll('#tOverview [data-dt]').forEach(b => b.onclick = () => document.querySelector(`#dtChips .chip[data-k="${b.dataset.dt}"]`).click());
+
+    const W = rows.filter(r => r.err || r.warn);
+    $('ringBanner').className = 'banner ' + (W.length ? 'bad' : 'info');
+    $('ringBanner').innerHTML = W.length
+      ? 'Cek data:<ul style="margin:6px 0 0;padding-left:18px">' + W.map(r => `<li>${M.esc(r.d.nama)}: ${M.esc(r.err || r.m.warn.join(' '))}</li>`).join('') + '</ul>'
+      : 'Semua DT terbaca tanpa masalah data.';
+
+    $('ringDetail').innerHTML = `<div class="kpis" style="margin-top:14px">
+        <div class="kpi"><div class="l">Target SS total</div><div class="v">${rp(T.ssT)}</div><div class="s">Aktual ${rp(T.ssA)}</div></div>
+        <div class="kpi"><div class="l">Capaian SS</div><div class="v">${pct(ach(T.ssA, T.ssT))}</div><div class="s">Kurang ${rp(Math.max(0, T.ssT - T.ssA))}</div></div>
+        <div class="kpi"><div class="l">Insentif total</div><div class="v">${rp(T.inc)}</div><div class="s">${T.nDsr} DSR</div></div></div>
+      <h2 style="margin-top:14px">Semua DSR</h2><div class="scroll"><table><thead><tr><th>DT</th><th>DSR</th><th class="n">SS</th><th class="n">Assortment</th><th class="n">ECO</th><th class="n">Skor</th><th>Status</th><th class="n">Insentif</th></tr></thead><tbody>`
+      + ok.flatMap(r => r.m.dsrList.map(x => { const c = M.calc(x, r.m.rules, M.zeroSim()); return `<tr><td>${M.esc(r.d.nama)}</td><td>${M.esc(x.nama)}</td><td class="n">${pct(c.ach.ss)}</td><td class="n">${pct(c.ach.asrt)}</td><td class="n">${pct(c.ach.eco)}</td><td class="n">${Math.round(c.score)}</td><td><span class="tag ${c.band === 'GREEN' ? 'g' : c.band === 'AMBER' ? 'a' : 'r'}">${c.band}</span></td><td class="n">${M.rpFull(c.total)}</td></tr>`; })).join('')
+      + '</tbody></table></div>';
+  }
+
   $('logoutBtn').addEventListener('click', () => {
     try { localStorage.removeItem(LS_CODE); } catch {}
-    MODEL = null;
+    MODEL = null; PUSAT = null; VIEW = 'all';
     $('appScreen').hidden = true;
     $('loginScreen').hidden = false;
     $('codeInput').value = '';

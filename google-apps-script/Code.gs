@@ -1,17 +1,25 @@
 /**
- * Monitoring Harian — API baca-saja data mentah dari Google Sheet.
+ * Monitoring Harian — API baca-saja data mentah, banyak DT.
  *
- * Deploy sebagai Web App: Deploy > New deployment > Web app.
- *   Execute as: Me
- *   Who has access: Anyone
+ * Skrip ini terpasang di Sheet PUSAT (hanya pemilik). Tab DAFTAR_DT berisi
+ * satu baris per kode akses:
+ *   kode_akses | peran (dt / pusat) | dt_kode | nama_dt | sheet_id | aktif
+ * Tiap DT punya Sheet data mentah sendiri (sheet_id), diisi admin DT itu.
+ * Sheet DT harus dibagikan ke akun pemilik skrip ini.
  *
- * Endpoint: GET <url exec>?code=<kode akses tim>
+ * Deploy sebagai Web App: Execute as Me, Who has access Anyone.
  *
- * Sheet hanya berisi data mentah (target, extract DMS, norms SKU, SKU Fokus,
- * report NGDMS, dan master pendukung). Skrip ini tidak menghitung apa pun:
- * ia mengirim isi tab apa adanya, dan halaman web yang menghitung semua
+ * Endpoint:
+ *   GET ?code=<kode DT>                  -> data mentah Sheet DT itu
+ *   GET ?code=<kode pusat>               -> daftar DT
+ *   GET ?code=<kode pusat>&dt=<dt_kode>  -> data mentah satu DT
+ *   tambah &cek=1                        -> jumlah baris per tab saja
+ *
+ * Skrip tidak menghitung apa pun: halaman web yang menghitung semua
  * pencapaian dan insentif.
  */
+
+const REG_TAB = 'DAFTAR_DT';
 
 // Tab tabel biasa: header di baris 1. Dikirim sebagai array 2D (baris 1 = header).
 const TABLE_TABS = ['TARGET', 'DMS_EXTRACT', 'NORMS_SKU', 'SKU_FOKUS', 'DSR', 'OUTLET_MASTER', 'KPI', 'MASTER_PRODUK'];
@@ -25,30 +33,61 @@ const DMS_COLUMNS = ['Salesman', 'DSR Code (Hygiene)', 'Sub_division', 'Category
 
 // Cache mengurangi beban baca Sheet saat beberapa orang buka bersamaan.
 const CACHE_TTL_SEC = 300;
-const CACHE_KEY = 'raw_v2';
+const CACHE_KEY = 'raw_v3';
 const CHUNK = 90000; // batas satu item CacheService 100 KB
 
 function doGet(e) {
   try {
-    const code = String((e.parameter && e.parameter.code) || '').trim();
+    const p = e.parameter || {};
+    const code = String(p.code || '').trim();
     if (!code) return jsonOut({ error: 'missing_code' });
 
-    const payload = getPayload_();
-    if (code !== String(payload.config.kode_akses || '').trim()) {
-      return jsonOut({ error: 'invalid_code' });
+    const reg = readRegistry_();
+    const me = reg.find(r => r.kode_akses === code);
+    if (!me) return jsonOut({ error: 'invalid_code' });
+
+    if (me.peran === 'pusat') {
+      const dts = reg.filter(r => r.peran === 'dt' && r.sheet_id);
+      const want = String(p.dt || '').trim();
+      if (!want) return jsonOut({ mode: 'pusat', dts: dts.map(r => ({ kode: r.dt_kode, nama: r.nama_dt })) });
+      const r = dts.find(x => x.dt_kode === want);
+      if (!r) return jsonOut({ error: 'unknown_dt' });
+      return jsonOut(respond_(r, p));
     }
-    // ?cek=1: ringkasan jumlah baris saja, untuk mengecek Sheet tanpa mengunduh semua data.
-    if (e.parameter.cek) {
-      const rows = {};
-      Object.keys(payload.tabs).forEach(n => { rows[n] = Math.max(0, payload.tabs[n].length - 1); });
-      return jsonOut({ builtAt: payload.builtAt, ms: payload.ms, bytes: JSON.stringify(payload).length, rows: rows });
-    }
-    const configOut = Object.assign({}, payload.config);
-    delete configOut.kode_akses;
-    return jsonOut({ builtAt: payload.builtAt, config: configOut, tabs: payload.tabs });
+    if (!me.sheet_id) return jsonOut({ error: 'server_error', message: 'sheet_id kosong di DAFTAR_DT' });
+    return jsonOut(respond_(me, p));
   } catch (err) {
     return jsonOut({ error: 'server_error', message: String(err) });
   }
+}
+
+/** Baris aktif tab DAFTAR_DT di Sheet pusat. */
+function readRegistry_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(REG_TAB);
+  if (!sh) throw new Error('Tab tidak ditemukan: ' + REG_TAB);
+  const v = sh.getDataRange().getValues(), h = v[0].map(x => String(x).trim());
+  const col = n => h.indexOf(n);
+  return v.slice(1).map(r => ({
+    kode_akses: String(r[col('kode_akses')] || '').trim(),
+    peran: String(r[col('peran')] || 'dt').trim().toLowerCase(),
+    dt_kode: String(r[col('dt_kode')] || '').trim(),
+    nama_dt: String(r[col('nama_dt')] || '').trim(),
+    sheet_id: String(r[col('sheet_id')] || '').trim(),
+    aktif: String(r[col('aktif')]).toUpperCase() !== 'FALSE',
+  })).filter(r => r.kode_akses && r.aktif);
+}
+
+function respond_(r, p) {
+  const payload = getPayload_(r.sheet_id);
+  // ?cek=1: ringkasan jumlah baris saja, untuk mengecek Sheet tanpa mengunduh semua data.
+  if (p.cek) {
+    const rows = {};
+    Object.keys(payload.tabs).forEach(n => { rows[n] = Math.max(0, payload.tabs[n].length - 1); });
+    return { dt: r.dt_kode, builtAt: payload.builtAt, ms: payload.ms, bytes: JSON.stringify(payload).length, rows: rows };
+  }
+  const configOut = Object.assign({}, payload.config);
+  delete configOut.kode_akses;
+  return { mode: 'dt', dt: { kode: r.dt_kode, nama: r.nama_dt }, builtAt: payload.builtAt, config: configOut, tabs: payload.tabs };
 }
 
 function jsonOut(obj) {
@@ -56,12 +95,13 @@ function jsonOut(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function getPayload_() {
-  const cached = cacheGet_();
+function getPayload_(sheetId) {
+  const key = CACHE_KEY + '_' + sheetId;
+  const cached = cacheGet_(key);
   if (cached) return cached;
 
   const t0 = Date.now();
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.openById(sheetId);
   const tz = ss.getSpreadsheetTimeZone();
   const tabs = {};
   TABLE_TABS.forEach(name => {
@@ -73,7 +113,7 @@ function getPayload_() {
   tabs.MASTER_PRODUK = trimProduk_(tabs.MASTER_PRODUK, [tabs.NORMS_SKU, tabs.SKU_FOKUS]);
 
   const payload = { config: readConfig_(ss, tz), tabs: tabs, builtAt: new Date().toISOString(), ms: Date.now() - t0 };
-  cachePut_(payload);
+  cachePut_(key, payload);
   return payload;
 }
 
@@ -127,24 +167,24 @@ function readConfig_(ss, tz) {
 }
 
 /* Cache dipecah per 90 KB karena satu item CacheService maksimal 100 KB. */
-function cachePut_(payload) {
+function cachePut_(key, payload) {
   try {
     const s = JSON.stringify(payload), parts = {};
     const n = Math.ceil(s.length / CHUNK);
-    for (let i = 0; i < n; i++) parts[CACHE_KEY + '_' + i] = s.slice(i * CHUNK, (i + 1) * CHUNK);
-    parts[CACHE_KEY + '_n'] = String(n);
+    for (let i = 0; i < n; i++) parts[key + '_' + i] = s.slice(i * CHUNK, (i + 1) * CHUNK);
+    parts[key + '_n'] = String(n);
     CacheService.getScriptCache().putAll(parts, CACHE_TTL_SEC);
   } catch (err) {
     // Terlalu besar untuk cache: tidak apa-apa, request berikutnya membaca Sheet lagi.
   }
 }
 
-function cacheGet_() {
+function cacheGet_(key) {
   const cache = CacheService.getScriptCache();
-  const n = +cache.get(CACHE_KEY + '_n');
+  const n = +cache.get(key + '_n');
   if (!n) return null;
   const keys = [];
-  for (let i = 0; i < n; i++) keys.push(CACHE_KEY + '_' + i);
+  for (let i = 0; i < n; i++) keys.push(key + '_' + i);
   const got = cache.getAll(keys);
   if (keys.some(k => got[k] == null)) return null;
   try { return JSON.parse(keys.map(k => got[k]).join('')); } catch (err) { return null; }
@@ -157,10 +197,13 @@ function cacheGet_() {
  */
 function clearCache() {
   const cache = CacheService.getScriptCache();
-  const n = +cache.get(CACHE_KEY + '_n') || 0;
-  const keys = [CACHE_KEY + '_n'];
-  for (let i = 0; i < n; i++) keys.push(CACHE_KEY + '_' + i);
-  cache.removeAll(keys);
+  readRegistry_().filter(r => r.sheet_id).forEach(r => {
+    const key = CACHE_KEY + '_' + r.sheet_id;
+    const n = +cache.get(key + '_n') || 0;
+    const keys = [key + '_n'];
+    for (let i = 0; i < n; i++) keys.push(key + '_' + i);
+    cache.removeAll(keys);
+  });
 }
 
 /**
@@ -169,60 +212,11 @@ function clearCache() {
  */
 function testRead() {
   clearCache();
-  const p = getPayload_();
-  Logger.log('CONFIG: ' + JSON.stringify(Object.keys(p.config)));
-  Object.keys(p.tabs).forEach(name => {
-    const t = p.tabs[name];
-    Logger.log(name + ': ' + Math.max(0, t.length - 1) + ' baris · header ' + JSON.stringify(t[0] || []));
-  });
-  Logger.log('Ukuran respons: ' + Math.round(JSON.stringify(p).length / 1024) + ' KB');
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   SETUP SEKALI: isi Sheet kosong dengan template data mentah.
-   Isi TEMPLATE_URL, pilih fungsi importTemplate, klik Run.
-   Semua tab dibuat ulang: jangan jalankan lagi setelah data asli diisi.
-   ═══════════════════════════════════════════════════════════════ */
-const TEMPLATE_URL = '';
-
-function importTemplate() {
-  if (!TEMPLATE_URL) throw new Error('TEMPLATE_URL masih kosong.');
-  const res = UrlFetchApp.fetch(TEMPLATE_URL, { muteHttpExceptions: true });
-  if (res.getResponseCode() !== 200) {
-    throw new Error('Template tidak bisa diambil (HTTP ' + res.getResponseCode() + '). Link mungkin sudah dihapus.');
-  }
-  const data = JSON.parse(res.getContentText('UTF-8'));
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  data.tabs.forEach((t, i) => {
-    const sh = ss.getSheetByName(t.name) || ss.insertSheet(t.name, i);
-    sh.clear();
-    sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).clearDataValidations();
-    const w = t.rows.reduce((m, r) => Math.max(m, r.length), 1);
-    const rows = t.rows.map(r => r.concat(new Array(w - r.length).fill('')));
-    if (sh.getMaxRows() < rows.length + 1) sh.insertRowsAfter(sh.getMaxRows(), rows.length + 1 - sh.getMaxRows());
-    if (sh.getMaxColumns() < w) sh.insertColumnsAfter(sh.getMaxColumns(), w - sh.getMaxColumns());
-
-    // Kolom kode (kode outlet 18 digit, LEVEL-9, kode DSR) disimpan sebagai teks supaya digitnya utuh.
-    t.text.forEach(c => sh.getRange(1, c, sh.getMaxRows(), 1).setNumberFormat('@'));
-    sh.getRange(1, 1, rows.length, w).setValues(rows);
-
-    sh.getRange(t.header, 1, 1, w).setFontWeight('bold').setFontColor('#ffffff')
-      .setBackground(t.main ? '#1f4e79' : '#595959');
-    sh.setFrozenRows(t.header);
-    sh.setTabColor(t.main ? '#1f4e79' : '#a6a6a6');
-    sh.setColumnWidths(1, w, t.name === 'NGDMS_ASRT' ? 110 : 160);
-    Object.keys(t.lists).forEach(c => {
-      const rule = SpreadsheetApp.newDataValidation().requireValueInList(t.lists[c], true).setAllowInvalid(false).build();
-      sh.getRange(2, +c, sh.getMaxRows() - 1, 1).setDataValidation(rule);
+  readRegistry_().filter(r => r.sheet_id).forEach(r => {
+    const p = getPayload_(r.sheet_id);
+    Logger.log('== ' + r.dt_kode + ' ' + r.nama_dt);
+    Object.keys(p.tabs).forEach(name => {
+      Logger.log(name + ': ' + Math.max(0, p.tabs[name].length - 1) + ' baris');
     });
   });
-  if (ss.getSheetByName('PANDUAN')) {
-    ss.getSheetByName('PANDUAN').setColumnWidth(2, 480).setColumnWidth(4, 520);
-  }
-
-  // Hapus tab bawaan (Sheet1 / Lembar1) yang bukan bagian template.
-  ss.getSheets().forEach(sh => { if (!data.tabs.some(t => t.name === sh.getName())) ss.deleteSheet(sh); });
-  ss.setActiveSheet(ss.getSheetByName('PANDUAN'));
-  Logger.log('Template terpasang: ' + data.tabs.map(t => t.name + ' ' + Math.max(0, t.rows.length - 1)).join(', '));
 }
