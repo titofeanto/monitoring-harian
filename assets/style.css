@@ -1,0 +1,138 @@
+:root{
+  --bg:#f3f7fc;--surface:#ffffff;--sunk:#e7effa;--ink:#15233b;--ink2:#5b6c85;--line:#d7e2f1;--edge:#6e86b4;
+  --accent:#1b5fca;--on-accent:#ffffff;--accent-soft:#e3ecfc;
+  --success:#2e8f52;--success-text:#186e38;--success-soft:#e1f3e7;
+  --warn:#b9812a;--warn-text:#7a4e00;--warn-soft:#f5e9d3;
+  --bad:#b5442e;--bad-text:#96331f;--bad-soft:#f6dfd7;
+  --info:#1b5fca;--info-soft:#e3ecfc;
+  --r:12px;--r-sm:8px;
+  --shadow:0 1px 2px rgba(21,35,59,.07),0 4px 14px rgba(21,35,59,.07);
+  --display:"Poppins",system-ui,sans-serif;
+  --body:"Poppins",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Poppins",system-ui,sans-serif;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1626;--surface:#151f33;--sunk:#1c2a42;--ink:#e7eef9;--ink2:#93a3bd;--line:#243352;--edge:#5a6b8c;
+  --accent:#5b9cf2;--on-accent:#0b1930;--accent-soft:#1e3457;
+  --success:#5fc583;--success-text:#5fc583;--success-soft:#193828;
+  --warn:#e0b15c;--warn-text:#e0b15c;--warn-soft:#332a17;
+  --bad:#e28268;--bad-text:#e28268;--bad-soft:#3a2119;
+  --info:#5b9cf2;--info-soft:#1e3457;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  --bg:#0e1626;--surface:#151f33;--sunk:#1c2a42;--ink:#e7eef9;--ink2:#93a3bd;--line:#243352;--edge:#5a6b8c;
+  --accent:#5b9cf2;--on-accent:#0b1930;--accent-soft:#1e3457;
+  --success:#5fc583;--success-text:#5fc583;--success-soft:#193828;
+  --warn:#e0b15c;--warn-text:#e0b15c;--warn-soft:#332a17;
+  --bad:#e28268;--bad-text:#e28268;--bad-soft:#3a2119;
+  --info:#5b9cf2;--info-soft:#1e3457;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--ink);font:14px/1.55 var(--body);padding-inline:16px;padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(40px + env(safe-area-inset-bottom,0px))}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+h1,h2,h3{font-family:var(--display);line-height:1.15;margin:0;text-wrap:balance}
+h1{font-size:clamp(19px,4vw,22px);letter-spacing:.02em;font-weight:800;text-transform:uppercase}
+h2{font-size:16.5px;font-weight:700}
+h3{font-size:14px;font-weight:600}
+p{margin:0}
+.muted{color:var(--ink2)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:640px;margin:0 auto}
+[hidden]{display:none!important}
+
+/* login */
+.login-wrap{min-height:70vh;display:grid;place-items:center}
+.login-box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:28px;width:100%;max-width:380px}
+.login-box .icon{width:44px;height:44px;border-radius:11px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font:800 15px var(--display);margin-bottom:14px}
+.login-box h1{margin-bottom:4px;text-transform:none;letter-spacing:0}
+.login-box p{color:var(--ink2);font-size:13.5px;margin-bottom:18px}
+.field{display:grid;gap:6px;margin-bottom:14px}
+.field label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2)}
+input[type=text],input[type=password]{width:100%;padding:11px 12px;min-height:44px;background:var(--surface);border:1.5px solid var(--edge);border-radius:var(--r-sm);color:var(--ink);font:15px var(--body)}
+.btn{font:700 13.5px var(--body);border:1.5px solid var(--accent);background:var(--accent);color:var(--on-accent);border-radius:var(--r-sm);padding:10px 16px;min-height:44px;cursor:pointer;white-space:nowrap;transition:opacity .15s,transform .1s}
+.btn:active{transform:scale(.97);opacity:.85}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.plain{border-color:var(--edge);background:var(--surface);color:var(--ink)}
+.btn[disabled]{opacity:.55;cursor:default}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.err{color:var(--bad-text);font-size:13px;min-height:1.4em;margin-top:8px;font-weight:600}
+
+/* app shell: bar bermerek, mengambang di atas (mirip brandbar+topbar aplikasi lapangan) */
+header.appbar{position:sticky;top:0;z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:14px;padding:14px}
+.appbar-row{display:flex;align-items:center;gap:10px}
+.appbar .icon{width:38px;height:38px;border-radius:10px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font:800 13px var(--display);flex:0 0 auto}
+.appbar .grow{flex:1 1 auto;min-width:0}
+.appbar h1{font-size:15.5px}
+.appbar .sub{font-size:11px;color:var(--ink2);margin-top:3px;font-variant-numeric:tabular-nums;display:flex;flex-wrap:wrap;gap:5px;align-items:baseline}
+.appbar .sub .sep{opacity:.5}
+
+.identity-strip{max-width:640px;margin:0 auto 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--accent-soft);color:var(--accent);border-radius:var(--r-sm);padding:8px 12px;font-size:12.5px;font-weight:600}
+.identity-strip button{flex-shrink:0;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font:800 11px var(--body);letter-spacing:.03em;text-transform:uppercase;padding:5px 11px;border-radius:99px;cursor:pointer;min-height:32px}
+
+nav.tabs{display:flex;gap:5px;background:var(--sunk);padding:4px;border-radius:11px;margin-bottom:16px;overflow-x:auto;scrollbar-width:thin}
+nav.tabs button{flex:1;min-width:0;font:700 12.5px var(--body);color:var(--ink2);background:transparent;border:0;padding:9px 6px;border-radius:8px;cursor:pointer;white-space:nowrap;min-height:40px;transition:background .15s,color .15s}
+nav.tabs button[aria-selected="true"]{background:var(--accent);color:var(--on-accent);box-shadow:var(--shadow)}
+.panel{display:grid;gap:18px}
+.sec{display:grid;gap:10px}
+.panel>*,.sec>*{min-width:0}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:9px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink2);background:var(--sunk);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.wrap-cell{white-space:normal;max-width:240px}
+tr.tot td{font-weight:700;background:var(--sunk)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 12.5px var(--body);border:1.5px solid var(--edge);background:var(--surface);color:var(--ink);border-radius:99px;padding:7px 13px;cursor:pointer;min-height:38px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:12px 14px}
+.kpi .l{font-size:11px;color:var(--ink2);font-weight:600}
+.kpi .v{font:800 21px var(--display);letter-spacing:0;margin-top:3px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:11.5px;color:var(--ink2);margin-top:3px}
+.kpi.hot{background:var(--accent-soft);border-color:var(--accent)}
+.kpi.warn{background:var(--warn-soft);border-color:var(--warn)}
+
+/* status-pill: pola 3-warna (merah/amber/hijau) dipakai untuk band GREEN/AMBER/RED */
+.tag{display:inline-flex;align-items:center;font:700 11px var(--body);letter-spacing:.02em;padding:3px 10px;border-radius:99px;border:1.5px solid transparent}
+.tag.g{background:var(--success-soft);border-color:var(--success);color:var(--success-text)}
+.tag.a{background:var(--warn-soft);border-color:var(--warn);color:var(--warn-text)}
+.tag.r{background:var(--bad-soft);border-color:var(--bad);color:var(--bad-text)}
+
+.banner{border-radius:var(--r-sm);padding:9px 13px;font-size:12.5px;font-weight:600}
+.banner.info{background:var(--info-soft);color:var(--accent)}
+.banner.bad{background:var(--bad-soft);color:var(--bad-text)}
+
+/* progress mini, dipakai di baris Capaian pada tabel rincian */
+.prow{display:flex;align-items:center;gap:8px}
+.prow .pct{font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
+.ptrack{flex:1;min-width:36px;height:6px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.pfill{display:block;height:100%;border-radius:99px;background:var(--accent);transition:width .3s ease}
+
+.ctl{display:grid;gap:5px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ctl:last-of-type{border-bottom:0}
+.ctl .row{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.ctl label{font-weight:700;font-size:13.5px}
+.ctl output{font-variant-numeric:tabular-nums;font-weight:700;font-size:13.5px;color:var(--accent)}
+.ctl .hint{font-size:12px;color:var(--ink2)}
+input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
+
+.step{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.step .rank{font:800 12.5px var(--display);color:var(--accent);background:var(--accent-soft);width:22px;height:22px;border-radius:50%;display:grid;place-items:center}
+.step h4{margin:0;font:700 13.5px var(--body)}
+.step p{font-size:12px;color:var(--ink2);margin-top:2px}
+
+.chk{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;margin:-8px}
+.chk input{width:17px;height:17px;accent-color:var(--accent)}
+
+.empty{text-align:center;padding:32px 16px;color:var(--ink2)}
+.empty .t{font-size:14.5px;font-weight:700;color:var(--ink)}
+
+@media print{nav.tabs,.btn,.chip,.identity-strip{display:none}}

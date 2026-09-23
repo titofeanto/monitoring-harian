@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Monitoring Harian</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginScreen">
+  <div class="login-box">
+    <div class="icon">MH</div>
+    <h1>Monitoring Harian</h1>
+    <p>Data mentah dari Google Sheet, dihitung langsung di halaman ini. Masukkan kode akses tim untuk membuka.</p>
+    <form id="loginForm" autocomplete="off">
+      <div class="field">
+        <label for="codeInput">Kode akses tim</label>
+        <input type="text" id="codeInput" inputmode="text" autocomplete="off" placeholder="kode akses tim">
+      </div>
+      <button type="submit" class="btn" id="loginBtn" style="width:100%">Masuk</button>
+      <div class="err" id="loginErr" role="alert"></div>
+    </form>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="wrap" id="appScreen" hidden>
+  <header class="appbar"><div class="appbar-row">
+    <div class="icon" id="dtIcon">MH</div>
+    <div class="grow">
+      <h1 id="dtName">Monitoring Harian</h1>
+      <div class="sub"><span id="dtSub"></span><span class="sep" id="dtSepMid">·</span><span id="dtUpdated"></span></div>
+    </div>
+  </div></header>
+
+  <div class="identity-strip">
+    <span>Masuk dengan kode akses tim</span>
+    <button type="button" id="logoutBtn">Ganti / Keluar</button>
+  </div>
+
+  <div class="sec" style="margin-bottom:14px">
+    <div class="chips" id="dsrChips" role="group" aria-label="Pilih DSR"></div>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Bagian">
+    <button role="tab" id="tab-ring" aria-controls="p-ring" aria-selected="true">📊 Ringkasan</button>
+    <button role="tab" id="tab-sim" aria-controls="p-sim" aria-selected="false">🧮 Simulator</button>
+    <button role="tab" id="tab-fruit" aria-controls="p-fruit" aria-selected="false">🎯 Low Hanging Fruit</button>
+  </nav>
+
+  <!-- RINGKASAN -->
+  <section class="panel" id="p-ring" role="tabpanel" aria-labelledby="tab-ring">
+    <div class="sec">
+      <h2>Semua DSR</h2>
+      <div class="scroll"><table id="tOverview"></table></div>
+    </div>
+    <div class="sec">
+      <div class="banner info" id="ringBanner" role="status"></div>
+      <div id="ringDetail"></div>
+    </div>
+  </section>
+
+  <!-- SIMULATOR -->
+  <section class="panel" id="p-sim" role="tabpanel" aria-labelledby="tab-sim" hidden>
+    <div class="kpis" id="simKpis"></div>
+    <div class="sec">
+      <h2>Simulator</h2>
+      <p class="muted" style="font-size:13px">Geser untuk mencoba, atau pakai tombol "Coba" di tab Low Hanging Fruit. Ini perkiraan di atas pencapaian sekarang.</p>
+      <div class="box" style="padding-block:2px" id="simControls"></div>
+      <div id="simBreak"></div>
+    </div>
+  </section>
+
+  <!-- LOW HANGING FRUIT -->
+  <section class="panel" id="p-fruit" role="tabpanel" aria-labelledby="tab-fruit" hidden>
+    <div class="sec">
+      <h2>Langkah termurah menuju insentif lebih besar</h2>
+      <p class="muted" style="font-size:13px">Diurutkan dari tambahan insentif per 1% target, paling murah dulu.</p>
+      <div class="box" style="padding-block:2px" id="steps"></div>
+    </div>
+    <div class="sec">
+      <h2>SKU yang nyaris capai</h2>
+      <p class="muted" style="font-size:13px">SKU Fokus, NPD Regular, dan NPD Thematic yang tinggal sedikit lagi. Centang untuk memasukkannya ke simulator.</p>
+      <div class="scroll"><table id="tLines"></table></div>
+    </div>
+    <div class="sec">
+      <h2>Toko PJP belum transaksi</h2>
+      <div class="scroll"><table id="tBelum"></table></div>
+    </div>
+  </section>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
