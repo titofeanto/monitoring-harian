@@ -26,6 +26,13 @@ const BU_MAP = { 'BEAUTY & WELLBE': 'bw', 'BEAUTY & WELLBEING': 'bw', 'PERSONAL 
 const toBu = s => BU_MAP[str(s).toUpperCase()] || null;
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const bulanOf = p => { const m = /^(\d{4})-(\d{2})$/.exec(p); return m ? MONTHS[+m[2] - 1] + ' ' + m[1] : ''; };
+/** '2026-09' + delta bulan (boleh negatif) -> '2026-07'. Dipakai untuk rekap kuartal (3 bulan berjalan). */
+const shiftPeriode = (p, delta) => {
+  const m = /^(\d{4})-(\d{2})$/.exec(p); if (!m) return '';
+  let idx = (+m[1]) * 12 + (+m[2] - 1) + delta;
+  const y = Math.floor(idx / 12), mo = idx - y * 12;
+  return y + '-' + String(mo + 1).padStart(2, '0');
+};
 const DAY_ID = { Monday: 'Senin', Tuesday: 'Selasa', Wednesday: 'Rabu', Thursday: 'Kamis', Friday: 'Jumat', Saturday: 'Sabtu', Sunday: 'Minggu' };
 
 const TL = { juara: 'JUARA', achieve: 'ACHIEVE', bawah: 'BATAS BAWAH', none: 'BELUM' };
@@ -105,18 +112,36 @@ function buildModel(payload) {
   const byName = n => active.find(d => normName(d.nama) === normName(n));
   if (!active.length) warn.push('Tab DSR kosong atau semua nonaktif.');
 
-  /* TARGET: baris dengan periode sama dengan CONFIG.periode (kosong = periode terbaru di tab) */
+  /* TARGET: satu baris per DSR per periode. tgtAllByPeriode menyimpan SEMUA periode yang ada di
+     tab (dipakai untuk rekap kuartal); tgt/tgtSs tetap hanya periode aktif, seperti sebelumnya. */
   const tT = table(T.TARGET), tp = tT.col('periode');
   let periode = perKey(cfg.periode);
   if (!periode) periode = tT.rows.map(r => perKey(at(r, tp))).sort().pop() || '';
-  const tgt = {};
-  tT.rows.filter(r => perKey(at(r, tp)) === periode).forEach(r => {
-    const k = kodeOf(at(r, tT.col('kode_dsr'))); if (!k) return;
-    tgt[k] = { bw: num(at(r, tT.col('target_ss_bw'))), pc: num(at(r, tT.col('target_ss_pc'))), hc: num(at(r, tT.col('target_ss_hc'))), fo: num(at(r, tT.col('target_ss_fo'))), asrt: num(at(r, tT.col('target_assortment'))), bp: num(at(r, tT.col('target_bp'))) };
+  const tgtAllByPeriode = {};
+  tT.rows.forEach(r => {
+    const per = perKey(at(r, tp)); const k = kodeOf(at(r, tT.col('kode_dsr'))); if (!per || !k) return;
+    (tgtAllByPeriode[per] = tgtAllByPeriode[per] || {})[k] = {
+      bw: num(at(r, tT.col('target_ss_bw'))), pc: num(at(r, tT.col('target_ss_pc'))), hc: num(at(r, tT.col('target_ss_hc'))), fo: num(at(r, tT.col('target_ss_fo'))), asrt: num(at(r, tT.col('target_assortment'))), bp: num(at(r, tT.col('target_bp'))),
+    };
   });
+  const tgt = tgtAllByPeriode[periode] || {};
   if (!Object.keys(tgt).length) warn.push(`Tab TARGET tidak punya baris untuk periode ${periode || '(kosong)'}.`);
   const tgtSs = k => tgt[k] || { bw: 0, pc: 0, hc: 0, fo: 0, asrt: 0, bp: 0 };
   const buCoverage = k => BU.filter(b => tgtSs(k)[b] > 0);
+
+  /* HASIL_PERHITUNGAN: riwayat hasil hitung bulan-bulan sebelumnya yang sudah disimpan lewat
+     tombol "Simpan hasil ke Sheet". Dipakai sebagai sumber aktual untuk bulan yang sudah tutup
+     di rekap kuartal SS (bulan berjalan tetap dihitung live dari DMS_EXTRACT di bawah). */
+  const tH = table(T.HASIL_PERHITUNGAN);
+  const hCol = n => tH.col(n);
+  const histByPeriode = {};
+  tH.rows.forEach(r => {
+    const per = str(at(r, hCol('periode'))), k = kodeOf(at(r, hCol('kode_dsr'))); if (!per || !k) return;
+    (histByPeriode[per] = histByPeriode[per] || {})[k] = {
+      bw: num(at(r, hCol('ss_bw_aktual'))), pc: num(at(r, hCol('ss_pc_aktual'))), hc: num(at(r, hCol('ss_hc_aktual'))), fo: num(at(r, hCol('ss_fo_aktual'))),
+      total: num(at(r, hCol('ss_aktual'))), disimpanPada: str(at(r, hCol('disimpan_pada'))),
+    };
+  });
 
   /* MASTER_PRODUK */
   const tP = table(T.MASTER_PRODUK), pS = tP.col('SKUCode'), pB = tP.col('LEVEL-9'), pU = tP.col('BU'), pN = tP.col('nama_basepack');
@@ -272,6 +297,27 @@ function buildModel(payload) {
   };
   const hkTotal = num(cfg.hk_total) || 25, hkRun = num(cfg.hk_run) || 0;
 
+  /* Rekap kuartal SS: 3 bulan berjalan (periode - 2, periode - 1, periode), tertua ke terbaru.
+     Target selalu bisa dihitung (tab TARGET multi-periode). Aktual bulan berjalan = live dari
+     DMS_EXTRACT (ssAct); 2 bulan sebelumnya = dari HASIL_PERHITUNGAN kalau sudah pernah disimpan,
+     kalau belum tampil sebagai "belum disimpan" alih-alih 0 (supaya tidak salah dikira Rp 0). */
+  const sumBu = o => BU.reduce((s, b) => s + (+(o && o[b]) || 0), 0);
+  const qPeriods = [shiftPeriode(periode, -2), shiftPeriode(periode, -1), periode];
+  function kuartalFor(k) {
+    const bulanList = qPeriods.map(per => {
+      const tgtBu = (tgtAllByPeriode[per] || {})[k] || null;
+      const target = tgtBu ? sumBu(tgtBu) : null;
+      let aktual, sumber;
+      if (per === periode) { aktual = sumBu(ssAct[k] || zero()); sumber = 'live'; }
+      else { const h = (histByPeriode[per] || {})[k]; aktual = h ? h.total : null; sumber = h ? 'tersimpan' : 'belum_disimpan'; }
+      return { periode: per, bulan: bulanOf(per), target, aktual, sumber };
+    });
+    const totalTarget = bulanList.reduce((s, b) => s + (b.target || 0), 0);
+    const lengkap = bulanList.every(b => b.aktual != null);
+    const totalAktual = lengkap ? bulanList.reduce((s, b) => s + b.aktual, 0) : null;
+    return { bulan: bulanList, totalTarget, totalAktual, lengkap };
+  }
+
   /* Model per DSR */
   const dsrList = active.map(d => {
     const k = d.kode, t = tgtSs(k), a = ssAct[k] || zero(), m = ssMid[k] || zero(), q = iq[k], as = asrt[k];
@@ -291,6 +337,7 @@ function buildModel(payload) {
       eco: { pjp: pjpCnt, tx: mine.filter(o => o.omset > 0).length },
       sku: { fokus: q.fokus.ach, npd: q.npdReg.ach, bb: q.bigBets.ach, iq: q },
       bbEco: q.pastiLaku.tot ? q.pastiLaku.ach / q.pastiLaku.tot : 0,
+      kuartal: kuartalFor(k),
       lines,
       belum: mine.filter(o => o.omset <= 0).map(o => ({ toko_nama: o.nama, pjp_hari: o.pjp, ch: o.ch })),
       toko: mine,
@@ -347,6 +394,25 @@ function calc(d, rules, sim) {
   return { parts, ach, jasper, addInc, sku, total: jasper + addInc + sku, score, band };
 }
 
+/**
+ * Baris untuk tab HASIL_PERHITUNGAN (satu per DSR), dipakai tombol "Simpan hasil ke Sheet".
+ * c = hasil M.calc(d, rules, zeroSim()) tanpa simulator, supaya yang tersimpan angka real.
+ */
+function hasilRowFor(d, c, periode) {
+  return {
+    periode, kode_dsr: d.kode, nama_dsr: d.nama,
+    ss_bw_target: d.ss.bu.bw.t, ss_bw_aktual: d.ss.bu.bw.a,
+    ss_pc_target: d.ss.bu.pc.t, ss_pc_aktual: d.ss.bu.pc.a,
+    ss_hc_target: d.ss.bu.hc.t, ss_hc_aktual: d.ss.bu.hc.a,
+    ss_fo_target: d.ss.bu.fo.t, ss_fo_aktual: d.ss.bu.fo.a,
+    ss_target: d.ss.target, ss_aktual: d.ss.aktual, ach_ss: c.ach.ss,
+    asrt_target: d.asrt.target, asrt_aktual: d.asrt.aktual, ach_asrt: c.ach.asrt,
+    eco_pjp: d.eco.pjp, eco_tx: d.eco.tx, ach_eco: c.ach.eco,
+    skor: c.score, band: c.band,
+    insentif_jasper: c.jasper, insentif_add: c.addInc, insentif_sku: c.sku, insentif_total: c.total,
+  };
+}
+
 /** Langkah menuju tier berikutnya, diurutkan dari tambahan insentif per 1% target (paling murah dulu). */
 function stepsOf(d, rules, hkLeft) {
   const base = calc(d, rules, zeroSim());
@@ -376,10 +442,10 @@ function stepsOf(d, rules, hkLeft) {
 }
 
 if (typeof window !== 'undefined') {
-  window.MonitoringHarian = { tierOf, calc, stepsOf, buildModel, parseNgdms, zeroSim, rp, rpFull, pct, esc, idn, idn1, BU, BU_LONG, CAT_TO_CODE, CODE_TO_CAT, TL };
+  window.MonitoringHarian = { tierOf, calc, stepsOf, buildModel, parseNgdms, zeroSim, hasilRowFor, shiftPeriode, rp, rpFull, pct, esc, idn, idn1, BU, BU_LONG, CAT_TO_CODE, CODE_TO_CAT, TL };
 }
 if (typeof module !== 'undefined') {
-  module.exports = { tierOf, calc, stepsOf, buildModel, parseNgdms, zeroSim };
+  module.exports = { tierOf, calc, stepsOf, buildModel, parseNgdms, zeroSim, hasilRowFor, shiftPeriode };
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -398,6 +464,7 @@ if (typeof module !== 'undefined') {
   let PUSAT = null; // mode pusat: [{kode, nama, model, err}], VIEW 'all' atau indeks DT
   let VIEW = 'all';
   let SIM = []; // satu zeroSim() per DSR, indeks sinkron dengan MODEL.dsrList
+  let AUTH_CODE = ''; // kode akses yang dipakai login, dipakai lagi untuk tombol "Simpan hasil ke Sheet"
 
   function apiUrl(code, dt) {
     const base = (window.APP_CONFIG && window.APP_CONFIG.APPS_SCRIPT_URL) || '';
@@ -416,6 +483,20 @@ if (typeof module !== 'undefined') {
       await new Promise(r => setTimeout(r, 1500 * (i + 1)));
     }
     throw last;
+  }
+
+  /* text/plain menghindari CORS preflight ke Apps Script; Code.gs tetap membaca body sebagai JSON. */
+  async function postApi(action, code, dt, body) {
+    const base = (window.APP_CONFIG && window.APP_CONFIG.APPS_SCRIPT_URL) || '';
+    const res = await fetch(base, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action, code, dt }, body)),
+    });
+    if (!res.ok) throw new Error('http_' + res.status);
+    const data = await res.json();
+    if (data.error) throw new Error(data.message || data.error);
+    return data;
   }
 
   async function tryLogin(code, silent) {
@@ -446,6 +527,7 @@ if (typeof module !== 'undefined') {
         PUSAT = null;
         setModel(M.buildModel(data));
       }
+      AUTH_CODE = code;
       try { localStorage.setItem(LS_CODE, code); } catch {}
       showApp();
       return true;
@@ -486,6 +568,8 @@ if (typeof module !== 'undefined') {
     const all = PUSAT && VIEW === 'all';
     $('dsrSec').hidden = all;
     $('tabsNav').hidden = all;
+    $('saveHasilBtn').hidden = all;
+    $('saveHasilMsg').hidden = true; $('saveHasilMsg').textContent = '';
     $('ovTitle').textContent = all ? 'Per DT' : 'Semua DSR';
     if (all) {
       openTab($('tab-ring'));
@@ -564,11 +648,34 @@ if (typeof module !== 'undefined') {
 
   $('logoutBtn').addEventListener('click', () => {
     try { localStorage.removeItem(LS_CODE); } catch {}
-    MODEL = null; PUSAT = null; VIEW = 'all';
+    MODEL = null; PUSAT = null; VIEW = 'all'; AUTH_CODE = '';
     $('appScreen').hidden = true;
     $('loginScreen').hidden = false;
     $('codeInput').value = '';
     $('codeInput').focus();
+    $('saveHasilMsg').hidden = true; $('saveHasilMsg').textContent = '';
+  });
+
+  /* "Simpan hasil ke Sheet": kirim hasil hitung SEMUA DSR di DT yang sedang dibuka, periode aktif,
+     ke tab HASIL_PERHITUNGAN. Dipakai untuk recheck manual dan sebagai riwayat aktual bulanan
+     buat rekap kuartal SS bulan-bulan berikutnya. */
+  $('saveHasilBtn').addEventListener('click', async () => {
+    if (!MODEL) return;
+    const btn = $('saveHasilBtn'), msg = $('saveHasilMsg');
+    btn.disabled = true; btn.textContent = 'Menyimpan…';
+    msg.hidden = false; msg.style.color = ''; msg.textContent = '';
+    try {
+      const dt = PUSAT ? PUSAT[VIEW].kode : undefined;
+      const rows = MODEL.dsrList.map(d => M.hasilRowFor(d, M.calc(d, MODEL.rules, M.zeroSim()), MODEL.periode));
+      const res = await postApi('simpanHasil', AUTH_CODE, dt, { periode: MODEL.periode, rows });
+      msg.style.color = 'var(--success-text)';
+      msg.textContent = `Tersimpan ke Sheet: ${res.saved} DSR untuk periode ${MODEL.periode}, ${new Date().toLocaleTimeString('id-ID')}.`;
+    } catch (err) {
+      msg.style.color = 'var(--bad-text)';
+      msg.textContent = 'Gagal menyimpan: ' + err.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Simpan hasil ke Sheet';
+    }
   });
 
   function renderHeader() {
@@ -626,7 +733,8 @@ if (typeof module !== 'undefined') {
     const gapTot = Math.max(0, d.ss.target - d.ss.aktual);
     const ss = `<h2 style="margin-top:14px">Secondary Sales</h2><p class="muted" style="font-size:13px">Timegone ${pct(tf)} · SS tanggal 1-15: ${rp(d.ss.mid)}</p>
       <div class="scroll"><table><thead><tr><th>BU</th><th class="n">Target</th><th class="n">Aktual</th><th class="n">Capaian</th><th class="n">Kurang</th><th class="n">Per hari sisa</th></tr></thead><tbody>${ssRows}
-      <tr class="tot"><td>Total</td><td class="n">${rp(d.ss.target)}</td><td class="n">${rp(d.ss.aktual)}</td><td class="n">${barCell(d.ss.target ? d.ss.aktual / d.ss.target : NaN)}</td><td class="n">${rp(gapTot)}</td><td class="n">${MODEL.hkLeft ? rp(gapTot / MODEL.hkLeft) : '–'}</td></tr></tbody></table></div>`;
+      <tr class="tot"><td>Total</td><td class="n">${rp(d.ss.target)}</td><td class="n">${rp(d.ss.aktual)}</td><td class="n">${barCell(d.ss.target ? d.ss.aktual / d.ss.target : NaN)}</td><td class="n">${rp(gapTot)}</td><td class="n">${MODEL.hkLeft ? rp(gapTot / MODEL.hkLeft) : '–'}</td></tr></tbody></table></div>`
+      + kuartalTable(d);
     const a = d.asrt;
     const asrt = `<h2 style="margin-top:14px">Assortment (NGDMS)</h2>` + (a.ada
       ? `<div class="scroll"><table><thead><tr><th>Bagian</th><th class="n">Target</th><th class="n">Achieved</th><th class="n">Capaian</th></tr></thead><tbody>
@@ -646,6 +754,24 @@ if (typeof module !== 'undefined') {
     return ss + asrt + toko + norms;
   }
 
+  /* Rekap SS 3 bulan berjalan (penyetaraan kuartal). Rekap tampilan saja, tidak mengubah cara
+     hitung insentif bulanan. Bulan yang aktualnya belum pernah "Simpan hasil ke Sheet" tampil
+     terang-terangan sebagai "belum disimpan", supaya tidak salah dibaca sebagai Rp 0. */
+  function kuartalTable(d) {
+    const kt = d.kuartal;
+    const rows = kt.bulan.map(b => {
+      const belum = b.aktual == null;
+      const aktCell = belum ? '<span class="muted">belum disimpan</span>' : rp(b.aktual);
+      const achCell = belum ? '<span class="muted">–</span>' : barCell(b.target ? b.aktual / b.target : NaN);
+      return `<tr><td>${M.esc(b.bulan)}</td><td class="n">${rp(b.target)}</td><td class="n">${aktCell}</td><td class="n">${achCell}</td></tr>`;
+    }).join('');
+    const totAktCell = kt.lengkap ? rp(kt.totalAktual) : '<span class="muted">menunggu bulan yang belum disimpan</span>';
+    const totAchCell = kt.lengkap ? barCell(kt.totalTarget ? kt.totalAktual / kt.totalTarget : NaN) : '<span class="muted">–</span>';
+    return `<h2 style="margin-top:14px">Rekap SS 3 Bulan (Penyetaraan Kuartal)</h2>
+      <p class="muted" style="font-size:13px">Rekap untuk dicek, tidak mengubah tier insentif bulanan. Bulan berjalan dihitung live dari DMS_EXTRACT; bulan sebelumnya diambil dari tab HASIL_PERHITUNGAN (klik "Simpan hasil ke Sheet" di akhir tiap bulan supaya tersimpan).</p>
+      <div class="scroll"><table><thead><tr><th>Bulan</th><th class="n">Target</th><th class="n">Aktual</th><th class="n">Capaian</th></tr></thead><tbody>${rows}
+      <tr class="tot"><td>Total kuartal</td><td class="n">${rp(kt.totalTarget)}</td><td class="n">${totAktCell}</td><td class="n">${totAchCell}</td></tr></tbody></table></div>`;
+  }
   function barCell(ach) {
     const v = isFinite(ach) ? Math.max(0, Math.min(1, ach)) : 0;
     const color = ach >= 1 ? 'var(--success)' : ach >= .8 ? 'var(--warn)' : 'var(--bad)';

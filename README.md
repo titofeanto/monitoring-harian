@@ -49,6 +49,7 @@ nama header, jadi urutan kolom bebas.
 |---|---|
 | Harian | `DMS_EXTRACT` (ganti isi), `CONFIG`: `hk_run` dan `tanggal_data` |
 | Setiap tarik report | `NGDMS_ASRT`, `CONFIG`: `ngdms_tanggal_data` |
+| Akhir bulan, sebelum ganti periode | Klik **"Simpan hasil ke Sheet"** di web app (lihat "Rekap kuartal SS" di bawah) — kalau terlewat, bulan itu tidak bisa direkap lagi di kuartal berikutnya |
 | Awal bulan | `TARGET` (tambah baris periode baru), `NORMS_SKU`, `CONFIG`: `periode` dan `hk_total` |
 | Saat berubah | `SKU_FOKUS`, `DSR`, `OUTLET_MASTER`, `KPI`, `MASTER_PRODUK` |
 
@@ -139,6 +140,33 @@ baru).
    jalankan fungsi `clearCache` dari editor Apps Script (dropdown fungsi >
    pilih `clearCache` > Run).
 
+## Rekap kuartal SS dan recheck angka di Sheet
+
+Di bawah tabel Secondary Sales tiap DSR ada **"Rekap SS 3 Bulan (Penyetaraan
+Kuartal)"**: target dan aktual untuk periode aktif dan 2 bulan sebelumnya,
+plus totalnya. Ini rekap untuk dicek, **tidak mengubah tier atau nominal
+insentif bulanan** — itu tetap dihitung dari pencapaian bulan itu sendiri.
+
+Tombol **"Simpan hasil ke Sheet"** (di sebelah kode akses, atas halaman)
+menulis hasil hitung semua DSR untuk periode aktif ke tab
+`HASIL_PERHITUNGAN` — angka yang sama persis dengan yang tampil di web
+app, per DSR per bulan. Gunanya dua:
+
+- **Recheck manual.** Kalau ada rumus atau logic yang dicurigai salah,
+  bandingkan tab ini dengan angka di web app, atau buat rumus pembanding
+  sendiri di kolom sebelahnya.
+- **Sumber aktual bulan-bulan sebelumnya untuk rekap kuartal.**
+  `DMS_EXTRACT` hanya menyimpan bulan berjalan (ditimpa tiap bulan), jadi
+  begitu bulan tutup, satu-satunya cara aktualnya "diingat" untuk kuartal
+  berikutnya adalah lewat tombol ini. Kalau lupa diklik, bulan itu tampil
+  **"belum disimpan"** di rekap kuartal seterusnya — bukan dianggap Rp 0,
+  tapi juga tidak bisa direkap lagi karena datanya sudah keburu hilang
+  dari `DMS_EXTRACT`.
+
+Klik tombolnya di akhir setiap bulan, sebelum mengganti `CONFIG!periode`
+ke bulan berikutnya. Menyimpan ulang periode yang sama tidak menggandakan
+baris (menimpa), jadi aman diklik berkali-kali kalau data direvisi.
+
 ## Masalah yang mungkin muncul
 
 - **"APPS_SCRIPT_URL belum diisi di assets/config.js"** — Langkah 4.3
@@ -155,6 +183,15 @@ baru).
   ulang tab itu dengan "Convert text to numbers" tidak dicentang.
 - **Norms SKU / SKU Fokus 0 semua** — cek `MASTER_PRODUK` berisi SKUCode
   yang ada di extract, dan `OUTLET_MASTER` berisi toko di `NORMS_SKU`.
+- **"Gagal menyimpan: ..." saat klik "Simpan hasil ke Sheet"** — sama
+  penyebabnya seperti gagal terhubung di atas (cek URL/deployment), atau
+  deployment lama belum diperbarui setelah `Code.gs` diubah (Deploy >
+  Manage deployments > pensil > Version: New version > Deploy).
+- **Bulan tampil "belum disimpan" terus di rekap kuartal padahal sudah
+  lewat** — tombol "Simpan hasil ke Sheet" belum sempat diklik sebelum
+  `CONFIG!periode` diganti ke bulan berikutnya. Datanya di `DMS_EXTRACT`
+  sudah tertimpa, jadi bulan itu tidak bisa direkap lagi; pastikan klik
+  tombolnya tiap akhir bulan mulai sekarang.
 - **"Tab TARGET tidak punya baris untuk periode ..."** — kolom `periode` di
   `TARGET` harus sama dengan `CONFIG!periode` (format `YYYY-MM`).
 
