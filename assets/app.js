@@ -730,11 +730,19 @@ if (typeof module !== 'undefined') {
 
   /* RINGKASAN */
   function renderRingkasan() {
+    const calcs = MODEL.dsrList.map(d => M.calc(d, MODEL.rules, M.zeroSim()));
     const rows = MODEL.dsrList.map((d, i) => {
-      const c = M.calc(d, MODEL.rules, M.zeroSim());
+      const c = calcs[i];
       return `<tr class="${i === CUR ? 'tot' : ''}"><td>${M.esc(d.nama)}</td><td class="n">${pct(c.ach.ss)}</td><td class="n">${pct(c.ach.asrt)}</td><td class="n">${pct(c.ach.eco)}</td><td class="n">${Math.round(c.score)}</td><td><span class="tag ${c.band === 'GREEN' ? 'g' : c.band === 'AMBER' ? 'a' : 'r'}">${c.band}</span></td><td class="n">${rpFullLocal(c.total)}</td></tr>`;
     }).join('');
-    $('tOverview').innerHTML = `<thead><tr><th>DSR</th><th class="n">SS</th><th class="n">Assortment</th><th class="n">ECO</th><th class="n">Skor</th><th>Status</th><th class="n">Insentif</th></tr></thead><tbody>${rows}</tbody>`;
+    /* Total DT: dasar perhitungan insentif DSS (supervisor), dilihat dari pencapaian total sales-nya, bukan per DSR. */
+    const ssT = MODEL.dsrList.reduce((s, d) => s + d.ss.target, 0), ssA = MODEL.dsrList.reduce((s, d) => s + d.ss.aktual, 0);
+    const asT = MODEL.dsrList.reduce((s, d) => s + d.asrt.target, 0), asA = MODEL.dsrList.reduce((s, d) => s + d.asrt.aktual, 0);
+    const ecoP = MODEL.dsrList.reduce((s, d) => s + d.eco.pjp, 0), ecoT = MODEL.dsrList.reduce((s, d) => s + d.eco.tx, 0);
+    const incT = calcs.reduce((s, c) => s + c.total, 0);
+    const achOf = (a, t) => t ? a / t : NaN;
+    $('tOverview').innerHTML = `<thead><tr><th>DSR</th><th class="n">SS</th><th class="n">Assortment</th><th class="n">ECO</th><th class="n">Skor</th><th>Status</th><th class="n">Insentif</th></tr></thead><tbody>${rows}
+      <tr class="tot"><td>Total DT</td><td class="n">${pct(achOf(ssA, ssT))}</td><td class="n">${pct(achOf(asA, asT))}</td><td class="n">${pct(achOf(ecoT, ecoP))}</td><td></td><td></td><td class="n">${rpFullLocal(incT)}</td></tr></tbody>`;
 
     const W = MODEL.warn, N = MODEL.note, li = a => `<ul style="margin:6px 0 0;padding-left:18px">${a.map(w => `<li>${M.esc(w)}</li>`).join('')}</ul>`;
     $('ringBanner').className = 'banner ' + (W.length ? 'bad' : 'info');
@@ -742,8 +750,14 @@ if (typeof module !== 'undefined') {
       : `Data terbaca: ${idn.format(MODEL.counts.extract)} baris extract, ${idn.format(MODEL.counts.norms)} baris norms SKU, ${idn.format(MODEL.counts.outlet)} toko di Outlet Master.`)
       + (N.length ? '<div style="margin-top:6px;font-weight:500">Catatan:' + li(N) + '</div>' : '');
 
+    /* Kartu ringkas Total DT, buat DSS lihat pencapaian total sales-nya sendiri (dasar insentif DSS). */
+    const totalDtKpis = `<h2>Total DT</h2><div class="kpis">
+        <div class="kpi"><div class="l">Target SS DT</div><div class="v">${rp(ssT)}</div><div class="s">Aktual ${rp(ssA)}</div></div>
+        <div class="kpi"><div class="l">Capaian SS DT</div><div class="v">${pct(achOf(ssA, ssT))}</div><div class="s">Kurang ${rp(Math.max(0, ssT - ssA))}</div></div>
+        <div class="kpi"><div class="l">Insentif DSR total</div><div class="v">${rp(incT)}</div><div class="s">${MODEL.dsrList.length} DSR</div></div></div>`;
+
     const d = MODEL.dsrList[CUR], base = M.calc(d, MODEL.rules, M.zeroSim());
-    $('ringDetail').innerHTML = omsetHarianTable(MODEL.dsrList, MODEL.lastDay, MODEL.bulan)
+    $('ringDetail').innerHTML = totalDtKpis + omsetHarianTable(MODEL.dsrList, MODEL.lastDay, MODEL.bulan)
       + `<h2 style="margin-top:14px">${M.esc(d.nama)}: insentif</h2>` + breakdownTable(d, base, base) + detailTables(d);
   }
 
