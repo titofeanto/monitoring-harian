@@ -169,8 +169,8 @@ function buildModel(payload) {
   const tE = table(T.DMS_EXTRACT);
   const cK = tE.col('Salesman', 'DSR Code (Hygiene)'), cBu = tE.col('Sub_division', 'Category'), cG = tE.col('GSV'), cO = tE.col('Outlet', 'Kode Outlet Bersih'), cON = tE.col('Outlet Name', 'OutletName'), cCh = tE.col('SubChannel', 'Sub Channel'), cSku = tE.col('SKUCode', 'SKU Code'), cQty = tE.col('TotalQuantity(PCS)', 'TotalQuantity (PCS)'), cDate = tE.col('INVDate', 'InvDate', 'Tanggal');
   if (tE.rows.length && (cK < 0 || cG < 0)) warn.push('Tab DMS_EXTRACT: kolom Salesman/GSV tidak ditemukan. Header: ' + tE.hdr.slice(0, 12).join(', '));
-  const ssAct = {}, ssMid = {}, outlets = {}, ownerByBu = {}, qtyBy = {}, weekMap = {}, unknown = new Set();
-  let numericOutlet = 0;
+  const ssAct = {}, ssMid = {}, ssByDay = {}, outlets = {}, ownerByBu = {}, qtyBy = {}, weekMap = {}, unknown = new Set();
+  let numericOutlet = 0, lastDay = null;
   const zero = () => ({ bw: 0, pc: 0, hc: 0, fo: 0 });
   if (cK >= 0 && cG >= 0) tE.rows.forEach(r => {
     const kode = kodeOf(r[cK]); if (!kode) return;
@@ -181,6 +181,8 @@ function buildModel(payload) {
     ssAct[kode] = ssAct[kode] || zero(); if (b) ssAct[kode][b] += g;
     const day = cDate >= 0 ? dayOf(r[cDate]) : null;
     if (day !== null && day <= 15) { ssMid[kode] = ssMid[kode] || zero(); if (b) ssMid[kode][b] += g; }
+    /* Omset per hari, untuk lihat omset tanggal terakhir vs total s.d. sebelumnya. */
+    if (day !== null) { ssByDay[kode] = ssByDay[kode] || {}; ssByDay[kode][day] = (ssByDay[kode][day] || 0) + g; if (lastDay === null || day > lastDay) lastDay = day; }
     if (ok) {
       const key = ok + '||' + kode;
       const o = outlets[key] = outlets[key] || { kode: ok, nama: str(at(r, cON)), sm: d.nama, dk: kode, omset: 0, bu: {}, ch: str(at(r, cCh)) };
@@ -328,9 +330,12 @@ function buildModel(payload) {
     const lines = detail.filter(x => x.dk === k && !x.ach && CAT_TO_CODE[x.cat]).map(x => ({
       c: CAT_TO_CODE[x.cat], toko: x.toko, pjp: x.pjp, sku: x.skuName, soq: x.soq, qty: x.qty, need: Math.max(1, Math.ceil(x.soq - x.qty)),
     })).sort((x, y) => x.need - y.need);
+    /* Omset tanggal terakhir di extract (hariIni) vs total s.d. sebelum tanggal itu (kemarin). */
+    const omsetHariIni = (lastDay !== null && ssByDay[k]) ? (ssByDay[k][lastDay] || 0) : 0;
+    const omsetKemarin = sum(a) - omsetHariIni;
     return {
       kode: k, nama: d.nama, ch: d.ch,
-      ss: { target: sum(t), aktual: sum(a), mid: sum(m), bu: Object.fromEntries(BU.map(b => [b, { t: t[b] || 0, a: a[b] || 0 }])) },
+      ss: { target: sum(t), aktual: sum(a), mid: sum(m), bu: Object.fromEntries(BU.map(b => [b, { t: t[b] || 0, a: a[b] || 0 }])), omsetHariIni, omsetKemarin },
       asrt: as ? { target: as.e2eT + as.e2sT, aktual: as.e2eA + as.e2sA, e2eT: as.e2eT, e2sT: as.e2sT, e2eA: as.e2eA, e2sA: as.e2sA, ref: t.asrt, ada: true }
         : { target: 0, aktual: 0, e2eT: 0, e2sT: 0, e2eA: 0, e2sA: 0, ref: t.asrt, ada: false },
       bp: { target: t.bp || pjpCnt, aktual: bpAkt },
@@ -348,6 +353,7 @@ function buildModel(payload) {
     rules, hkTotal, hkRun, hkLeft: Math.max(0, hkTotal - hkRun),
     dt: { nama: str(cfg.dt_nama), kode: dtKode, ket: str(cfg.dt_ket) },
     periode, bulan: bulanOf(periode), tanggalData: str(cfg.tanggal_data), ngdmsTanggal: str(cfg.ngdms_tanggal_data),
+    lastDay,
     builtAt: payload.builtAt || '',
     counts: { extract: tE.rows.length, norms: tN.rows.length, fokus: tF.rows.length, outlet: tO.rows.length, produk: tP.rows.length },
     warn, note, dsrList,
@@ -641,9 +647,26 @@ if (typeof module !== 'undefined') {
         <div class="kpi"><div class="l">Target SS total</div><div class="v">${rp(T.ssT)}</div><div class="s">Aktual ${rp(T.ssA)}</div></div>
         <div class="kpi"><div class="l">Capaian SS</div><div class="v">${pct(ach(T.ssA, T.ssT))}</div><div class="s">Kurang ${rp(Math.max(0, T.ssT - T.ssA))}</div></div>
         <div class="kpi"><div class="l">Insentif total</div><div class="v">${rp(T.inc)}</div><div class="s">${T.nDsr} DSR</div></div></div>
+      ${omsetHarianAllDt(ok)}
       <h2 style="margin-top:14px">Semua DSR</h2><div class="scroll"><table><thead><tr><th>DT</th><th>DSR</th><th class="n">SS</th><th class="n">Assortment</th><th class="n">ECO</th><th class="n">Skor</th><th>Status</th><th class="n">Insentif</th></tr></thead><tbody>`
       + ok.flatMap(r => r.m.dsrList.map(x => { const c = M.calc(x, r.m.rules, M.zeroSim()); return `<tr><td>${M.esc(r.d.nama)}</td><td>${M.esc(x.nama)}</td><td class="n">${pct(c.ach.ss)}</td><td class="n">${pct(c.ach.asrt)}</td><td class="n">${pct(c.ach.eco)}</td><td class="n">${Math.round(c.score)}</td><td><span class="tag ${c.band === 'GREEN' ? 'g' : c.band === 'AMBER' ? 'a' : 'r'}">${c.band}</span></td><td class="n">${M.rpFull(c.total)}</td></tr>`; })).join('')
       + '</tbody></table></div>';
+  }
+
+  /* Omset s.d. kemarin vs omset tanggal terbaru, per DT (mode Semua DT) + total. */
+  function omsetHarianAllDt(ok) {
+    const rows = ok.map(r => {
+      const kemarin = r.m.dsrList.reduce((s, x) => s + x.ss.omsetKemarin, 0);
+      const hariIni = r.m.dsrList.reduce((s, x) => s + x.ss.omsetHariIni, 0);
+      return { nama: r.d.nama, tgl: r.m.lastDay, bulan: r.m.bulan, kemarin, hariIni };
+    });
+    if (!rows.some(r => r.tgl !== null && r.tgl !== undefined)) return '';
+    const tglSet = [...new Set(rows.map(r => r.tgl + ' ' + r.bulan))];
+    const body = rows.map(r => `<tr><td>${M.esc(r.nama)}</td><td class="n">${rp(r.kemarin)}</td><td class="n">${rp(r.hariIni)}</td><td class="n">${rp(r.kemarin + r.hariIni)}</td></tr>`).join('');
+    const totK = rows.reduce((s, r) => s + r.kemarin, 0), totH = rows.reduce((s, r) => s + r.hariIni, 0);
+    return `<h2 style="margin-top:14px">Omset Harian</h2><p class="muted" style="font-size:13px">Omset tanggal terbaru per DT dibandingkan total s.d. sebelum tanggal itu.${tglSet.length > 1 ? ' Tanggal terbaru tidak sama antar DT: ' + tglSet.map(M.esc).join(', ') + '.' : ''}</p>
+      <div class="scroll"><table><thead><tr><th>DT</th><th class="n">Omset s.d. Kemarin</th><th class="n">Omset ${tglSet.length === 1 ? M.esc(tglSet[0]) : 'Terbaru'}</th><th class="n">Total s.d. Hari Ini</th></tr></thead><tbody>${body}
+      <tr class="tot"><td>Total</td><td class="n">${rp(totK)}</td><td class="n">${rp(totH)}</td><td class="n">${rp(totK + totH)}</td></tr></tbody></table></div>`;
   }
 
   $('logoutBtn').addEventListener('click', () => {
@@ -720,7 +743,19 @@ if (typeof module !== 'undefined') {
       + (N.length ? '<div style="margin-top:6px;font-weight:500">Catatan:' + li(N) + '</div>' : '');
 
     const d = MODEL.dsrList[CUR], base = M.calc(d, MODEL.rules, M.zeroSim());
-    $('ringDetail').innerHTML = `<h2 style="margin-top:14px">${M.esc(d.nama)}: insentif</h2>` + breakdownTable(d, base, base) + detailTables(d);
+    $('ringDetail').innerHTML = omsetHarianTable(MODEL.dsrList, MODEL.lastDay, MODEL.bulan)
+      + `<h2 style="margin-top:14px">${M.esc(d.nama)}: insentif</h2>` + breakdownTable(d, base, base) + detailTables(d);
+  }
+
+  /* Omset s.d. kemarin vs omset tanggal terbaru di DMS_EXTRACT, per DSR + total. */
+  function omsetHarianTable(dsrList, lastDay, bulan) {
+    if (lastDay === null || lastDay === undefined) return '';
+    const tglLabel = lastDay + ' ' + (bulan || '');
+    const rows = dsrList.map(d => `<tr><td>${M.esc(d.nama)}</td><td class="n">${rp(d.ss.omsetKemarin)}</td><td class="n">${rp(d.ss.omsetHariIni)}</td><td class="n">${rp(d.ss.aktual)}</td></tr>`).join('');
+    const totKemarin = dsrList.reduce((s, d) => s + d.ss.omsetKemarin, 0), totHariIni = dsrList.reduce((s, d) => s + d.ss.omsetHariIni, 0);
+    return `<h2>Omset Harian</h2><p class="muted" style="font-size:13px">Omset tanggal terbaru di DMS_EXTRACT (${M.esc(tglLabel)}) dibandingkan total s.d. sebelum tanggal itu.</p>
+      <div class="scroll"><table><thead><tr><th>DSR</th><th class="n">Omset s.d. Kemarin</th><th class="n">Omset ${M.esc(tglLabel)}</th><th class="n">Total s.d. Hari Ini</th></tr></thead><tbody>${rows}
+      <tr class="tot"><td>Total</td><td class="n">${rp(totKemarin)}</td><td class="n">${rp(totHariIni)}</td><td class="n">${rp(totKemarin + totHariIni)}</td></tr></tbody></table></div>`;
   }
 
   /* Rincian pencapaian per DSR: SS per BU, assortment, toko, norms SKU */
