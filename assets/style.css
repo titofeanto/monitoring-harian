@@ -109,6 +109,21 @@ tr.tot td{font-weight:700;background:var(--sunk)}
 .banner.info{background:var(--info-soft);color:var(--accent)}
 .banner.bad{background:var(--bad-soft);color:var(--bad-text)}
 
+/* Tombol kecil "cek data": ganti banner besar yang selalu tampil. Cuma muncul kalau ada isu. */
+.issues-btn{display:inline-flex;align-items:center;gap:6px;font:700 12px var(--body);border:1.5px solid var(--bad);background:var(--bad-soft);color:var(--bad-text);border-radius:99px;padding:6px 12px;cursor:pointer;min-height:0}
+.issues-btn:active{transform:scale(.97)}
+
+/* Popup cek data */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,16,28,.55);display:flex;align-items:flex-end;justify-content:center;z-index:100;padding:0}
+@media (min-width:560px){.modal-overlay{align-items:center;padding:20px}}
+.modal-box{background:var(--surface);width:100%;max-width:560px;max-height:82vh;border-radius:var(--r) var(--r) 0 0;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+@media (min-width:560px){.modal-box{border-radius:var(--r)}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.modal-head h3{margin:0;font-size:15px}
+.modal-head button{background:none;border:none;color:var(--ink2);font-size:18px;line-height:1;cursor:pointer;padding:4px}
+.modal-body{padding:14px 16px;overflow-y:auto;font-size:13px;line-height:1.6}
+.modal-body ul{margin:6px 0 0;padding-left:18px}
+
 /* progress mini, dipakai di baris Capaian pada tabel rincian */
 .prow{display:flex;align-items:center;gap:8px}
 .prow .pct{font-variant-numeric:tabular-nums;min-width:48px;text-align:right}

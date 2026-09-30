@@ -642,10 +642,7 @@ if (typeof module !== 'undefined') {
     document.querySelectorAll('#tOverview [data-dt]').forEach(b => b.onclick = () => document.querySelector(`#dtChips .chip[data-k="${b.dataset.dt}"]`).click());
 
     const W = rows.filter(r => r.err || r.warn);
-    $('ringBanner').className = 'banner ' + (W.length ? 'bad' : 'info');
-    $('ringBanner').innerHTML = W.length
-      ? 'Cek data:<ul style="margin:6px 0 0;padding-left:18px">' + W.map(r => `<li>${M.esc(r.d.nama)}: ${M.esc(r.err || r.m.warn.join(' '))}</li>`).join('') + '</ul>'
-      : 'Semua DT terbaca tanpa masalah data.';
+    showIssues(W.flatMap(r => (r.err ? [r.err] : r.m.warn).map(w => `${r.d.nama}: ${w}`)), []);
 
     $('ringDetail').innerHTML = `<div class="kpis" style="margin-top:14px">
         <div class="kpi"><div class="l">Target SS total</div><div class="v">${rp(T.ssT)}</div><div class="s">Aktual ${rp(T.ssA)}</div></div>
@@ -672,6 +669,23 @@ if (typeof module !== 'undefined') {
       <div class="scroll"><table><thead><tr><th>DT</th><th class="n">Omset s.d. Kemarin</th><th class="n">Omset ${tglSet.length === 1 ? M.esc(tglSet[0]) : 'Terbaru'}</th><th class="n">Total s.d. Hari Ini</th></tr></thead><tbody>${body}
       <tr class="tot"><td>Total</td><td class="n">${rp(totK)}</td><td class="n">${rp(totH)}</td><td class="n">${rp(totK + totH)}</td></tr></tbody></table></div>`;
   }
+
+  /* Ganti banner besar yang selalu tampil: kalau tidak ada isu, sembunyikan total.
+     Kalau ada, cuma tombol kecil "! N isu" — detailnya baru muncul di popup saat ditekan. */
+  function showIssues(warn, note) {
+    const btn = $('ringIssuesBtn'), n = warn.length + note.length;
+    if (!n) { btn.hidden = true; return; }
+    btn.hidden = false;
+    btn.textContent = `⚠ ${n} isu data — ketuk untuk lihat`;
+    btn.onclick = () => {
+      const li = a => `<ul>${a.map(w => `<li>${M.esc(w)}</li>`).join('')}</ul>`;
+      $('dataModalBody').innerHTML = (warn.length ? '<p><b>Perlu dicek:</b></p>' + li(warn) : '')
+        + (note.length ? '<p style="margin-top:10px"><b>Catatan:</b></p>' + li(note) : '');
+      $('dataModal').hidden = false;
+    };
+  }
+  $('dataModalClose').addEventListener('click', () => { $('dataModal').hidden = true; });
+  $('dataModal').addEventListener('click', e => { if (e.target.id === 'dataModal') $('dataModal').hidden = true; });
 
   $('logoutBtn').addEventListener('click', () => {
     try { localStorage.removeItem(LS_CODE); } catch {}
@@ -749,11 +763,7 @@ if (typeof module !== 'undefined') {
     $('tOverview').innerHTML = `<thead><tr><th>DSR</th><th class="n">SS</th><th class="n">Assortment</th><th class="n">ECO</th><th class="n">Skor</th><th>Status</th><th class="n">Insentif</th></tr></thead><tbody>${rows}
       <tr class="tot"><td>Total DT</td><td class="n">${pct(achOf(ssA, ssT))}</td><td class="n">${pct(achOf(asA, asT))}</td><td class="n">${pct(achOf(ecoT, ecoP))}</td><td></td><td></td><td class="n">${rpFullLocal(incT)}</td></tr></tbody>`;
 
-    const W = MODEL.warn, N = MODEL.note, li = a => `<ul style="margin:6px 0 0;padding-left:18px">${a.map(w => `<li>${M.esc(w)}</li>`).join('')}</ul>`;
-    $('ringBanner').className = 'banner ' + (W.length ? 'bad' : 'info');
-    $('ringBanner').innerHTML = (W.length ? 'Cek data di Sheet:' + li(W)
-      : `Data terbaca: ${idn.format(MODEL.counts.extract)} baris extract, ${idn.format(MODEL.counts.norms)} baris norms SKU, ${idn.format(MODEL.counts.outlet)} toko di Outlet Master.`)
-      + (N.length ? '<div style="margin-top:6px;font-weight:500">Catatan:' + li(N) + '</div>' : '');
+    showIssues(MODEL.warn, MODEL.note);
 
     /* Kartu ringkas Total DT, buat DSS lihat pencapaian total sales-nya sendiri (dasar insentif DSS). */
     const totalDtKpis = `<h2>Total DT</h2><div class="kpis">
