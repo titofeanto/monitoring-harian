@@ -349,11 +349,15 @@ function buildModel(payload) {
     };
   });
 
+  /* Tanggal data terbaru: ikut tanggal terakhir yang benar-benar ada di DMS_EXTRACT
+     (bukan cfg.tanggal_data yang diisi manual dan bisa lupa diupdate). */
+  const lastUploadDate = (lastDay !== null && /^\d{4}-\d{2}$/.test(periode)) ? periode + '-' + String(lastDay).padStart(2, '0') : '';
+
   return {
     rules, hkTotal, hkRun, hkLeft: Math.max(0, hkTotal - hkRun),
     dt: { nama: str(cfg.dt_nama), kode: dtKode, ket: str(cfg.dt_ket) },
     periode, bulan: bulanOf(periode), tanggalData: str(cfg.tanggal_data), ngdmsTanggal: str(cfg.ngdms_tanggal_data),
-    lastDay,
+    lastDay, lastUploadDate,
     builtAt: payload.builtAt || '',
     counts: { extract: tE.rows.length, norms: tN.rows.length, fokus: tF.rows.length, outlet: tO.rows.length, produk: tP.rows.length },
     warn, note, dsrList,
@@ -606,8 +610,8 @@ if (typeof module !== 'undefined') {
     $('dtIcon').textContent = 'ALL';
     const bulan = [...new Set(PUSAT.filter(d => d.model).map(d => d.model.bulan).filter(Boolean))].join(', ');
     $('dtSub').textContent = [PUSAT.length + ' DT', bulan].filter(Boolean).join(' · ');
-    const tgl = PUSAT.filter(d => d.model && d.model.tanggalData).map(d => d.model.tanggalData).sort();
-    $('dtUpdated').textContent = tgl.length ? 'Data paling lama per ' + tgl[0] : '';
+    const tgl = PUSAT.filter(d => d.model).map(d => d.model.lastUploadDate || d.model.tanggalData).filter(Boolean).sort();
+    $('dtUpdated').textContent = tgl.length ? 'Data extract paling lama per ' + tgl[0] : '';
     $('dtSepMid').hidden = !$('dtUpdated').textContent;
   }
 
@@ -705,7 +709,8 @@ if (typeof module !== 'undefined') {
     $('dtName').textContent = MODEL.dt.nama || 'Monitoring Harian';
     $('dtIcon').textContent = initialsOf(MODEL.dt.nama);
     $('dtSub').textContent = [MODEL.dt.kode && ('DT ' + MODEL.dt.kode), MODEL.dt.ket, MODEL.bulan].filter(Boolean).join(' · ');
-    const upd = MODEL.tanggalData ? ('Data per ' + MODEL.tanggalData) : '';
+    const tgl = MODEL.lastUploadDate || MODEL.tanggalData;
+    const upd = tgl ? ('Data extract per ' + tgl) : '';
     $('dtUpdated').textContent = [upd, MODEL.hkRun + '/' + MODEL.hkTotal + ' HK'].filter(Boolean).join(' · ');
     $('dtSepMid').hidden = !$('dtSub').textContent || !$('dtUpdated').textContent;
   }
