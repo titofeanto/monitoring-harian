@@ -1,5 +1,5 @@
 /**
- * Monitoring Harian — API data mentah, banyak DT.
+ * Monitoring Harian — API baca-saja data mentah, banyak DT.
  *
  * Skrip ini terpasang di Sheet PUSAT (hanya pemilik). Tab DAFTAR_DT berisi
  * satu baris per kode akses:
@@ -9,39 +9,20 @@
  *
  * Deploy sebagai Web App: Execute as Me, Who has access Anyone.
  *
- * Endpoint baca (GET):
+ * Endpoint:
  *   GET ?code=<kode DT>                  -> data mentah Sheet DT itu
  *   GET ?code=<kode pusat>               -> daftar DT
  *   GET ?code=<kode pusat>&dt=<dt_kode>  -> data mentah satu DT
  *   tambah &cek=1                        -> jumlah baris per tab saja
  *
- * Endpoint tulis (POST, body JSON):
- *   {action:'simpanHasil', code, dt?, periode:'YYYY-MM', rows:[...]}
- *   Menulis HANYA ke tab HASIL_PERHITUNGAN (audit trail hasil hitung web
- *   app, dipakai juga sebagai riwayat aktual bulanan untuk rekap kuartal
- *   SS). Baris lama dengan periode yang sama ditimpa (upsert), tab lain
- *   tidak pernah disentuh dari endpoint ini.
- *
- * Skrip sendiri tidak menghitung pencapaian/insentif: halaman web yang
- * menghitung, skrip ini hanya membaca data mentah dan menyimpan hasilnya
- * balik ke Sheet supaya bisa dicek manual.
+ * Skrip tidak menghitung apa pun: halaman web yang menghitung semua
+ * pencapaian dan insentif.
  */
 
 const REG_TAB = 'DAFTAR_DT';
-const HASIL_TAB = 'HASIL_PERHITUNGAN';
-const HASIL_HEADER = [
-  'periode', 'kode_dsr', 'nama_dsr',
-  'ss_bw_target', 'ss_bw_aktual', 'ss_pc_target', 'ss_pc_aktual', 'ss_hc_target', 'ss_hc_aktual', 'ss_fo_target', 'ss_fo_aktual',
-  'ss_target', 'ss_aktual', 'ach_ss',
-  'asrt_target', 'asrt_aktual', 'ach_asrt',
-  'eco_pjp', 'eco_tx', 'ach_eco',
-  'skor', 'band', 'insentif_jasper', 'insentif_add', 'insentif_sku', 'insentif_total',
-  'disimpan_pada',
-];
-const HASIL_MAX_ROWS = 500; // batas wajar jumlah DSR per DT dalam satu simpan
 
 // Tab tabel biasa: header di baris 1. Dikirim sebagai array 2D (baris 1 = header).
-const TABLE_TABS = ['TARGET', 'DMS_EXTRACT', 'NORMS_SKU', 'SKU_FOKUS', 'DSR', 'OUTLET_MASTER', 'KPI', 'MASTER_PRODUK'];
+const TABLE_TABS = ['TARGET', 'DMS_EXTRACT', 'NORMS_SKU', 'SKU_FOKUS', 'DSR', 'OUTLET_MASTER', 'KPI', 'MASTER_PRODUK', 'HARI_LIBUR'];
 // Tab yang ditempel apa adanya dari report; halaman mencari baris header sendiri.
 const RAW_TABS = ['NGDMS_ASRT'];
 
@@ -57,6 +38,26 @@ const CHUNK = 90000; // batas satu item CacheService 100 KB
 
 function doGet(e) {
   try {
+    // Setup sementara: muat extract DMS + NGDMS mentah dari gist ke Sheet DT.
+    // Hanya jalan dengan kode akses peran pusat; kode DT biasa ditolak.
+    if (e.parameter && e.parameter.admin === 'loadRaw') {
+      const regA = readRegistry_();
+      const meA = regA.find(x => x.kode_akses === String(e.parameter.code || '').trim());
+      if (!meA || meA.peran !== 'pusat') return jsonOut({ error: 'invalid_code' });
+      const r = regA.find(x => x.dt_kode === String(e.parameter.dt || ''));
+      if (!r || !r.sheet_id) return jsonOut({ error: 'unknown_dt' });
+      return jsonOut(loadRaw_(r.sheet_id, e.parameter.url));
+    }
+    // &admin=clearCache&dt=<dt_kode> (atau tanpa dt untuk semua DT): paksa baca ulang Sheet
+    // sebelum cache 5 menit habis sendiri. Hanya jalan dengan kode akses peran pusat.
+    if (e.parameter && e.parameter.admin === 'clearCache') {
+      const regC = readRegistry_();
+      const meC = regC.find(x => x.kode_akses === String(e.parameter.code || '').trim());
+      if (!meC || meC.peran !== 'pusat') return jsonOut({ error: 'invalid_code' });
+      const targets = regC.filter(x => x.peran === 'dt' && x.sheet_id && (!e.parameter.dt || x.dt_kode === e.parameter.dt));
+      targets.forEach(x => cacheClearKey_(CACHE_KEY + '_' + x.sheet_id));
+      return jsonOut({ ok: true, cleared: targets.map(x => x.dt_kode) });
+    }
     const p = e.parameter || {};
     const code = String(p.code || '').trim();
     if (!code) return jsonOut({ error: 'missing_code' });
@@ -78,47 +79,6 @@ function doGet(e) {
   } catch (err) {
     return jsonOut({ error: 'server_error', message: String(err) });
   }
-}
-
-function doPost(e) {
-  try {
-    let body;
-    try { body = JSON.parse((e.postData && e.postData.contents) || '{}'); }
-    catch (err) { return jsonOut({ error: 'bad_request', message: 'Body bukan JSON valid.' }); }
-
-    if (body.action !== 'simpanHasil') return jsonOut({ error: 'unknown_action' });
-
-    const target = resolveTarget_(String(body.code || '').trim(), String(body.dt || '').trim());
-    if (target.error) return jsonOut(target);
-
-    const periode = String(body.periode || '').trim();
-    if (!/^\d{4}-\d{2}$/.test(periode)) return jsonOut({ error: 'bad_request', message: 'periode harus format YYYY-MM.' });
-    const rows = Array.isArray(body.rows) ? body.rows : null;
-    if (!rows || !rows.length) return jsonOut({ error: 'bad_request', message: 'rows kosong.' });
-    if (rows.length > HASIL_MAX_ROWS) return jsonOut({ error: 'bad_request', message: 'rows terlalu banyak (maks ' + HASIL_MAX_ROWS + ').' });
-
-    const saved = upsertHasil_(target.sheet_id, periode, rows);
-    clearCacheFor_(target.sheet_id);
-    return jsonOut({ ok: true, dt: target.dt_kode, periode: periode, saved: saved });
-  } catch (err) {
-    return jsonOut({ error: 'server_error', message: String(err) });
-  }
-}
-
-/** Sama seperti logika akses GET (kode DT langsung, atau kode pusat + &dt=), dipakai bersama doGet/doPost. */
-function resolveTarget_(code, dtWanted) {
-  if (!code) return { error: 'missing_code' };
-  const reg = readRegistry_();
-  const me = reg.find(r => r.kode_akses === code);
-  if (!me) return { error: 'invalid_code' };
-  if (me.peran === 'pusat') {
-    if (!dtWanted) return { error: 'bad_request', message: 'Kode pusat wajib menyertakan dt.' };
-    const r = reg.find(x => x.peran === 'dt' && x.dt_kode === dtWanted && x.sheet_id);
-    if (!r) return { error: 'unknown_dt' };
-    return r;
-  }
-  if (!me.sheet_id) return { error: 'server_error', message: 'sheet_id kosong di DAFTAR_DT' };
-  return me;
 }
 
 /** Baris aktif tab DAFTAR_DT di Sheet pusat. */
@@ -171,7 +131,6 @@ function getPayload_(sheetId) {
   });
   RAW_TABS.forEach(name => { tabs[name] = readTab_(ss, name, tz); });
   tabs.MASTER_PRODUK = trimProduk_(tabs.MASTER_PRODUK, [tabs.NORMS_SKU, tabs.SKU_FOKUS]);
-  tabs.HASIL_PERHITUNGAN = readHasilTab_(ss);
 
   const payload = { config: readConfig_(ss, tz), tabs: tabs, builtAt: new Date().toISOString(), ms: Date.now() - t0 };
   cachePut_(key, payload);
@@ -227,70 +186,6 @@ function readConfig_(ss, tz) {
   return obj;
 }
 
-/** Tab HASIL_PERHITUNGAN, dibuat otomatis dengan header kalau belum ada. */
-function ensureHasilTab_(ss) {
-  let sh = ss.getSheetByName(HASIL_TAB);
-  if (!sh) {
-    sh = ss.insertSheet(HASIL_TAB);
-    sh.getRange(1, 1, 1, HASIL_HEADER.length).setValues([HASIL_HEADER]);
-    sh.setFrozenRows(1);
-  }
-  return sh;
-}
-
-/** Isi tab HASIL_PERHITUNGAN sebagai array 2D, dibuat dulu kalau belum ada. */
-function readHasilTab_(ss) {
-  const sh = ensureHasilTab_(ss);
-  return sh.getDataRange().getValues().filter(row => row.some(c => c !== ''));
-}
-
-/**
- * Timpa (upsert) baris HASIL_PERHITUNGAN untuk satu periode: baris lama
- * dengan periode itu dibuang, baris baru dari web app ditulis. Periode
- * lain (bulan-bulan sebelumnya) tidak disentuh, jadi jadi riwayat bulanan
- * untuk rekap kuartal. Dikunci supaya dua penyimpanan bersamaan tidak
- * saling menimpa.
- */
-function upsertHasil_(sheetId, periode, rows) {
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    const ss = SpreadsheetApp.openById(sheetId);
-    const sh = ensureHasilTab_(ss);
-    const values = sh.getDataRange().getValues();
-    const header = values[0].map(h => String(h).trim());
-    const col = n => header.indexOf(n);
-    const pCol = col('periode');
-    const kept = values.slice(1).filter(r => String(r[pCol]) !== periode);
-
-    const now = new Date().toISOString();
-    const fresh = rows.map(row => HASIL_HEADER.map(key => {
-      if (key === 'periode') return periode;
-      if (key === 'disimpan_pada') return now;
-      const v = row[key];
-      return v === undefined || v === null ? '' : v;
-    }));
-
-    const all = kept.concat(fresh);
-    sh.clearContents();
-    sh.getRange(1, 1, 1, HASIL_HEADER.length).setValues([HASIL_HEADER]);
-    if (all.length) sh.getRange(2, 1, all.length, HASIL_HEADER.length).setValues(all);
-    return fresh.length;
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-/** Bersihkan cache satu Sheet DT saja (dipanggil setelah menyimpan hasil). */
-function clearCacheFor_(sheetId) {
-  const cache = CacheService.getScriptCache();
-  const key = CACHE_KEY + '_' + sheetId;
-  const n = +cache.get(key + '_n') || 0;
-  const keys = [key + '_n'];
-  for (let i = 0; i < n; i++) keys.push(key + '_' + i);
-  cache.removeAll(keys);
-}
-
 /* Cache dipecah per 90 KB karena satu item CacheService maksimal 100 KB. */
 function cachePut_(key, payload) {
   try {
@@ -315,6 +210,14 @@ function cacheGet_(key) {
   try { return JSON.parse(keys.map(k => got[k]).join('')); } catch (err) { return null; }
 }
 
+function cacheClearKey_(key) {
+  const cache = CacheService.getScriptCache();
+  const n = +cache.get(key + '_n') || 0;
+  const keys = [key + '_n'];
+  for (let i = 0; i < n; i++) keys.push(key + '_' + i);
+  cache.removeAll(keys);
+}
+
 /**
  * Jalankan manual dari editor Apps Script (pilih fungsi ini, klik Run) untuk
  * memaksa data dibaca ulang sebelum cache 5 menit habis. Berguna setelah
@@ -329,6 +232,36 @@ function clearCache() {
     for (let i = 0; i < n; i++) keys.push(key + '_' + i);
     cache.removeAll(keys);
   });
+}
+
+/**
+ * Isi tab DMS_EXTRACT dan NGDMS_ASRT satu Sheet DT dari JSON {ngdms, extract}
+ * (masing-masing array 2D, baris pertama header). Menimpa isi lama, sesuai
+ * aturan "hapus isi lama, tempel yang baru" di PANDUAN.
+ */
+function loadRaw_(sheetId, url) {
+  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  if (res.getResponseCode() !== 200) return { error: 'fetch_failed', code: res.getResponseCode() };
+  const data = JSON.parse(res.getContentText('UTF-8'));
+  const ss = SpreadsheetApp.openById(sheetId);
+  const put = (name, aoa) => {
+    const sh = ss.getSheetByName(name) || ss.insertSheet(name);
+    sh.clearContents();
+    const w = aoa.reduce((m, r) => Math.max(m, r.length), 1);
+    const rows = aoa.map(r => r.concat(new Array(w - r.length).fill('')));
+    if (sh.getMaxRows() < rows.length) sh.insertRowsAfter(sh.getMaxRows(), rows.length - sh.getMaxRows());
+    if (sh.getMaxColumns() < w) sh.insertColumnsAfter(sh.getMaxColumns(), w - sh.getMaxColumns());
+    sh.getRange(1, 1, sh.getMaxRows(), Math.min(6, sh.getMaxColumns())).setNumberFormat('@');
+    sh.getRange(1, 1, rows.length, w).setValues(rows);
+  };
+  // Hanya timpa tab yang memang dikirim di payload — bagian yang tidak dikirim
+  // (misal ngdms saat cuma update extract) dibiarkan, tidak dikosongkan.
+  const result = { ok: true };
+  if (data.extract) { put('DMS_EXTRACT', data.extract); result.extractRows = data.extract.length - 1; }
+  if (data.ngdms) { put('NGDMS_ASRT', data.ngdms); result.ngdmsRows = data.ngdms.length - 1; }
+  if (data.hariLibur) { put('HARI_LIBUR', data.hariLibur); result.hariLiburRows = data.hariLibur.length - 1; }
+  cacheClearKey_(CACHE_KEY + '_' + sheetId); // biar perubahan langsung terlihat, tidak nunggu cache habis
+  return result;
 }
 
 /**
