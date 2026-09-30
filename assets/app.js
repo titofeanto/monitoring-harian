@@ -297,7 +297,31 @@ function buildModel(payload) {
     sku: { fokusRate: num(cfg.rate_sku_fokus), npdRate: num(cfg.rate_npd_regular), bbRate: num(cfg.rate_npd_thematic), bbEcoMin: num(cfg.npd_thematic_eco_min) },
     band: { green: num(cfg.band_green) || 90, amber: num(cfg.band_amber) || 70 },
   };
-  const hkTotal = num(cfg.hk_total) || 25, hkRun = num(cfg.hk_run) || 0;
+  /* HK otomatis: hari kerja = semua hari kecuali Minggu dan tanggal di tab HARI_LIBUR.
+     HK berjalan dihitung s.d. sehari sebelum tanggal terakhir extract (basis MTD-1, hari ini masih sisa).
+     Kalau periode/tanggal extract tidak valid, jatuh ke cfg.hk_total / cfg.hk_run. */
+  const tL = table(T.HARI_LIBUR), lC = tL.col('tanggal'), libur = new Set();
+  tL.rows.forEach(r => {
+    const v = str(at(r, lC)); let m;
+    if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v))) libur.add(m[1] + '-' + m[2] + '-' + m[3]);
+    else if ((m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(v))) libur.add(m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'));
+  });
+  const hkCount = (per, upto) => {
+    const [y, mo] = per.split('-').map(Number); let n = 0;
+    for (let d = 1; d <= upto; d++) {
+      if (new Date(Date.UTC(y, mo - 1, d)).getUTCDay() === 0) continue;
+      if (libur.has(per + '-' + String(d).padStart(2, '0'))) continue;
+      n++;
+    }
+    return n;
+  };
+  let hkTotal = num(cfg.hk_total) || 25, hkRun = num(cfg.hk_run) || 0;
+  if (/^\d{4}-\d{2}$/.test(periode)) {
+    const [py, pm] = periode.split('-').map(Number), dim = new Date(Date.UTC(py, pm, 0)).getUTCDate();
+    hkTotal = hkCount(periode, dim);
+    hkRun = lastDay !== null ? hkCount(periode, Math.min(lastDay - 1, dim)) : 0;
+    if (!libur.size) note.push('Tab HARI_LIBUR kosong: hari kerja dihitung hanya dengan mengecualikan hari Minggu.');
+  }
 
   /* Rekap kuartal SS: 3 bulan berjalan (periode - 2, periode - 1, periode), tertua ke terbaru.
      Target selalu bisa dihitung (tab TARGET multi-periode). Aktual bulan berjalan = live dari
