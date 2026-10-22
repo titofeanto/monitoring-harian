@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Upload Data Monitoring Harian</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #f4f6fa; --card: #fff; --ink: #1f2430; --soft: #5b6472; --faint: #8a93a3; --line: #e4e7ec;
+    --blue: #1a73e8; --blue-bg: #eaf1fd;
+    --red: #c0392b; --red-bg: #fce8e6; --red-ink: #611a15; --red-line: #f1b4ac;
+    --amber: #d97706; --amber-bg: #fff6e0; --amber-ink: #6b4a00; --amber-line: #f0c674;
+    --green: #2e9e52; --green-bg: #e6f4ea; --green-ink: #1e4620; --green-line: #a9d9bb;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171d; --card: #1d222b; --ink: #e8ebf0; --soft: #aab2c0; --faint: #7d8696; --line: #2c3340;
+    --blue: #6aa6ff; --blue-bg: #1c2a44;
+    --red: #ff7b6b; --red-bg: #3a1d1a; --red-ink: #ffc9c1; --red-line: #6b3029;
+    --amber: #f0a43a; --amber-bg: #3a2c10; --amber-ink: #ffd994; --amber-line: #6b501a;
+    --green: #4cc27a; --green-bg: #15301f; --green-ink: #b6ebc8; --green-line: #2a5a3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171d; --card: #1d222b; --ink: #e8ebf0; --soft: #aab2c0; --faint: #7d8696; --line: #2c3340;
+      --blue: #6aa6ff; --blue-bg: #1c2a44;
+      --red: #ff7b6b; --red-bg: #3a1d1a; --red-ink: #ffc9c1; --red-line: #6b3029;
+      --amber: #f0a43a; --amber-bg: #3a2c10; --amber-ink: #ffd994; --amber-line: #6b501a;
+      --green: #4cc27a; --green-bg: #15301f; --green-ink: #b6ebc8; --green-line: #2a5a3b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0 auto; max-width: 720px; padding: 22px 16px 60px; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 "Poppins", -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 700; }
+  .sub { color: var(--soft); font-size: 13px; margin-bottom: 16px; }
+  .dt-chips, .status-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  button { font-family: inherit; cursor: pointer; }
+  .dt-chip { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 13px; font-weight: 600; }
+  .dt-chip[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 14px 0; }
+  .panel-label { font-size: 11px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 9px; }
+  .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--soft); font-size: 12px; font-weight: 600; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex-shrink: 0; }
+  .lv-red { background: var(--red-bg); color: var(--red-ink); border-color: var(--red-line); } .lv-red .dot { background: var(--red); }
+  .lv-amber { background: var(--amber-bg); color: var(--amber-ink); border-color: var(--amber-line); } .lv-amber .dot { background: var(--amber); }
+  .lv-green { background: var(--green-bg); color: var(--green-ink); border-color: var(--green-line); } .lv-green .dot { background: var(--green); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--soft); margin-top: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .banner { padding: 10px 12px; border-radius: 10px; font-size: 12.5px; margin: 8px 0; border: 1px solid; }
+  .banner.lv-red, .banner.lv-amber, .banner.lv-green { border-color: inherit; }
+  .banner.lv-red { border-color: var(--red-line); } .banner.lv-amber { border-color: var(--amber-line); } .banner.lv-green { border-color: var(--green-line); }
+  h2 { font-size: 14px; margin: 26px 0 4px; }
+  .group-note { font-size: 12px; color: var(--faint); margin-bottom: 10px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--faint); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; scroll-margin-top: 12px; }
+  .card.lv-red { border-left-color: var(--red); background: var(--card); color: inherit; }
+  .card.lv-amber { border-left-color: var(--amber); background: var(--card); color: inherit; }
+  .card.lv-green { border-left-color: var(--green); background: var(--card); color: inherit; }
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .card h3 { font-size: 15px; margin: 0; }
+  .tab { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--faint); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+  .st-text { font-size: 12.5px; margin: 8px 0 2px; font-weight: 500; }
+  .meta { font-size: 11.5px; color: var(--faint); }
+  .desc { font-size: 12.5px; color: var(--soft); margin: 8px 0; }
+  .warnnote { font-size: 11.5px; color: var(--amber-ink); background: var(--amber-bg); border: 1px solid var(--amber-line); border-radius: 8px; padding: 6px 9px; margin: 6px 0; }
+  label { display: block; font-size: 12.5px; font-weight: 600; margin: 10px 0 4px; }
+  input[type=file], input[type=date] { width: 100%; font: inherit; font-size: 13px; color: var(--ink); }
+  input[type=date] { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+  .file-chip { margin-top: 6px; padding: 6px 10px; border-radius: 8px; font-size: 11.5px; border: 1px dashed var(--line); color: var(--faint); word-break: break-all; }
+  .file-chip.ok { border-style: solid; border-color: var(--green-line); background: var(--green-bg); color: var(--green-ink); }
+  .file-chip.warn { border-style: solid; border-color: var(--amber-line); background: var(--amber-bg); color: var(--amber-ink); }
+  .go { margin-top: 12px; padding: 11px 18px; border: 0; border-radius: 9px; background: var(--blue); color: #fff; font-weight: 700; font-size: 13.5px; width: 100%; }
+  .go:disabled { background: var(--line); color: var(--faint); cursor: not-allowed; }
+  .restore { margin-top: 8px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--soft); font-size: 11px; font-weight: 600; }
+  .spin { display: none; margin-top: 8px; font-size: 12.5px; color: var(--soft); } .spin.show { display: block; }
+  .result { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 12.5px; white-space: pre-wrap; border: 1px solid; }
+  .loading { color: var(--faint); font-size: 13px; padding: 14px 0; }
+</style>
+</head>
+<body>
+<h1>Upload Data Monitoring Harian</h1>
+<div class="sub">Pilih DT, upload file mentah, dan lihat status update semua data. Merah, kuning, hijau menunjukkan mana yang perlu diurus.</div>
+
+<div class="dt-chips" id="dtChips" role="group" aria-label="Pilih DT"></div>
+
+<div id="summary" hidden>
+  <div class="panel">
+    <div class="panel-label" id="sumLabel">Status data</div>
+    <div class="status-chips" id="statusChips"></div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--red)"></i>Merah: kosong, salah, atau bulan tidak cocok</span>
+      <span><i class="dot" style="background:var(--amber)"></i>Kuning: perlu update</span>
+      <span><i class="dot" style="background:var(--green)"></i>Hijau: sudah update</span>
+    </div>
+    <div id="globals"></div>
+  </div>
+</div>
+
+<div id="cards"><div class="loading" id="loading">Memuat daftar DT...</div></div>
+
+<script>
+  var GROUPS = [
+    { key: 'daily', title: 'Update Harian', note: 'Diupdate tiap hari kerja atau setiap tarik report.' },
+    { key: 'monthly', title: 'Update Awal Bulan', note: 'Target dan norms bulan berjalan.' },
+    { key: 'ref', title: 'Data Referensi', note: 'Cukup diupdate kalau ada perubahan.' }
+  ];
+  var LV = { red: 'Merah', amber: 'Kuning', green: 'Hijau' };
+  var LV_LABEL = { red: 'Perlu dicek', amber: 'Perlu update', green: 'Sudah update' };
+  var BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  var SPECS = [], DTS = [], current = null, STATUS = {}, busy = {};
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fmtTs(ms) {
+    if (!ms) return '';
+    var d = new Date(ms);
+    return d.getDate() + ' ' + BULAN[d.getMonth() + 1] + ' ' + d.getFullYear() + ', ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  }
+  function readB64(file) {
+    return new Promise(function (resolve, reject) {
+      var rd = new FileReader();
+      rd.onload = function () { resolve(rd.result.split(',')[1]); };
+      rd.onerror = reject;
+      rd.readAsDataURL(file);
+    });
+  }
+  function el(id) { return document.getElementById(id); }
+
+  function init() {
+    google.script.run.withSuccessHandler(function (r) {
+      SPECS = r.specs; DTS = r.dts; el('loading').remove();
+      if (!DTS.length) { el('cards').innerHTML = '<div class="banner lv-red">Tidak ada DT aktif di tab DAFTAR_DT.</div>'; return; }
+      el('dtChips').innerHTML = DTS.map(function (d) { return '<button type="button" class="dt-chip" data-dt="' + esc(d.kode) + '" aria-pressed="false">' + esc(d.nama || d.kode) + '</button>'; }).join('');
+      el('dtChips').addEventListener('click', function (e) { var b = e.target.closest('.dt-chip'); if (b) selectDt(b.getAttribute('data-dt')); });
+      selectDt(DTS[0].kode);
+    }).withFailureHandler(function (e) {
+      el('loading').outerHTML = '<div class="banner lv-red">Gagal memuat: ' + esc(e.message) + '</div>';
+    }).getInit();
+  }
+
+  function selectDt(kode) {
+    current = kode;
+    Array.prototype.forEach.call(document.querySelectorAll('.dt-chip'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-dt') === kode ? 'true' : 'false'); });
+    loadStatus();
+  }
+
+  function loadStatus() {
+    var dt = current;
+    el('summary').hidden = false;
+    el('statusChips').innerHTML = '<span class="loading">Mengecek status data...</span>';
+    el('globals').innerHTML = '';
+    google.script.run.withSuccessHandler(function (st) {
+      if (dt !== current) return;
+      STATUS = {}; st.boxes.forEach(function (b) { STATUS[b.key] = b; });
+      render(st);
+    }).withFailureHandler(function (e) {
+      el('statusChips').innerHTML = '<div class="banner lv-red">Gagal mengecek status: ' + esc(e.message) + '</div>';
+    }).getStatus(dt);
+  }
+
+  function render(st) {
+    var counts = { red: 0, amber: 0, green: 0 };
+    st.boxes.forEach(function (b) { counts[b.level]++; });
+    el('sumLabel').textContent = st.dt.nama + ' · periode ' + st.periode + ' · patokan data s.d. ' + st.expected + ' · ' + counts.red + ' merah, ' + counts.amber + ' kuning, ' + counts.green + ' hijau';
+    el('statusChips').innerHTML = SPECS.map(function (s) {
+      var b = STATUS[s.key];
+      return '<button type="button" class="status-chip lv-' + b.level + '" data-go="' + s.key + '" title="' + esc(b.text) + '"><i class="dot"></i>' + esc(s.label) + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(el('statusChips').querySelectorAll('[data-go]'), function (c) {
+      c.addEventListener('click', function () { var t = el('card-' + c.getAttribute('data-go')); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    });
+    el('globals').innerHTML = st.global.map(function (g) { return '<div class="banner lv-' + g.level + '">' + esc(g.text) + '</div>'; }).join('');
+
+    var keepDate = {};
+    SPECS.forEach(function (s) { var d = el('date-' + s.key); if (d) keepDate[s.key] = d.value; });
+    el('cards').innerHTML = GROUPS.map(function (g) {
+      var specs = SPECS.filter(function (s) { return s.group === g.key; });
+      return '<h2>' + g.title + '</h2><div class="group-note">' + g.note + '</div>' + specs.map(cardHtml).join('');
+    }).join('');
+    SPECS.forEach(function (s) {
+      var f = el('file-' + s.key), d = el('date-' + s.key);
+      if (d) d.value = s.dateOptional ? (keepDate[s.key] || '') : (keepDate[s.key] || st.today);
+      f.addEventListener('change', function () { fileChosen(s); });
+      if (d) d.addEventListener('input', function () { refreshBtn(s); });
+      el('go-' + s.key).addEventListener('click', function () { submit(s); });
+      var rb = el('restore-' + s.key); if (rb) rb.addEventListener('click', function () { restore(s, rb); });
+    });
+  }
+
+  function cardHtml(s) {
+    var b = STATUS[s.key];
+    var last = b.lastUpload ? 'Terakhir upload lewat tool: <b>' + fmtTs(b.lastUpload) + '</b> · ' + b.lastRows + ' baris' + (b.lastInfo ? ' · ' + esc(b.lastInfo) : '') : 'Belum pernah diupload lewat tool ini.';
+    return '<div class="card lv-' + b.level + '" id="card-' + s.key + '">' +
+      '<div class="card-head"><div><h3>' + esc(s.label) + '</h3><span class="tab">' + s.key + '</span></div>' +
+      '<span class="badge lv-' + b.level + '"><i class="dot"></i>' + LV_LABEL[b.level] + '</span></div>' +
+      '<div class="st-text">' + esc(b.text) + '</div><div class="meta">' + last + '</div>' +
+      '<div class="desc">' + esc(s.desc) + '</div>' +
+      (s.replaceWarn ? '<div class="warnnote">' + esc(s.replaceWarn) + '</div>' : '') +
+      '<label for="file-' + s.key + '">File (' + esc(s.accept.replace(/,/g, ' / ')) + ')</label>' +
+      '<input type="file" id="file-' + s.key + '" accept="' + esc(s.accept) + '">' +
+      '<div class="file-chip" id="chip-' + s.key + '">Belum ada file dipilih</div>' +
+      (s.needsDate ? '<label for="date-' + s.key + '">' + esc(s.dateLabel) + '</label><input type="date" id="date-' + s.key + '">' : '') +
+      '<button type="button" class="go" id="go-' + s.key + '" disabled>Proses &amp; tulis ke ' + s.key + '</button>' +
+      '<div class="spin" id="spin-' + s.key + '">Memproses, mohon tunggu (file besar bisa agak lama)...</div>' +
+      '<div id="res-' + s.key + '"></div>' +
+      (b.hasBackup ? '<button type="button" class="restore" id="restore-' + s.key + '">Pulihkan versi sebelum upload terakhir (' + (b.backupRows == null ? '?' : b.backupRows) + ' baris)</button>' : '') +
+      '</div>';
+  }
+
+  function fileChosen(s) {
+    var f = el('file-' + s.key).files[0], chip = el('chip-' + s.key);
+    if (!f) { chip.className = 'file-chip'; chip.textContent = 'Belum ada file dipilih'; }
+    else {
+      var kb = f.size / 1024, size = kb > 1024 ? (kb / 1024).toFixed(1) + ' MB' : Math.max(1, Math.round(kb)) + ' KB';
+      var ok = s.accept.split(',').some(function (e) { return f.name.toLowerCase().endsWith(e); });
+      chip.className = 'file-chip ' + (ok ? 'ok' : 'warn');
+      chip.textContent = (ok ? '✓ ' : '⚠ ekstensi tak biasa: ') + f.name + ' (' + size + ')';
+    }
+    refreshBtn(s);
+  }
+  function refreshBtn(s) {
+    var f = el('file-' + s.key).files[0], d = el('date-' + s.key);
+    el('go-' + s.key).disabled = !!busy[s.key] || !f || (s.needsDate && !s.dateOptional && !d.value);
+  }
+
+  function resultBox(s, level, html) {
+    var r = el('res-' + s.key);
+    r.innerHTML = '<div class="result lv-' + level + '">' + html + '</div>';
+  }
+
+  function submit(s) {
+    var f = el('file-' + s.key).files[0], d = el('date-' + s.key);
+    if (!f) return;
+    var ok = s.accept.split(',').some(function (e) { return f.name.toLowerCase().endsWith(e); });
+    if (!ok && !confirm('File "' + f.name + '" tidak berekstensi ' + s.accept + '. Tetap lanjutkan?')) return;
+    if (s.replaceWarn && !confirm(s.label + '\n\n' + s.replaceWarn + '\n\nLanjutkan upload?')) return;
+    var dt = current;
+    busy[s.key] = true; refreshBtn(s); el('spin-' + s.key).classList.add('show'); el('res-' + s.key).innerHTML = '';
+    readB64(f).then(function (b64) {
+      google.script.run.withSuccessHandler(function (res) {
+        busy[s.key] = false;
+        var html = '<b>Berhasil ditulis ke ' + s.key + '.</b>\nBaris ditulis: ' + res.rowsWritten + (res.info ? '\n' + esc(res.info) : '') +
+          (res.cacheCleared ? '\nCache web app sudah dibersihkan, data langsung terbaca.' : '\nCache web app belum bisa dibersihkan otomatis, tunggu sampai 5 menit sebelum cek di web app.');
+        var level = 'green';
+        if (res.warnings && res.warnings.length) {
+          level = 'amber';
+          html += '\n\n<b>PERIKSA DULU:</b>\n' + res.warnings.map(function (w) { return '- ' + esc(w); }).join('\n') +
+            '\n\nKalau ternyata salah file, pakai tombol Pulihkan di bawah.';
+        }
+        if (dt === current) { loadStatusKeep(s, level, html); }
+      }).withFailureHandler(function (e) {
+        busy[s.key] = false; el('spin-' + s.key).classList.remove('show'); refreshBtn(s);
+        resultBox(s, 'red', '<b>Gagal:</b> ' + esc(e.message));
+      }).processUpload(dt, s.key, b64, f.name, d ? d.value : '');
+    }).catch(function () {
+      busy[s.key] = false; el('spin-' + s.key).classList.remove('show'); refreshBtn(s);
+      resultBox(s, 'red', '<b>Gagal:</b> file tidak bisa dibaca di browser.');
+    });
+  }
+
+  // Refresh status sesudah upload, lalu tampilkan lagi kotak hasil di kartu yang sama.
+  function loadStatusKeep(s, level, html) {
+    var dt = current;
+    google.script.run.withSuccessHandler(function (st) {
+      if (dt !== current) return;
+      STATUS = {}; st.boxes.forEach(function (b) { STATUS[b.key] = b; });
+      render(st);
+      resultBox(s, level, html);
+      var c = el('card-' + s.key); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }).withFailureHandler(function () {
+      el('spin-' + s.key).classList.remove('show'); refreshBtn(s); resultBox(s, level, html);
+    }).getStatus(dt);
+  }
+
+  function restore(s, btn) {
+    if (!confirm('Ganti isi ' + s.key + ' SEKARANG dengan versi sebelum upload terakhir? Upload terakhir akan dibatalkan.')) return;
+    btn.disabled = true; btn.textContent = 'Memulihkan...';
+    var dt = current;
+    google.script.run.withSuccessHandler(function (res) {
+      if (dt === current) loadStatusKeep(s, 'green', '<b>Dipulihkan.</b> ' + s.key + ' kembali ke versi sebelum upload terakhir' + (res.rowsWritten != null ? ' (' + res.rowsWritten + ' baris)' : '') + '.');
+    }).withFailureHandler(function (e) {
+      btn.disabled = false; btn.textContent = 'Pulihkan versi sebelum upload terakhir';
+      resultBox(s, 'red', '<b>Gagal memulihkan:</b> ' + esc(e.message));
+    }).restoreFromBackup(dt, s.key);
+  }
+
+  init();
+</script>
+</body>
+</html>
