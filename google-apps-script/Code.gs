@@ -439,6 +439,140 @@ function respondGs_(me, reg, dtWanted) {
     const own = o => String(o.dist_kode) === scope.dt_kode;
     psStores = psStores.filter(own); psTargets = psTargets.filter(own); psHist = psHist.filter(own);
   }
+  // Assortment per channel dari DMS Extract tiap DT dalam cakupan, plus target (GS_ASRT_TARGET).
+  const asrtDts = reg.filter(x => x.peran === 'dt' && x.sheet_id && (!scope || x.dt_kode === scope.dt_kode));
+  const asrt = { moq: ASRT_MOQ, perDt: [], targets: readAsrtTargets_(ss).filter(t => !scope || t.dist_kode === scope.dt_kode) };
+  asrtDts.forEach(x => {
+    try { asrt.perDt.push(asrtForDt_(x)); } catch (err) { asrt.perDt.push({ dist_kode: x.dt_kode, dist_nama: x.nama_dt, error: String(err) }); }
+  });
   const dts = me.peran === 'pusat' ? reg.filter(r => r.peran === 'dt' && r.sheet_id).map(r => ({ kode: r.dt_kode, nama: r.nama_dt })) : null;
-  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets, ps: { stores: psStores, targets: psTargets, hist: psHist } };
+  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets, ps: { stores: psStores, targets: psTargets, hist: psHist }, asrt: asrt };
+}
+
+// ====================== ASSORTMENT PER CHANNEL (dari DMS Extract) ======================
+// Satu "line" = satu base pack (LEVEL-9 di MASTER_PRODUK) yang terbeli satu toko dalam bulan data.
+// Dihitung kalau qty bersih (pembelian dikurangi retur) bulan itu minimal ASRT_MOQ pcs. Base pack yang sama
+// tidak dihitung dua kali di toko yang sama, jadi assortment hanya naik kalau toko membeli base pack baru.
+// Channel toko dari OUTLET_MASTER (Outlet Type Desc). Toko di extract yang tidak ada di OUTLET_MASTER dilaporkan.
+
+const ASRT_MOQ = 3;
+const ASRT_TARGET_TAB = 'GS_ASRT_TARGET';
+const ASRT_CH = { SPM: 'LOCAL SUPERMARKET', MINIS: 'LOCAL MINIS' };
+
+function asrtChannelOf_(typeDesc) {
+  const t = String(typeDesc || '').toUpperCase();
+  if (t.indexOf('SUPERMARKET') >= 0 || /\bSPM\b/.test(t)) return 'SPM';
+  if (t.indexOf('MINIS') >= 0) return 'MINIS';
+  return t ? 'LAIN' : '';
+}
+
+/** 'dd/MM/yyyy' atau 'yyyy-MM-dd' -> 'yyyy-MM-dd' ('' kalau tidak terbaca). */
+function asrtIso_(v) {
+  const s = String(v === null || v === undefined ? '' : v).trim();
+  let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
+  return m ? m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : '';
+}
+
+function asrtNum_(v) {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v === null || v === undefined ? '' : v).replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+/**
+ * Pure. dms / produk / outletMaster = array 2D (baris 1 = header). Hasil:
+ * {bulan, tanggalData, channels:{SPM|MINIS|LAIN:{outlets, lines, perOutlet, low:[...]}}, unmapped:[...]}.
+ * outlets = toko yang transaksi di bulan data (qty bersih positif), lines = jumlah (toko x base pack) yang tercapai.
+ */
+function computeAsrt_(dms, produk, outletMaster, dtKode, moq) {
+  const need = moq || ASRT_MOQ;
+  const col = (hdr, alts) => { const h = hdr.map(x => String(x).replace(/\s+/g, ' ').trim().toLowerCase()); for (let i = 0; i < alts.length; i++) { const k = h.indexOf(alts[i].toLowerCase()); if (k >= 0) return k; } return -1; };
+  const sku2bp = {};
+  if (produk.length) {
+    const cS = col(produk[0], ['SKUCode']), cB = col(produk[0], ['LEVEL-9']);
+    if (cS >= 0 && cB >= 0) produk.slice(1).forEach(r => { const a = String(r[cS]).trim(), b = String(r[cB]).trim(); if (a && b) sku2bp[a] = b; });
+  }
+  const chOf = {}, nameOf = {};
+  if (outletMaster.length) {
+    const h = outletMaster[0], cC = col(h, ['Outlet Code']), cN = col(h, ['Outlet Name']), cT = col(h, ['Outlet Type Desc']);
+    outletMaster.slice(1).forEach(r => {
+      let c = String(r[cC] === undefined ? '' : r[cC]).trim(); if (!c) return;
+      if (dtKode && c.indexOf(dtKode) === 0 && c.length > dtKode.length) c = c.slice(dtKode.length);
+      chOf[c] = asrtChannelOf_(r[cT]); nameOf[c] = String(r[cN] === undefined ? '' : r[cN]).trim();
+    });
+  }
+  const out = { bulan: '', tanggalData: '', channels: { SPM: null, MINIS: null, LAIN: null }, unmapped: [], noProduk: 0, rows: 0 };
+  if (!dms.length) return out;
+  const cO = col(dms[0], ['Outlet', 'Kode Outlet Bersih']), cON = col(dms[0], ['Outlet Name', 'OutletName']), cK = col(dms[0], ['SKUCode', 'SKU Code']),
+    cQ = col(dms[0], ['TotalQuantity(PCS)', 'TotalQuantity (PCS)']), cD = col(dms[0], ['INVDate', 'InvDate', 'Tanggal']), cG = col(dms[0], ['GSV']), cS = col(dms[0], ['Salesman', 'DSR Code (Hygiene)']);
+  if (cO < 0 || cK < 0 || cQ < 0) return out;
+  const body = dms.slice(1);
+  let maxIso = '';
+  body.forEach(r => { const d = cD >= 0 ? asrtIso_(r[cD]) : ''; if (d > maxIso) maxIso = d; });
+  const bulan = maxIso.slice(0, 7);
+  out.bulan = bulan; out.tanggalData = maxIso;
+  const net = {}, seen = {}, gsv = {};
+  body.forEach(r => {
+    const d = cD >= 0 ? asrtIso_(r[cD]) : '';
+    if (bulan && d && d.slice(0, 7) !== bulan) return; // hanya bulan data terbaru
+    const o = String(r[cO]).trim(); if (!o) return;
+    out.rows++;
+    const nm = cON >= 0 ? String(r[cON]).trim() : '';
+    const rec = seen[o] = seen[o] || { nama: nm, sm: cS >= 0 ? String(r[cS]).trim() : '', gsv: 0, last: '' };
+    if (!rec.nama) rec.nama = nm;
+    if (cG >= 0) rec.gsv += asrtNum_(r[cG]);
+    if (d > rec.last) rec.last = d;
+    const bp = sku2bp[String(r[cK]).trim()];
+    if (!bp) { out.noProduk++; return; }
+    const k = o + '|' + bp;
+    net[k] = (net[k] || 0) + asrtNum_(r[cQ]);
+  });
+  const lines = {}, active = {};
+  Object.keys(net).forEach(k => {
+    const o = k.slice(0, k.indexOf('|'));
+    if (net[k] > 0) active[o] = true;
+    if (net[k] >= need) lines[o] = (lines[o] || 0) + 1;
+  });
+  const agg = {};
+  Object.keys(seen).forEach(o => {
+    const ch = chOf[o];
+    if (ch === undefined) { out.unmapped.push({ outlet: o, nama: seen[o].nama, salesman: seen[o].sm, gsv: Math.round(seen[o].gsv), terakhir: seen[o].last, lines: lines[o] || 0 }); return; }
+    if (!ch) return;
+    const a = agg[ch] = agg[ch] || { outlets: 0, lines: 0, list: [] };
+    if (!active[o]) return;
+    a.outlets++; a.lines += lines[o] || 0;
+    a.list.push({ outlet: o, nama: nameOf[o] || seen[o].nama, lines: lines[o] || 0 });
+  });
+  Object.keys(agg).forEach(ch => {
+    const a = agg[ch];
+    a.list.sort((x, y) => x.lines - y.lines);
+    out.channels[ch] = { outlets: a.outlets, lines: a.lines, perOutlet: a.outlets ? a.lines / a.outlets : 0, low: a.list.slice(0, 10) };
+  });
+  out.unmapped.sort((x, y) => y.gsv - x.gsv);
+  return out;
+}
+
+function readAsrtTargets_(ss) {
+  const sh = ss.getSheetByName(ASRT_TARGET_TAB);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues().filter(r => String(r[0]).trim()).map(r => ({
+    dist_kode: String(r[0]).trim(), dist_nama: String(r[1]).trim(), channel: String(r[2]).trim(), target_lines: asrtNum_(r[3]),
+  }));
+}
+
+/** Assortment satu DT (cache 5 menit). MASTER_PRODUK dibaca penuh karena payload hanya memuat SKU yang dipakai norms/fokus. */
+function asrtForDt_(r) {
+  const payload = getPayload_(r.sheet_id);
+  const key = 'asrt_v1_' + r.sheet_id + '_' + payload.builtAt;
+  const hit = cacheGet_(key);
+  if (hit) return hit;
+  const ss = SpreadsheetApp.openById(r.sheet_id);
+  const sh = ss.getSheetByName('MASTER_PRODUK');
+  const produk = sh ? sh.getDataRange().getValues() : [];
+  const res = computeAsrt_(payload.tabs.DMS_EXTRACT || [], produk, payload.tabs.OUTLET_MASTER || [], r.dt_kode, ASRT_MOQ);
+  res.dist_kode = r.dt_kode; res.dist_nama = r.nama_dt;
+  cachePut_(key, res);
+  return res;
 }

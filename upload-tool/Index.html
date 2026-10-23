@@ -115,6 +115,14 @@
   <div id="psSaveRes"></div>
 </div>
 
+<div class="card" id="card-AT">
+  <div class="card-head"><div><h3>Target Assortment per DT</h3><span class="tab">GS_ASRT_TARGET</span></div></div>
+  <div class="desc">Total lines (toko x base pack) per channel, dari rata-rata kuartal 4 2025. Realisasinya dihitung otomatis dari Extract DMS dan Outlet Master tiap DT, tidak perlu upload tersendiri.</div>
+  <div id="atRows" class="desc">Memuat...</div>
+  <button type="button" class="go" id="atSave" style="display:none">Simpan target</button>
+  <div id="atRes"></div>
+</div>
+
 <h2>Data per DT</h2>
 <div class="dt-chips" id="dtChips" role="group" aria-label="Pilih DT"></div>
 
@@ -395,6 +403,29 @@
       }).processPerfectStores(b64, f.name);
     });
   });
+
+  var atRows = [];
+  function renderAt() {
+    if (!atRows.length) { el('atRows').textContent = 'Belum ada DT terdaftar.'; return; }
+    el('atRows').innerHTML = '<table style="width:100%;font-size:12.5px;border-collapse:collapse"><tr><th style="text-align:left">DT</th><th style="text-align:left">Channel</th><th>Target lines</th></tr>' +
+      atRows.map(function (t, i) {
+        return '<tr><td style="padding:4px 0">' + esc(t.dist_nama) + '</td><td>' + (t.channel === 'LOCAL SUPERMARKET' ? 'SPM' : 'Minis') + '</td>' +
+          '<td><input type="number" min="0" inputmode="numeric" data-i="' + i + '" value="' + t.target_lines + '" style="width:90px"></td></tr>';
+      }).join('') + '</table>';
+    el('atSave').style.display = '';
+  }
+  el('atRows').addEventListener('input', function (e) { var i = e.target.getAttribute('data-i'); if (i !== null) atRows[+i].target_lines = e.target.value; });
+  el('atSave').addEventListener('click', function () {
+    el('atSave').disabled = true;
+    google.script.run.withSuccessHandler(function (res) {
+      el('atSave').disabled = false; atRows = res.targets; renderAt();
+      el('atRes').innerHTML = '<div class="result lv-green">Target tersimpan.</div>';
+    }).withFailureHandler(function (e) {
+      el('atSave').disabled = false; el('atRes').innerHTML = '<div class="result lv-red"><b>Gagal:</b> ' + esc(e.message) + '</div>';
+    }).saveAsrtTargets(atRows);
+  });
+  google.script.run.withSuccessHandler(function (r) { atRows = r; renderAt(); })
+    .withFailureHandler(function (e) { el('atRows').textContent = 'Gagal memuat: ' + e.message; }).getAsrtTargets();
 
   loadGs();
   loadPs();

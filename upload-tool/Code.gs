@@ -1161,3 +1161,42 @@ function getPsStatus() {
   return { level: age > 10 ? 'red' : age > 7 ? 'amber' : 'green',
     text: per + ' dari target ' + tgt + ' toko perfect' + pct + ' · data ' + fmtDateID_(date) + (age > 7 ? ' · sudah ' + age + ' hari, update mingguan' : ''), targets: targets };
 }
+
+// ====================== TARGET ASSORTMENT PER DT & CHANNEL ======================
+// Target = total lines (toko x base pack) per channel per DT, dari rata-rata Q4 2025. Dibaca live API (view=gs).
+
+const ASRT_TARGET_TAB = 'GS_ASRT_TARGET';
+const ASRT_TARGET_HEADER = ['dist_kode', 'dist_nama', 'channel', 'target_lines'];
+const ASRT_CHANNELS = ['LOCAL SUPERMARKET', 'LOCAL MINIS'];
+
+/** Baris target per DT terdaftar x channel; yang belum pernah diisi muncul dengan 0. */
+function getAsrtTargets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(ASRT_TARGET_TAB);
+  const have = {};
+  if (sh && sh.getLastRow() > 1) {
+    sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues().forEach(r => { have[gsStr_(r[0]) + '|' + gsStr_(r[2])] = gsNum_(r[3]) || 0; });
+  }
+  const out = [];
+  readRegistry_().filter(r => r.peran === 'dt' && r.sheet_id).forEach(r => {
+    ASRT_CHANNELS.forEach(ch => out.push({ dist_kode: r.dt_kode, dist_nama: r.nama_dt, channel: ch, target_lines: have[r.dt_kode + '|' + ch] || 0 }));
+  });
+  return out;
+}
+
+function saveAsrtTargets(list) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const rows = (list || []).map(t => {
+      const n = Math.round(Number(t.target_lines));
+      if (!gsStr_(t.dist_kode) || ASRT_CHANNELS.indexOf(t.channel) < 0 || !(n >= 0)) throw new Error('Target harus angka 0 atau lebih.');
+      return [gsStr_(t.dist_kode), gsStr_(t.dist_nama), t.channel, n];
+    });
+    writeText_(ss.getSheetByName(ASRT_TARGET_TAB) || ss.insertSheet(ASRT_TARGET_TAB), [ASRT_TARGET_HEADER].concat(rows));
+    return { ok: true, targets: getAsrtTargets() };
+  } finally {
+    lock.releaseLock();
+  }
+}

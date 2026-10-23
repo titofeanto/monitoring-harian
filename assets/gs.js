@@ -104,6 +104,24 @@
   const psMissing = o => PS_PARTS.filter(p => String(o[p[0]]) === '0').map(p => p[1]);
   const isPerfect = o => o.status === 'PS FULL' || o.status === 'PS LITE';
 
+
+  const ASRT_CH = [['SPM', 'LOCAL SUPERMARKET', 'Supermarket (SPM)', 'ASRT_SPM'], ['MINIS', 'LOCAL MINIS', 'Local Minis', 'ASRT_MINIS']];
+  const asrtDts = () => ((DATA.asrt && DATA.asrt.perDt) || []).filter(d => !d.error);
+
+  /** Assortment per channel dari DMS Extract: lines = jumlah (toko x base pack) tercapai, target dari GS_ASRT_TARGET. */
+  function asrtSummary() {
+    const dts = asrtDts();
+    if (!dts.length) return null;
+    const out = {};
+    ASRT_CH.forEach(c => {
+      let lines = 0, outlets = 0, target = 0;
+      dts.forEach(d => { const x = d.channels && d.channels[c[0]]; if (x) { lines += x.lines; outlets += x.outlets; } });
+      ((DATA.asrt.targets) || []).forEach(t => { if (t.channel === c[1]) target += num(t.target_lines) || 0; });
+      out[c[0]] = { lines, outlets, target, pct: target > 0 ? lines / target : null, perOutlet: outlets ? lines / outlets : 0 };
+    });
+    return out;
+  }
+
   /** Ringkasan PS dari upload mingguan: target = jumlah target Full + Lite semua DT dalam cakupan. */
   function psSummary() {
     const st = psStores();
@@ -114,19 +132,28 @@
     return { stores: st.length, full, lite, perfect: full + lite, target, tFull: tg.full, tLite: tg.lite, tanggal: String(st[0].tanggal) };
   }
 
-  /** PS dihitung dari upload Perfect Stores (perfect / target), bukan angka HO; skor total dihitung ulang dari poin. */
-  function applyPs(kp) {
+  function setKpi(k, aktual, catatan) {
+    k.aktual = aktual;
+    k.poin = k.target ? k.bobot * Math.min(aktual / k.target, 1) : null;
+    k.hilang = k.poin == null ? 0 : k.bobot - k.poin;
+    k.catatan = catatan;
+  }
+
+  /** PS (upload mingguan) dan Assortment (DMS Extract) dihitung dari data kita, bukan angka HO; skor total dihitung ulang dari poin. */
+  function applyLive(kp) {
+    let changed = false;
     const sm = psSummary();
-    if (!sm || !sm.target) return { kp, sm, score: null };
-    const k = kp.find(x => x.kpi === 'PS');
-    if (k) {
-      k.aktual = sm.perfect / sm.target;
-      k.poin = k.target ? k.bobot * Math.min(k.aktual / k.target, 1) : null;
-      k.hilang = k.poin == null ? 0 : k.bobot - k.poin;
-      k.catatan = 'Dihitung dari upload Perfect Stores ' + tgl(sm.tanggal) + ': ' + sm.perfect + ' dari target ' + sm.target + ' toko perfect';
-      kp.sort((a, b) => b.hilang - a.hilang);
+    if (sm && sm.target) {
+      const k = kp.find(x => x.kpi === 'PS');
+      if (k) { setKpi(k, sm.perfect / sm.target, 'Dihitung dari upload Perfect Stores ' + tgl(sm.tanggal) + ': ' + sm.perfect + ' dari target ' + sm.target + ' toko perfect'); changed = true; }
     }
-    return { kp, sm, score: kp.reduce((a, x) => a + (x.poin || 0), 0) };
+    const as = asrtSummary();
+    if (as) ASRT_CH.forEach(c => {
+      const a = as[c[0]], k = kp.find(x => x.kpi === c[3]);
+      if (k && a.pct != null) { setKpi(k, a.pct, 'Dihitung dari Extract DMS: ' + a.lines + ' lines dari target ' + a.target); changed = true; }
+    });
+    if (changed) kp.sort((a, b) => b.hilang - a.hilang);
+    return { kp, sm, as, score: changed ? kp.reduce((a, x) => a + (x.poin || 0), 0) : null };
   }
 
   function render() {
@@ -143,13 +170,13 @@
         `<button type="button" class="chip" data-dt="${esc(d.kode)}" aria-pressed="${d.kode === VIEW}">${esc(d.nama)}</button>`).join('');
     }
 
-    const ap = applyPs(kpiList(cur)), kp = ap.kp;
-    const scoreShown = ap.score != null && DATA.ps && !DATA.scope ? ap.score : score;
+    const ap = applyLive(kpiList(cur)), kp = ap.kp;
+    const scoreShown = ap.score != null && !DATA.scope ? ap.score : score;
     const delta = prevRank == null || rank == null ? '' : rank < prevRank ? `<span class="delta-up">▲ naik ${prevRank - rank} dari ${prevRank}</span>` : rank > prevRank ? `<span class="delta-down">▼ turun ${rank - prevRank} dari ${prevRank}</span>` : 'tetap';
     const gain = kp.reduce((s, k) => s + k.hilang, 0);
     $('topKpis').innerHTML =
       `<div class="kpi hot"><div class="l">Rank nasional</div><div class="v">${rank == null ? '-' : rank}</div><div class="s">${delta || 'belum ada pembanding'}</div></div>` +
-      `<div class="kpi"><div class="l">Score</div><div class="v">${scoreShown == null ? '-' : scoreShown.toFixed(2).replace('.', ',')}</div><div class="s">${ap.sm && !DATA.scope ? 'PS hasil upload mingguan' : 'dari 100'}</div></div>` +
+      `<div class="kpi"><div class="l">Score</div><div class="v">${scoreShown == null ? '-' : scoreShown.toFixed(2).replace('.', ',')}</div><div class="s">${ap.score != null && !DATA.scope ? 'PS dan Assortment dihitung ulang' : 'dari 100'}</div></div>` +
       `<div class="kpi warn"><div class="l">Poin yang masih bisa dikejar</div><div class="v">${gain.toFixed(1).replace('.', ',')}</div><div class="s">terbesar: ${esc(kp[0] ? kp[0].label : '-')}</div></div>`;
 
     $('tKpi').innerHTML = '<tr><th>KPI</th><th style="text-align:right">Poin hilang</th></tr>' + kp.map(k =>
@@ -160,9 +187,58 @@
 
     renderFop('secFopMinis', 'LOCAL MINIS', 'Weekly FOP Local Minis', kp.find(k => k.kpi === 'FOP_MINIS'));
     renderFop('secFopSpm', 'LOCAL SUPERMARKET', 'Weekly FOP Supermarket (SPM)', kp.find(k => k.kpi === 'FOP_SPM'));
+    renderUnmapped();
+    renderAsrt(kp);
     renderPs(kp.find(k => k.kpi === 'PS'));
     renderBanded(kp.find(k => k.kpi === 'BANDED_MINIS'), kp.find(k => k.kpi === 'BANDED_SPM'));
     renderHist(snaps);
+  }
+
+  /** Toko yang bertransaksi di Extract DMS tapi belum ada di Outlet Master: channel tidak diketahui, tidak ikut hitungan. */
+  function renderUnmapped() {
+    const rows = [];
+    asrtDts().forEach(d => (d.unmapped || []).forEach(u => rows.push(Object.assign({ dt: d.dist_nama }, u))));
+    const errs = ((DATA.asrt && DATA.asrt.perDt) || []).filter(d => d.error);
+    if (!rows.length && !errs.length) { $('secUnmapped').innerHTML = ''; return; }
+    rows.sort((a, b) => b.gsv - a.gsv);
+    const gsv = rows.reduce((s, r) => s + r.gsv, 0);
+    $('secUnmapped').innerHTML = '<div class="notice">' +
+      (rows.length ? `<b>${rows.length} toko belum terbaca di Outlet Master.</b> Toko ini transaksi di Extract DMS bulan ini (omset ${idr(gsv)}) tapi channelnya tidak diketahui, jadi assortmentnya belum masuk hitungan SPM maupun Minis. Minta tim DT menambahkannya ke Outlet Master lalu upload ulang.` : '') +
+      (errs.length ? `<div style="margin-top:6px">Assortment gagal dihitung untuk: ${errs.map(e => esc(e.dist_nama)).join(', ')}.</div>` : '') +
+      (rows.length ? `<details class="box" style="margin-top:8px"><summary>Lihat daftar toko</summary><div class="scroll" style="margin-top:8px"><table class="gs"><tr><th>Toko</th><th class="n">Omset</th><th class="n">Lines</th></tr>` +
+        rows.slice(0, 40).map(r => `<tr><td>${esc(r.nama || r.outlet)}<div class="muted" style="font-size:11px">${esc(r.dt)} · ${esc(r.outlet)} · terakhir ${esc(tgl(r.terakhir))}</div></td><td class="n">${idr(r.gsv)}</td><td class="n">${r.lines}</td></tr>`).join('') +
+        '</table></div>' + (rows.length > 40 ? `<p class="gs-note">Menampilkan 40 dengan omset terbesar dari ${rows.length}.</p>` : '') + '</details>' : '') + '</div>';
+  }
+
+  const idr = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
+
+  function renderAsrt(kp) {
+    const as = asrtSummary(), dts = asrtDts();
+    if (!as) { $('secAsrt').innerHTML = ''; return; }
+    const first = dts.find(d => d.tanggalData) || {};
+    const noTarget = ASRT_CH.some(c => as[c[0]].pct == null);
+    const head = ASRT_CH.map(c => {
+      const a = as[c[0]], k = kp.find(x => x.kpi === c[3]);
+      return `<div class="kpi"><div class="l">${esc(c[2])}</div><div class="v">${a.pct == null ? '-' : pct(a.pct)}</div>` +
+        `<div class="s">${a.lines.toLocaleString('id-ID')} lines${a.target ? ' dari ' + a.target.toLocaleString('id-ID') : ', target belum diisi'}${k ? ' · poin ' + (k.poin == null ? '-' : k.poin.toFixed(1)) + '/' + k.bobot : ''}</div></div>`;
+    }).join('');
+    const dtRows = dts.map(d => ASRT_CH.map(c => {
+      const x = d.channels && d.channels[c[0]];
+      if (!x) return '';
+      const t = ((DATA.asrt.targets) || []).filter(z => String(z.dist_kode) === String(d.dist_kode) && z.channel === c[1]).reduce((a, z) => a + (num(z.target_lines) || 0), 0);
+      return `<tr><td>${esc(d.dist_nama)}<div class="muted" style="font-size:11px">${esc(c[2])}</div></td><td class="n">${x.lines.toLocaleString('id-ID')}${t ? ' / ' + t.toLocaleString('id-ID') : ''}</td><td class="n">${x.outlets}</td><td class="n">${x.perOutlet.toFixed(1).replace('.', ',')}</td></tr>`;
+    }).join('')).join('');
+    const low = ASRT_CH.map(c => {
+      const items = [];
+      dts.forEach(d => { const x = d.channels && d.channels[c[0]]; if (x) x.low.forEach(o => items.push(Object.assign({ dt: d.dist_nama }, o))); });
+      items.sort((a, b) => a.lines - b.lines);
+      return items.length ? `<details class="box" style="margin-top:8px"><summary>Toko ${esc(c[2])} dengan base pack paling sedikit</summary><div class="scroll" style="margin-top:8px"><table class="gs"><tr><th>Toko</th><th class="n">Base pack</th></tr>` +
+        items.slice(0, 10).map(o => `<tr><td>${esc(o.nama)}<div class="muted" style="font-size:11px">${esc(o.dt)}</div></td><td class="n">${o.lines}</td></tr>`).join('') + '</table></div></details>' : '';
+    }).join('');
+    $('secAsrt').innerHTML = `<h2>Assortment per channel</h2>` +
+      `<p class="gs-note">Dari Extract DMS${first.tanggalData ? ' s.d. ' + esc(tgl(first.tanggalData)) : ''}. Satu line = satu base pack di satu toko, dihitung kalau qty bersih bulan ini minimal ${DATA.asrt.moq} pcs. Base pack yang sama di toko yang sama hanya dihitung sekali, jadi tambah assortment dengan menjual base pack baru.${noTarget ? ' Target belum diisi untuk sebagian channel, jadi persennya belum muncul.' : ''}</p>` +
+      `<div class="kpis">${head}</div>` +
+      (dtRows ? `<div class="scroll" style="margin-top:10px"><table class="gs"><tr><th>DT dan channel</th><th class="n">Lines / target</th><th class="n">Toko</th><th class="n">Per toko</th></tr>${dtRows}</table></div>` : '') + low;
   }
 
   function fopRows(channel) {
