@@ -85,6 +85,21 @@
 <h1>Upload Data Monitoring Harian</h1>
 <div class="sub">Pilih DT, upload file mentah, dan lihat status update semua data. Merah, kuning, hijau menunjukkan mana yang perlu diurus.</div>
 
+<h2 style="margin-top:6px">KPI Great Sales</h2>
+<div class="group-note">Scorecard AAM nasional, tidak tergantung DT. Upload tiap hari supaya rank dan daftar toko di halaman Great Sales ikut update.</div>
+<div class="card" id="card-GS">
+  <div class="card-head"><div><h3>Monitoring DAILY KPI GREAT SALES</h3><span class="tab">GS_SCORECARD · GS_OUTLET</span></div>
+    <span class="badge" id="gsBadge"><i class="dot"></i>Memuat</span></div>
+  <div class="st-text" id="gsText">Mengecek...</div>
+  <div class="desc">File .xlsx berisi sheet Summary ScoreCard, Perfect Stores, Weekly FOP, dan Banded.</div>
+  <label for="gsFile">File (.xlsx)</label>
+  <input type="file" id="gsFile" accept=".xlsx">
+  <button type="button" class="go" id="gsGo" disabled>Proses &amp; simpan Great Sales</button>
+  <div class="spin" id="gsSpin">Memproses...</div>
+  <div id="gsRes"></div>
+</div>
+
+<h2>Data per DT</h2>
 <div class="dt-chips" id="dtChips" role="group" aria-label="Pilih DT"></div>
 
 <div id="summary" hidden>
@@ -287,6 +302,33 @@
     }).restoreFromBackup(dt, s.key);
   }
 
+  function loadGs() {
+    google.script.run.withSuccessHandler(function (st) {
+      var c = el('card-GS'); c.className = 'card lv-' + st.level;
+      el('gsBadge').className = 'badge lv-' + st.level;
+      el('gsBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.level];
+      el('gsText').textContent = st.text;
+    }).withFailureHandler(function (e) { el('gsText').textContent = 'Gagal mengecek: ' + e.message; }).getGreatSalesStatus();
+  }
+  el('gsFile').addEventListener('change', function () { el('gsGo').disabled = !this.files[0]; });
+  el('gsGo').addEventListener('click', function () {
+    var f = el('gsFile').files[0]; if (!f) return;
+    el('gsGo').disabled = true; el('gsSpin').classList.add('show'); el('gsRes').innerHTML = '';
+    readB64(f).then(function (b64) {
+      google.script.run.withSuccessHandler(function (res) {
+        el('gsSpin').classList.remove('show'); el('gsGo').disabled = false;
+        var html = '<b>Tersimpan.</b>\nRank ' + res.rank + (res.prevRank ? ' (sebelumnya ' + res.prevRank + ')' : '') + ' · score ' + (res.score == null ? '-' : res.score.toFixed(2)) + '\nBaris toko/SKU: ' + res.outlets;
+        if (res.warnings.length) html += '\n\n<b>PERIKSA:</b>\n' + res.warnings.map(function (w) { return '- ' + esc(w); }).join('\n');
+        el('gsRes').innerHTML = '<div class="result lv-' + (res.warnings.length ? 'amber' : 'green') + '">' + html + '</div>';
+        loadGs();
+      }).withFailureHandler(function (e) {
+        el('gsSpin').classList.remove('show'); el('gsGo').disabled = false;
+        el('gsRes').innerHTML = '<div class="result lv-red"><b>Gagal:</b> ' + esc(e.message) + '</div>';
+      }).processGreatSales(b64, f.name);
+    });
+  });
+
+  loadGs();
   init();
 </script>
 </body>

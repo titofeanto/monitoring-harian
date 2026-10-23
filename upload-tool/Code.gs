@@ -810,3 +810,194 @@ function readFacts_(ss, spec) {
   if (spec.upsertCol) f.periodes = distinctPeriodes_(read(spec.upsertCol));
   return f;
 }
+
+// ====================== KPI GREAT SALES (scorecard AAM) ======================
+// File "Monitoring DAILY KPI GREAT SALES.xlsx": sheet Summary ScoreCard (nilai resmi HO + rank),
+// plus sheet pendukung (Perfect Stores, Weekly FOP, Banded) untuk daftar toko yang perlu dikejar.
+// Ditulis ke Sheet PUSAT: GS_SCORECARD (riwayat per tanggal upload) dan GS_OUTLET (snapshot terakhir).
+
+const GS_SCORE_TAB = 'GS_SCORECARD';
+const GS_OUT_TAB = 'GS_OUTLET';
+const GS_SCORE_HEADER = ['tanggal', 'kpi', 'label', 'target', 'bobot', 'aktual', 'poin', 'catatan'];
+const GS_OUT_HEADER = ['tanggal', 'jenis', 'dist_kode', 'dist_nama', 'outlet_kode', 'outlet_nama', 'channel', 'remark', 'v1', 'v2', 'v3', 'status', 'detail'];
+// Urutan kolom B..J di Summary ScoreCard.
+const GS_KPI_KEYS = ['PS', 'FOP_SPM', 'FOP_MINIS', 'ASRT_SPM', 'ASRT_MINIS', 'BANDED_SPM', 'BANDED_MINIS', 'DR', 'R2G'];
+const GS_PS_COMPONENTS = [
+  ['COTC', 'Store Compliance COTC'], ['NPD', 'Store Compliance NPD'], ['SOS', 'Store Compliance SOS Category'],
+  ['SSTD', 'Store Compliance SSTD Category'], ['Banded', 'Store Compliance Banded EVB'],
+];
+const BULAN_EN_ = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+function gsNum_(v) {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v === null || v === undefined ? '' : v).replace(/,/g, ''));
+  return isNaN(n) ? null : n;
+}
+function gsStr_(v) { return String(v === null || v === undefined ? '' : v).trim(); }
+/** "15168386-ADITAMA CITRA PAPUA GT" -> ["15168386", "ADITAMA CITRA PAPUA GT"]. */
+function gsSplitCode_(v) {
+  const s = gsStr_(v), i = s.indexOf('-');
+  return i < 0 ? [s, ''] : [s.slice(0, i).trim(), s.slice(i + 1).trim()];
+}
+/** Minggu ISO 'yyyy-MM-dd' (sama dengan penomoran kolom "WW.2026" di sheet Weekly FOP). */
+function isoWeek_(iso) {
+  const ms = isoToUtc_(iso), d = new Date(ms);
+  const day = d.getUTCDay() || 7;
+  const thu = new Date(ms + (4 - day) * 86400000);
+  const y0 = Date.UTC(thu.getUTCFullYear(), 0, 1);
+  return Math.ceil(((thu.getTime() - y0) / 86400000 + 1) / 7);
+}
+
+/** Baris -> object per nama header (baris header = baris pertama yang berisi semua kolom wajib). */
+function gsTable_(rows, required) {
+  const h = findHeader_(rows, { required: required.map(x => [x]), maxScan: 5 });
+  if (!h.ok) return null;
+  const hdr = rows[h.rowIdx].map(gsStr_);
+  return rows.slice(h.rowIdx + 1).map(r => { const o = {}; hdr.forEach((k, i) => { if (k && !(k in o)) o[k] = r[i]; }); return o; });
+}
+
+/** Pure: sheets {nama: array2D} -> {kpis:[...], score, rank, outlets:[...], warnings:[]}. */
+function parseGreatSales_(sheets, todayIso) {
+  const sc = sheets['Summary ScoreCard'];
+  if (!sc) throw new Error('Sheet "Summary ScoreCard" tidak ditemukan. Pastikan file yang diupload adalah Monitoring DAILY KPI GREAT SALES.');
+  const rowOf = label => sc.filter(r => normHdr_(r[0]) === label)[0];
+  const hi = sc.findIndex(r => normHdr_(r[0]) === 'd/aam name');
+  const tRow = rowOf('target'), bRow = rowOf('bobot nilai'), kRow = rowOf('keterangan') || [];
+  if (hi < 0 || !tRow || !bRow || !sc[hi + 1]) throw new Error('Format Summary ScoreCard berubah (baris Target / Bobot nilai / D/AAM NAME tidak ketemu). Upload DIBATALKAN.');
+  const hdr = sc[hi], val = sc[hi + 1];
+  const cScore = colIdx_(hdr, ['SCORE']), cRank = colIdx_(hdr, ['RANK']);
+  const kpis = GS_KPI_KEYS.map((key, i) => {
+    const c = i + 1, target = gsNum_(tRow[c]), bobot = gsNum_(bRow[c]), aktual = gsNum_(val[c]);
+    const poin = target > 0 && aktual !== null && bobot !== null ? bobot * Math.min(aktual / target, 1) : null;
+    return { kpi: key, label: gsStr_(hdr[c]), target: target, bobot: bobot, aktual: aktual, poin: poin, catatan: gsStr_(kRow[c]) };
+  });
+  const score = cScore >= 0 ? gsNum_(val[cScore]) : null, rank = cRank >= 0 ? gsNum_(val[cRank]) : null;
+  const warnings = [];
+  const sumPoin = kpis.reduce((s, k) => s + (k.poin || 0), 0);
+  if (score !== null && Math.abs(sumPoin - score) > 0.5) {
+    warnings.push('Total poin hitungan ulang (' + sumPoin.toFixed(2) + ') beda dari SCORE di file (' + score.toFixed(2) + '). Rumus skor HO mungkin berubah.');
+  }
+
+  const outlets = [];
+  let fopWeek = null;
+  const ps = sheets['Perfect Stores'] && gsTable_(sheets['Perfect Stores'], ['Distributor Code&Name', 'Store Name', 'Status PS']);
+  if (ps) ps.forEach(o => {
+    if (!gsStr_(o['Store Name'])) return;
+    const d = gsSplitCode_(o['Distributor Code&Name']), s = gsSplitCode_(o['Store Name']);
+    const missing = GS_PS_COMPONENTS.filter(p => gsStr_(o[p[1]]) !== '' && gsNum_(o[p[1]]) === 0).map(p => p[0]);
+    outlets.push({ jenis: 'PS', dist_kode: d[0], dist_nama: d[1], outlet_kode: s[0], outlet_nama: s[1], channel: gsStr_(o['Scope Channel']),
+      remark: gsStr_(o['Remarks']), v1: gsStr_(o['Total Achieve KPI']), v2: gsNum_(o['Perfect Store']) === 1 ? 1 : 0, v3: '',
+      status: gsStr_(o['Status PS']), detail: missing.join(', ') });
+  });
+  else warnings.push('Sheet "Perfect Stores" tidak terbaca, daftar toko PS kosong.');
+
+  const fop = sheets['Weekly FOP'];
+  if (fop && fop.length > 1) {
+    const h = fop[0].map(gsStr_);
+    const col = n => h.indexOf(n);
+    const janIdx = h.map((x, i) => x.toUpperCase() === 'JAN' ? i : -1).filter(i => i >= 0);
+    const month = +todayIso.slice(5, 7) - 1, year = todayIso.slice(0, 4), week = isoWeek_(todayIso);
+    const weekCols = [];
+    h.forEach((x, i) => { const m = /^(\d{1,2})\.(\d{4})\d?$/.exec(x); if (m && m[2] === year) weekCols.push([+m[1], i]); });
+    if (janIdx.length < 3 || col('Outlet') < 0) warnings.push('Kolom bulan / Outlet di sheet "Weekly FOP" tidak lengkap, daftar FOP mungkin tidak akurat.');
+    fop.slice(1).forEach(r => {
+      if (!gsStr_(r[col('Outlet')]) || gsStr_(r[col('STATUS')]).toUpperCase() !== 'ACTIVE') return;
+      const byWeek = {};
+      weekCols.forEach(wc => { const n = gsNum_(r[wc[1]]) || 0; byWeek[wc[0]] = (byWeek[wc[0]] || 0) + n; });
+      const ordered = Object.keys(byWeek).filter(k => byWeek[k] > 0).map(Number);
+      if (ordered.length) fopWeek = Math.max(fopWeek || 0, Math.max.apply(null, ordered));
+      outlets.push({ jenis: 'FOP', dist_kode: gsStr_(r[col('Distributor')]), dist_nama: gsStr_(r[col('Distributor Name')]),
+        outlet_kode: gsStr_(r[col('Outlet')]), outlet_nama: gsStr_(r[col('Outlet Name')]), channel: gsStr_(r[col('Channel')]),
+        remark: gsStr_(r[col('REMARK')]),
+        v1: janIdx.length >= 1 ? (gsNum_(r[janIdx[0] + month]) || 0) : '',  // jumlah minggu ada order bulan ini
+        v2: (byWeek[week] || 0) > 0 ? 1 : 0,                                  // sudah order minggu ini
+        v3: ordered.length ? Math.max.apply(null, ordered) : '',             // minggu terakhir ada order
+        status: janIdx.length >= 2 ? gsStr_(r[janIdx[1] + month]) : '',       // WEEKLY / BIWEEKLY / MONTHLY
+        detail: janIdx.length >= 3 ? gsStr_(r[janIdx[2] + month]) : '' });
+    });
+  } else warnings.push('Sheet "Weekly FOP" tidak terbaca, daftar FOP kosong.');
+
+  [['Banded SPM', 'SPM'], ['Banded Local Minis', 'LOCAL MINIS']].forEach(b => {
+    (sheets[b[0]] || []).slice(1).forEach(r => {
+      const s = gsSplitCode_(r[0]);
+      if (s[0]) outlets.push({ jenis: 'BANDED_SKU', dist_kode: '', dist_nama: '', outlet_kode: s[0], outlet_nama: s[1], channel: b[1], remark: '', v1: '', v2: '', v3: '', status: '', detail: '' });
+    });
+  });
+  const bo = sheets['LIST OUTLET MONITORING BANDED'] && gsTable_(sheets['LIST OUTLET MONITORING BANDED'], ['Distributor', 'Outlet', 'Outlet Name']);
+  if (bo) bo.forEach(o => {
+    if (!gsStr_(o['Outlet'])) return;
+    outlets.push({ jenis: 'BANDED_OUTLET', dist_kode: gsStr_(o['Distributor']), dist_nama: gsStr_(o['Distributor Name']), outlet_kode: gsStr_(o['Outlet']),
+      outlet_nama: gsStr_(o['Outlet Name']), channel: gsStr_(o['Channel']), remark: gsStr_(o['REMARK']), v1: '', v2: '', v3: '', status: gsStr_(o['Subchannel']), detail: '' });
+  });
+  // fopWeek = minggu terakhir yang ada order di file; kalau < minggu berjalan, data FOP belum sampai minggu ini.
+  return { kpis: kpis, score: score, rank: rank, outlets: outlets, warnings: warnings, fopWeek: fopWeek, week: isoWeek_(todayIso) };
+}
+
+/** Upload file Great Sales -> GS_SCORECARD (upsert tanggal hari ini) + GS_OUTLET (ganti total). */
+function processGreatSales(base64, filename) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheets = xlsxBase64ToSheets_(base64, filename);
+    const today = todayIso_();
+    const gs = parseGreatSales_(sheets, today);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const prev = readGsScorecard_(ss);
+    const last = prev.length ? prev[prev.length - 1] : null;
+
+    const scoreRows = gs.kpis.map(k => [today, k.kpi, k.label, k.target, k.bobot, k.aktual, k.poin, k.catatan])
+      .concat([[today, 'SCORE', 'SCORE', '', 100, gs.score, gs.score, ''], [today, 'RANK', 'RANK', '', '', gs.rank, '', ''],
+        [today, 'FOP_WEEK', 'Minggu data FOP terakhir', '', '', gs.fopWeek, '', 'Minggu berjalan ' + gs.week]]);
+    let sh = ss.getSheetByName(GS_SCORE_TAB) || ss.insertSheet(GS_SCORE_TAB);
+    let old = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, GS_SCORE_HEADER.length).getValues() : [];
+    old = old.filter(r => normDate_(r[0]) && normDate_(r[0]) !== today).map(r => { r[0] = normDate_(r[0]); return r; });
+    const allScore = [GS_SCORE_HEADER].concat(old, scoreRows);
+    sh.clearContents();
+    ensureGrid_(sh, allScore.length, GS_SCORE_HEADER.length);
+    sh.getRange(1, 1, allScore.length, 1).setNumberFormat('@');
+    sh.getRange(1, 1, allScore.length, GS_SCORE_HEADER.length).setValues(allScore);
+
+    const outRows = [GS_OUT_HEADER].concat(gs.outlets.map(o => GS_OUT_HEADER.map(k => k === 'tanggal' ? today : (o[k] === null || o[k] === undefined ? '' : o[k]))));
+    sh = ss.getSheetByName(GS_OUT_TAB) || ss.insertSheet(GS_OUT_TAB);
+    sh.clearContents();
+    ensureGrid_(sh, outRows.length, GS_OUT_HEADER.length);
+    sh.getRange(1, 1, outRows.length, GS_OUT_HEADER.length).setNumberFormat('@');
+    sh.getRange(1, 1, outRows.length, GS_OUT_HEADER.length).setValues(outRows.map(r => r.map(v => String(v))));
+
+    const warnings = gs.warnings.slice();
+    if (last && last.tanggal !== today && last.rank !== null && gs.rank !== null && gs.rank > last.rank) {
+      warnings.push('Rank TURUN dari ' + last.rank + ' (' + fmtDateID_(last.tanggal) + ') ke ' + gs.rank + '.');
+    }
+    return { ok: true, score: gs.score, rank: gs.rank, prevRank: last && last.tanggal !== today ? last.rank : null,
+      outlets: gs.outlets.length, warnings: warnings };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Riwayat {tanggal, score, rank} per tanggal upload, urut lama -> baru. */
+function readGsScorecard_(ss) {
+  const sh = ss.getSheetByName(GS_SCORE_TAB);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const by = {};
+  sh.getRange(2, 1, sh.getLastRow() - 1, GS_SCORE_HEADER.length).getValues().forEach(r => {
+    const t = normDate_(r[0]); if (!t) return;
+    const o = by[t] = by[t] || { tanggal: t, score: null, rank: null };
+    if (r[1] === 'SCORE') o.score = gsNum_(r[5]);
+    if (r[1] === 'RANK') o.rank = gsNum_(r[5]);
+  });
+  return Object.keys(by).sort().map(k => by[k]);
+}
+
+/** Indikator kotak Great Sales di halaman upload: hijau kalau sudah diupload hari kerja ini. */
+function getGreatSalesStatus() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hist = readGsScorecard_(ss);
+  const today = todayIso_(), expected = expectedDate_(today, {});
+  if (!hist.length) return { level: 'red', text: 'Belum pernah diupload', history: [] };
+  const last = hist[hist.length - 1];
+  const prev = hist.length > 1 ? hist[hist.length - 2] : null;
+  const trend = prev && prev.rank !== null && last.rank !== null ? (last.rank < prev.rank ? ' (naik dari ' + prev.rank + ')' : last.rank > prev.rank ? ' (turun dari ' + prev.rank + ')' : ' (tetap)') : '';
+  const base = 'Rank ' + last.rank + trend + ' · score ' + (last.score === null ? '-' : last.score.toFixed(2)) + ' · data ' + fmtDateID_(last.tanggal);
+  return { level: last.tanggal < expected ? 'amber' : 'green', text: (last.tanggal < expected ? 'Belum update hari ini. ' : '') + base, history: hist.slice(-14) };
+}

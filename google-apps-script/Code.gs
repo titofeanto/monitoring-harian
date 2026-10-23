@@ -9,17 +9,38 @@
  *
  * Deploy sebagai Web App: Execute as Me, Who has access Anyone.
  *
- * Endpoint:
+ * Endpoint baca (GET):
  *   GET ?code=<kode DT>                  -> data mentah Sheet DT itu
  *   GET ?code=<kode pusat>               -> daftar DT
  *   GET ?code=<kode pusat>&dt=<dt_kode>  -> data mentah satu DT
  *   tambah &cek=1                        -> jumlah baris per tab saja
+ *   tambah &view=gs                      -> KPI Great Sales (tab GS_* di Sheet pusat,
+ *                                           diisi tool upload); kode DT hanya melihat toko DT-nya
  *
- * Skrip tidak menghitung apa pun: halaman web yang menghitung semua
- * pencapaian dan insentif.
+ * Endpoint tulis (POST, body JSON):
+ *   {action:'simpanHasil', code, dt?, periode:'YYYY-MM', rows:[...]}
+ *   Menulis HANYA ke tab HASIL_PERHITUNGAN (audit trail hasil hitung web
+ *   app, dipakai juga sebagai riwayat aktual bulanan untuk rekap kuartal
+ *   SS). Baris lama dengan periode yang sama ditimpa (upsert), tab lain
+ *   tidak pernah disentuh dari endpoint ini.
+ *
+ * Skrip sendiri tidak menghitung pencapaian/insentif: halaman web yang
+ * menghitung, skrip ini hanya membaca data mentah dan menyimpan hasilnya
+ * balik ke Sheet supaya bisa dicek manual.
  */
 
 const REG_TAB = 'DAFTAR_DT';
+const HASIL_TAB = 'HASIL_PERHITUNGAN';
+const HASIL_HEADER = [
+  'periode', 'kode_dsr', 'nama_dsr',
+  'ss_bw_target', 'ss_bw_aktual', 'ss_pc_target', 'ss_pc_aktual', 'ss_hc_target', 'ss_hc_aktual', 'ss_fo_target', 'ss_fo_aktual',
+  'ss_target', 'ss_aktual', 'ach_ss',
+  'asrt_target', 'asrt_aktual', 'ach_asrt',
+  'eco_pjp', 'eco_tx', 'ach_eco',
+  'skor', 'band', 'insentif_jasper', 'insentif_add', 'insentif_sku', 'insentif_total',
+  'disimpan_pada',
+];
+const HASIL_MAX_ROWS = 500; // batas wajar jumlah DSR per DT dalam satu simpan
 
 // Tab tabel biasa: header di baris 1. Dikirim sebagai array 2D (baris 1 = header).
 const TABLE_TABS = ['TARGET', 'DMS_EXTRACT', 'NORMS_SKU', 'SKU_FOKUS', 'DSR', 'OUTLET_MASTER', 'KPI', 'MASTER_PRODUK', 'HARI_LIBUR'];
@@ -65,6 +86,7 @@ function doGet(e) {
     const reg = readRegistry_();
     const me = reg.find(r => r.kode_akses === code);
     if (!me) return jsonOut({ error: 'invalid_code' });
+    if (p.view === 'gs') return jsonOut(respondGs_(me, reg, String(p.dt || '').trim()));
 
     if (me.peran === 'pusat') {
       const dts = reg.filter(r => r.peran === 'dt' && r.sheet_id);
@@ -131,6 +153,7 @@ function getPayload_(sheetId) {
   });
   RAW_TABS.forEach(name => { tabs[name] = readTab_(ss, name, tz); });
   tabs.MASTER_PRODUK = trimProduk_(tabs.MASTER_PRODUK, [tabs.NORMS_SKU, tabs.SKU_FOKUS]);
+  tabs.HASIL_PERHITUNGAN = readHasilTab_(ss);
 
   const payload = { config: readConfig_(ss, tz), tabs: tabs, builtAt: new Date().toISOString(), ms: Date.now() - t0 };
   cachePut_(key, payload);
@@ -277,4 +300,139 @@ function testRead() {
       Logger.log(name + ': ' + Math.max(0, p.tabs[name].length - 1) + ' baris');
     });
   });
+}
+
+function doPost(e) {
+  try {
+    let body;
+    try { body = JSON.parse((e.postData && e.postData.contents) || '{}'); }
+    catch (err) { return jsonOut({ error: 'bad_request', message: 'Body bukan JSON valid.' }); }
+
+    if (body.action !== 'simpanHasil') return jsonOut({ error: 'unknown_action' });
+
+    const target = resolveTarget_(String(body.code || '').trim(), String(body.dt || '').trim());
+    if (target.error) return jsonOut(target);
+
+    const periode = String(body.periode || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(periode)) return jsonOut({ error: 'bad_request', message: 'periode harus format YYYY-MM.' });
+    const rows = Array.isArray(body.rows) ? body.rows : null;
+    if (!rows || !rows.length) return jsonOut({ error: 'bad_request', message: 'rows kosong.' });
+    if (rows.length > HASIL_MAX_ROWS) return jsonOut({ error: 'bad_request', message: 'rows terlalu banyak (maks ' + HASIL_MAX_ROWS + ').' });
+
+    const saved = upsertHasil_(target.sheet_id, periode, rows);
+    clearCacheFor_(target.sheet_id);
+    return jsonOut({ ok: true, dt: target.dt_kode, periode: periode, saved: saved });
+  } catch (err) {
+    return jsonOut({ error: 'server_error', message: String(err) });
+  }
+}
+
+/** Sama seperti logika akses GET (kode DT langsung, atau kode pusat + &dt=), dipakai bersama doGet/doPost. */
+function resolveTarget_(code, dtWanted) {
+  if (!code) return { error: 'missing_code' };
+  const reg = readRegistry_();
+  const me = reg.find(r => r.kode_akses === code);
+  if (!me) return { error: 'invalid_code' };
+  if (me.peran === 'pusat') {
+    if (!dtWanted) return { error: 'bad_request', message: 'Kode pusat wajib menyertakan dt.' };
+    const r = reg.find(x => x.peran === 'dt' && x.dt_kode === dtWanted && x.sheet_id);
+    if (!r) return { error: 'unknown_dt' };
+    return r;
+  }
+  if (!me.sheet_id) return { error: 'server_error', message: 'sheet_id kosong di DAFTAR_DT' };
+  return me;
+}
+
+/** Tab HASIL_PERHITUNGAN, dibuat otomatis dengan header kalau belum ada. */
+function ensureHasilTab_(ss) {
+  let sh = ss.getSheetByName(HASIL_TAB);
+  if (!sh) {
+    sh = ss.insertSheet(HASIL_TAB);
+    sh.getRange(1, 1, 1, HASIL_HEADER.length).setValues([HASIL_HEADER]);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/** Isi tab HASIL_PERHITUNGAN sebagai array 2D, dibuat dulu kalau belum ada. */
+function readHasilTab_(ss) {
+  const sh = ensureHasilTab_(ss);
+  return sh.getDataRange().getValues().filter(row => row.some(c => c !== ''));
+}
+
+/**
+ * Timpa (upsert) baris HASIL_PERHITUNGAN untuk satu periode: baris lama
+ * dengan periode itu dibuang, baris baru dari web app ditulis. Periode
+ * lain (bulan-bulan sebelumnya) tidak disentuh, jadi jadi riwayat bulanan
+ * untuk rekap kuartal. Dikunci supaya dua penyimpanan bersamaan tidak
+ * saling menimpa.
+ */
+function upsertHasil_(sheetId, periode, rows) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const ss = SpreadsheetApp.openById(sheetId);
+    const sh = ensureHasilTab_(ss);
+    const values = sh.getDataRange().getValues();
+    const header = values[0].map(h => String(h).trim());
+    const col = n => header.indexOf(n);
+    const pCol = col('periode');
+    const kept = values.slice(1).filter(r => String(r[pCol]) !== periode);
+
+    const now = new Date().toISOString();
+    const fresh = rows.map(row => HASIL_HEADER.map(key => {
+      if (key === 'periode') return periode;
+      if (key === 'disimpan_pada') return now;
+      const v = row[key];
+      return v === undefined || v === null ? '' : v;
+    }));
+
+    const all = kept.concat(fresh);
+    sh.clearContents();
+    sh.getRange(1, 1, 1, HASIL_HEADER.length).setValues([HASIL_HEADER]);
+    if (all.length) sh.getRange(2, 1, all.length, HASIL_HEADER.length).setValues(all);
+    return fresh.length;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Bersihkan cache satu Sheet DT saja (dipanggil setelah menyimpan hasil). */
+function clearCacheFor_(sheetId) {
+  const cache = CacheService.getScriptCache();
+  const key = CACHE_KEY + '_' + sheetId;
+  const n = +cache.get(key + '_n') || 0;
+  const keys = [key + '_n'];
+  for (let i = 0; i < n; i++) keys.push(key + '_' + i);
+  cache.removeAll(keys);
+}
+
+/**
+ * KPI Great Sales: scorecard (riwayat per tanggal) + daftar toko snapshot terakhir dari tab
+ * GS_SCORECARD / GS_OUTLET di Sheet pusat. Kode DT (atau kode pusat + &dt=) hanya menerima toko
+ * distributornya sendiri; daftar SKU Banded selalu ikut karena berlaku untuk semua DT.
+ */
+function respondGs_(me, reg, dtWanted) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const read = name => {
+    const sh = ss.getSheetByName(name);
+    if (!sh || sh.getLastRow() < 2) return [];
+    const v = sh.getDataRange().getValues(), h = v[0].map(x => String(x).trim());
+    return v.slice(1).filter(r => r.some(c => c !== '')).map(r => {
+      const o = {}; h.forEach((k, i) => { o[k] = r[i] instanceof Date ? Utilities.formatDate(r[i], ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : r[i]; }); return o;
+    });
+  };
+  const scorecard = read('GS_SCORECARD');
+  if (!scorecard.length) return { error: 'no_data', message: 'Data Great Sales belum diupload.' };
+  let outlets = read('GS_OUTLET');
+  let scope = null;
+  if (me.peran === 'dt') scope = me;
+  else if (dtWanted) scope = reg.find(x => x.peran === 'dt' && x.dt_kode === dtWanted) || null;
+  if (scope) {
+    const word = (scope.nama_dt.toUpperCase().replace(/^(PT|CV)\.?\s+/, '').split(/\s+/)[0] || '');
+    const mine = o => String(o.dist_kode) === scope.dt_kode || (word.length >= 4 && String(o.dist_nama).toUpperCase().indexOf(word) >= 0);
+    outlets = outlets.filter(o => o.jenis === 'BANDED_SKU' || mine(o));
+  }
+  const dts = me.peran === 'pusat' ? reg.filter(r => r.peran === 'dt' && r.sheet_id).map(r => ({ kode: r.dt_kode, nama: r.nama_dt })) : null;
+  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets };
 }

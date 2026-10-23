@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>KPI Great Sales</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .gs-sec{margin-top:22px}
+  .gs-sec>h2{margin-bottom:4px}
+  .gs-note{font-size:12.5px;color:var(--ink2);margin-bottom:10px}
+  .lv{display:inline-flex;align-items:center;gap:5px;font:700 11px var(--body);padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .lv::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .lv.green{background:var(--success-soft);color:var(--success-text)}
+  .lv.amber{background:var(--warn-soft);color:var(--warn-text)}
+  .lv.red{background:var(--bad-soft);color:var(--bad-text)}
+  table.gs{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.gs th,table.gs td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;white-space:normal}
+  table.gs td.n,table.gs th.n{white-space:nowrap}
+  table.gs th{font-size:11px;color:var(--ink2);font-weight:600;background:var(--sunk)}
+  table.gs td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ok{color:var(--success-text);font-weight:700}
+  .no{color:var(--bad-text);font-weight:700}
+  .sku-list{columns:2 220px;font-size:12px;margin:6px 0 0;padding-left:18px}
+  details.box summary{cursor:pointer;font-weight:600}
+  .share-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .delta-up{color:var(--success-text)} .delta-down{color:var(--bad-text)}
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="loginScreen">
+  <div class="login-box">
+    <div class="icon">GS</div>
+    <h1>KPI Great Sales</h1>
+    <p>Scorecard AAM dan daftar toko yang perlu dikejar. Masukkan kode akses tim yang sama dengan Monitoring Harian.</p>
+    <form id="loginForm" autocomplete="off">
+      <div class="field">
+        <label for="codeInput">Kode akses tim</label>
+        <input type="text" id="codeInput" autocomplete="off" placeholder="kode akses tim">
+      </div>
+      <button type="submit" class="btn" id="loginBtn" style="width:100%">Masuk</button>
+      <div class="err" id="loginErr" role="alert"></div>
+    </form>
+  </div>
+</div>
+
+<div class="wrap" id="appScreen" hidden>
+  <header class="appbar"><div class="appbar-row">
+    <div class="icon">GS</div>
+    <div class="grow">
+      <h1>KPI Great Sales</h1>
+      <div class="sub" id="gsSub"></div>
+    </div>
+  </div></header>
+
+  <div class="identity-strip">
+    <a href="./" style="color:inherit">← Monitoring Harian</a>
+    <button type="button" id="logoutBtn">Ganti / Keluar</button>
+  </div>
+
+  <div class="sec" id="dtSec" hidden><div class="chips" id="dtChips" role="group" aria-label="Pilih DT"></div></div>
+
+  <div class="kpis" id="topKpis" style="margin-top:12px"></div>
+
+  <div class="gs-sec">
+    <h2>Prioritas poin</h2>
+    <p class="gs-note">Skor = jumlah (bobot × pencapaian ÷ target, maksimal 100%). Urut dari poin yang paling banyak hilang.</p>
+    <div class="scroll"><table class="gs" id="tKpi"></table></div>
+    <div class="share-row">
+      <button type="button" class="btn" id="waBtn">Kirim pengingat ke WhatsApp</button>
+      <button type="button" class="btn plain" id="copyBtn">Salin teks pengingat</button>
+    </div>
+    <p class="gs-note" id="copyMsg" style="margin-top:6px"></p>
+  </div>
+
+  <div class="gs-sec" id="secFopMinis"></div>
+  <div class="gs-sec" id="secFopSpm"></div>
+  <div class="gs-sec" id="secPs"></div>
+  <div class="gs-sec" id="secBanded"></div>
+  <div class="gs-sec" id="secHist"></div>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/gs.js"></script>
+</body>
+</html>

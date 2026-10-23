@@ -24,3 +24,10 @@ Peringatan lintas kotak: CONFIG periode ketinggalan, dan hasil bulan lalu belum 
 `HASIL_PERHITUNGAN`.
 
 Update kode: edit file di folder ini, lalu `clasp push -f` dan `clasp deploy -i <deploymentId>`.
+
+## KPI Great Sales
+Kotak paling atas. Upload file "Monitoring DAILY KPI GREAT SALES.xlsx" tiap hari. Isi Summary ScoreCard
+disimpan ke tab `GS_SCORECARD` di Sheet PUSAT (1 set baris per tanggal, jadi riwayat rank terbentuk),
+daftar toko dari Perfect Stores, Weekly FOP, dan Banded ke `GS_OUTLET` (ganti total). Halaman
+`great-sales.html` membaca keduanya lewat API (`?view=gs`); kode DT hanya melihat toko DT-nya.
+Poin per KPI = bobot x min(aktual / target, 1), jumlahnya harus sama dengan SCORE di file.
