@@ -37,7 +37,17 @@
   const CACHE_KEY = 'mh_gs_cache';
   let cacheAt = 0;
   const jam = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0'); };
-  function refreshNote(txt, done) { $('gsRefresh').hidden = !txt; $('gsRefresh').classList.toggle('done', !!done); $('gsRefreshTxt').textContent = txt || ''; }
+  /* Status data di header (titik hijau/kuning/merah); banner hanya untuk gagal memperbarui. */
+  function setSync(state, text) { const el = $('sync'); el.className = 'sync ' + state; el.innerHTML = '<i></i><span>' + esc(text) + '</span>'; }
+  function refreshNote(txt) {
+    const b = $('gsBanner'); b.hidden = true;
+    if (!txt) { setSync('ok', 'Terbaru'); return; }
+    if (/^Memperbarui/.test(txt)) { setSync('wait', 'Memperbarui…'); return; }
+    if (/^Data diperbarui/.test(txt)) { setSync('ok', txt.replace('Data diperbarui pukul ', 'Terbaru ')); return; }
+    setSync('off', 'Gagal memperbarui'); b.hidden = false; b.textContent = txt;
+  }
+  let toastT;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2200); }
   /* Salinan respons terakhir: halaman langsung tampil saat dibuka/refresh, data baru menyusul di belakang. */
   function readCache(code) {
     try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); if (c && c.code === code && c.view === VIEW) { cacheAt = c.at || 0; return c.data; } } catch (e) { /* salinan rusak */ }
@@ -55,9 +65,9 @@
     render();
   }
 
-  async function login(code, silent) {
+  async function login(code, silent, noCache) {
     if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
-    const cached = silent ? readCache(code) : null;
+    const cached = silent && !noCache ? readCache(code) : null;
     const shown = !!(cached && cached.mode === 'gs' && cached.scorecard && cached.scorecard.length);
     if (shown) { enter(cached, code); refreshNote('Memperbarui data… (tampilan sementara dari ' + (cacheAt ? 'pukul ' + jam(cacheAt) : 'data tersimpan') + ')'); }
     try {
@@ -69,9 +79,10 @@
       if (d.mode !== 'gs') { problem('API belum mendukung Great Sales. Deploy ulang Apps Script (lihat README).', silent, false); return; }
       writeCache(code, d);
       enter(d, code);
-      if (shown) refreshNote('Data diperbarui pukul ' + jam(Date.now()), true);
+      refreshNote('Data diperbarui pukul ' + jam(Date.now()), true);
+      return true;
     } catch (err) {
-      if (shown) { refreshNote('Gagal memperbarui, ini data tersimpan' + (cacheAt ? ' pukul ' + jam(cacheAt) : '') + '. Tarik layar untuk coba lagi.', true); return; }
+      if (shown || DATA) { refreshNote('Gagal memperbarui, ini data tersimpan' + (cacheAt ? ' pukul ' + jam(cacheAt) : '') + '. Ketuk muat ulang untuk coba lagi.', true); return false; }
       problem('Tidak bisa terhubung ke Apps Script (' + err.message + ').', silent, false);
     }
   }
@@ -156,13 +167,54 @@
     return { kp, sm, as, score: changed ? kp.reduce((a, x) => a + (x.poin || 0), 0) : null };
   }
 
+  const idr = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
+  const nf = v => Math.round(v).toLocaleString('id-ID');
+  const nf1 = v => (Math.round(v * 10) / 10).toLocaleString('id-ID');
+
+  /* ---- komponen tampilan (pola: DESIGN.md) ---- */
+  const ICON = {
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', warn: '<path d="M12 4l9 16H3L12 4z"/><path d="M12 10v4M12 17h.01"/>', down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+    store: '<path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6"/>', box: '<path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/>',
+    cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>', trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  };
+  const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+  const ciTitle = (icon, title, extra) => `<h2><span class="ci">${svg(icon)}</span>${title}${extra || ''}</h2>`;
+  const lvIcon = l => l === 'green' ? ['ok', 'check'] : l === 'amber' ? ['warn', 'warn'] : ['neg', 'down'];
+
+  /* ---- daftar dengan cari, filter, jumlah: satu pola untuk FOP dan Perfect Store ---- */
+  const LISTS = {};
+  const LST = {};   // id -> {q, f}
+  function mountList(id, cfg) {
+    LISTS[id] = cfg;
+    const st = LST[id] = LST[id] || { q: '', f: cfg.defaultF };
+    if (!cfg.chips.some(c => c[0] === st.f)) st.f = cfg.defaultF;
+    return `<div class="tb" id="tb-${id}"><label class="sbox">${svg('search')}<input type="search" data-q="${id}" placeholder="Cari nama toko atau distributor" autocomplete="off" value="${esc(st.q)}"><button type="button" class="clr" data-clr="${id}" aria-label="Hapus pencarian" ${st.q ? '' : 'hidden'}>${svg('x')}</button></label>` +
+      `<div class="chips" id="ch-${id}" role="group" aria-label="Filter"></div><div class="tb-meta"><span id="mt-${id}"></span></div></div><div id="ls-${id}"></div>`;
+  }
+  function fillList(id) {
+    const cfg = LISTS[id], st = LST[id]; if (!cfg || !$('ls-' + id)) return;
+    const q = st.q.trim().toLowerCase();
+    const base = cfg.rows.filter(r => !q || cfg.hay(r).includes(q));
+    const cnt = {}; cfg.chips.forEach(c => { cnt[c[0]] = base.filter(r => cfg.test(c[0], r)).length; });
+    if (q && !cnt[st.f] && st.f !== cfg.defaultF) st.f = cfg.defaultF;
+    $('ch-' + id).innerHTML = cfg.chips.map(c => `<button type="button" data-ch="${id}" data-f="${c[0]}" aria-pressed="${st.f === c[0]}"${cnt[c[0]] ? '' : ' class="z"'}>${esc(c[1])} <b>${nf(cnt[c[0]])}</b></button>`).join('');
+    const list = base.filter(r => cfg.test(st.f, r)).sort(cfg.sort);
+    $('mt-' + id).textContent = list.length === cfg.rows.length ? nf(cfg.rows.length) + ' toko' : nf(list.length) + ' dari ' + nf(cfg.rows.length) + ' toko';
+    const shown = list.slice(0, st.limit || 60);
+    $('ls-' + id).innerHTML = !cfg.rows.length ? `<div class="empty">${cfg.empty}</div>` : !list.length ? `<div class="empty">Tidak ada toko yang cocok. <button type="button" class="lnk" data-reset="${id}">Hapus pencarian dan filter</button></div>`
+      : `<div class="rk-list">${shown.map(cfg.row).join('')}</div>` + (list.length > shown.length ? `<button type="button" class="btn plain more" data-more="${id}">Tampilkan lebih banyak (${nf(list.length - shown.length)} lagi)</button>` : '');
+  }
+
   function render() {
     const snaps = snapshots(), cur = snaps[snaps.length - 1], prev = snaps.length > 1 ? snaps[snaps.length - 2] : null;
     const rank = num(cur.rows.RANK && cur.rows.RANK.aktual), score = num(cur.rows.SCORE && cur.rows.SCORE.aktual);
     const prevRank = prev ? num(prev.rows.RANK && prev.rows.RANK.aktual) : null;
     const fw = cur.rows.FOP_WEEK;
-    $('gsSub').textContent = 'Data ' + tgl(cur.tanggal) + (fw && fw.aktual !== '' ? ' · FOP s.d. minggu ' + fw.aktual + ' (' + fw.catatan + ')' : '') +
-      (DATA.scope ? ' · Toko ' + DATA.scope.nama : '');
+    $('gsSub').textContent = 'AAM' + (DATA.scope ? ' · ' + DATA.scope.nama : ' · semua DT') + (fw && fw.aktual !== '' ? ' · FOP s.d. mg ' + fw.aktual : '');
+    $('gsUpdated').textContent = 'Data ' + tgl(cur.tanggal);
+    const big = $('greetBig'); big.textContent = rank == null ? 'Rank –' : 'Rank ' + rank; big.dataset.len = '';
 
     if (DATA.dts && DATA.dts.length) {
       $('dtSec').hidden = false;
@@ -172,132 +224,163 @@
 
     const ap = applyLive(kpiList(cur)), kp = ap.kp;
     const scoreShown = ap.score != null && !DATA.scope ? ap.score : score;
-    const delta = prevRank == null || rank == null ? '' : rank < prevRank ? `<span class="delta-up">▲ naik ${prevRank - rank} dari ${prevRank}</span>` : rank > prevRank ? `<span class="delta-down">▼ turun ${rank - prevRank} dari ${prevRank}</span>` : 'tetap';
     const gain = kp.reduce((s, k) => s + k.hilang, 0);
-    $('topKpis').innerHTML =
-      `<div class="kpi hot"><div class="l">Rank nasional</div><div class="v">${rank == null ? '-' : rank}</div><div class="s">${delta || 'belum ada pembanding'}</div></div>` +
-      `<div class="kpi"><div class="l">Score</div><div class="v">${scoreShown == null ? '-' : scoreShown.toFixed(2).replace('.', ',')}</div><div class="s">${ap.score != null && !DATA.scope ? 'PS dan Assortment dihitung ulang' : 'dari 100'}</div></div>` +
-      `<div class="kpi warn"><div class="l">Poin yang masih bisa dikejar</div><div class="v">${gain.toFixed(1).replace('.', ',')}</div><div class="s">terbesar: ${esc(kp[0] ? kp[0].label : '-')}</div></div>`;
+    const delta = prevRank == null || rank == null ? 'belum ada pembanding' : rank < prevRank ? `<span class="delta-up">▲ naik ${prevRank - rank} dari ${prevRank}</span>` : rank > prevRank ? `<span class="delta-down">▼ turun ${rank - prevRank} dari ${prevRank}</span>` : 'tetap';
+    const pctScore = scoreShown == null ? 0 : Math.max(0, Math.min(100, scoreShown));
+    $('heroCard').innerHTML = `<div class="hero-h"><span class="hero-ico">${svg('trophy')}</span><span class="hero-k">Skor Great Sales</span><span class="hero-s">${tgl(cur.tanggal)}</span></div>` +
+      `<div class="hero-units"><div><b>${rank == null ? '-' : rank}</b><span>Rank nasional</span></div><div><b>${scoreShown == null ? '-' : scoreShown.toFixed(2).replace('.', ',')}</b><span>Score</span></div><div><b>${gain.toFixed(1).replace('.', ',')}</b><span>Poin dikejar</span></div></div>` +
+      `<div class="bar"><i style="width:${pctScore}%"></i></div><div class="bar-meta"><span>${delta}</span><span>${ap.score != null && !DATA.scope ? 'PS dan Assortment dihitung ulang' : 'dari 100'}</span></div>`;
 
-    $('tKpi').innerHTML = '<tr><th>KPI</th><th style="text-align:right">Poin hilang</th></tr>' + kp.map(k =>
-      `<tr><td><span class="lv ${level(k)}">${esc(k.label)}</span>` +
-      `<div style="margin-top:4px"><b>${pct(k.aktual)}</b> dari target ${pct(k.target)} · poin ${k.poin == null ? '-' : k.poin.toFixed(1)}/${k.bobot}</div>` +
-      `<div class="muted" style="font-size:11px;margin-top:2px">${esc(k.catatan)}</div></td>` +
-      `<td class="n ${k.hilang > 0.05 ? 'no' : 'ok'}">${k.hilang > 0.05 ? '-' + k.hilang.toFixed(1) : '✓'}</td></tr>`).join('');
+    $('tKpi').innerHTML = kp.map(k => {
+      const l = level(k), ic = lvIcon(l), v = k.target && k.aktual != null ? Math.max(0, Math.min(1, k.aktual / k.target)) : 0;
+      const lost = k.hilang > 0.05;
+      return `<div class="rk"><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span><div class="it-i"><div class="nm">${esc(k.label)}</div><div class="sk">${esc(k.catatan)}</div></div><span class="tag ${l === 'green' ? 'g' : l === 'amber' ? 'a' : 'r'}">${lost ? '-' + k.hilang.toFixed(1) : '✓'}</span></div>` +
+        `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${(v * 100).toFixed(0)}%"></i></div>` +
+        `<div class="rk-s"><div class="${l === 'green' ? 'okc' : l === 'amber' ? 'amb' : 'neg'}"><small>Aktual</small><b>${pct(k.aktual)}</b></div><div><small>Target</small><b>${pct(k.target)}</b></div><div><small>Poin</small><b>${k.poin == null ? '-' : k.poin.toFixed(1)}<span class="muted" style="font-weight:600;font-size:11px"> / ${k.bobot}</span></b></div></div></div>`;
+    }).join('');
 
-    renderFop('secFopMinis', 'LOCAL MINIS', 'Weekly FOP Local Minis', kp.find(k => k.kpi === 'FOP_MINIS'));
-    renderFop('secFopSpm', 'LOCAL SUPERMARKET', 'Weekly FOP Supermarket (SPM)', kp.find(k => k.kpi === 'FOP_SPM'));
+    renderFop('secFopMinis', 'fopMinis', 'LOCAL MINIS', 'Weekly FOP Local Minis', kp.find(k => k.kpi === 'FOP_MINIS'));
+    renderFop('secFopSpm', 'fopSpm', 'LOCAL SUPERMARKET', 'Weekly FOP Supermarket (SPM)', kp.find(k => k.kpi === 'FOP_SPM'));
     renderUnmapped();
     renderAsrt(kp);
     renderPs(kp.find(k => k.kpi === 'PS'));
     renderBanded(kp.find(k => k.kpi === 'BANDED_MINIS'), kp.find(k => k.kpi === 'BANDED_SPM'));
     renderHist(snaps);
+    Object.keys(LISTS).forEach(fillList);
   }
 
   /** Toko yang bertransaksi di Extract DMS tapi belum ada di Outlet Master: channel tidak diketahui, tidak ikut hitungan. */
   function renderUnmapped() {
+    const all = (DATA.asrt && DATA.asrt.perDt) || [];
+    const empty = all.filter(d => !d.error && d.masterRows === 0);
+    const errs = all.filter(d => d.error);
     const rows = [];
-    asrtDts().forEach(d => (d.unmapped || []).forEach(u => rows.push(Object.assign({ dt: d.dist_nama }, u))));
-    const errs = ((DATA.asrt && DATA.asrt.perDt) || []).filter(d => d.error);
-    if (!rows.length && !errs.length) { $('secUnmapped').innerHTML = ''; return; }
+    all.filter(d => !d.error && d.masterRows > 0).forEach(d => (d.unmapped || []).forEach(u => rows.push(Object.assign({ dt: d.dist_nama }, u))));
+    if (!rows.length && !errs.length && !empty.length) { $('secUnmapped').innerHTML = ''; return; }
     rows.sort((a, b) => b.gsv - a.gsv);
     const gsv = rows.reduce((s, r) => s + r.gsv, 0);
     $('secUnmapped').innerHTML = '<div class="notice">' +
-      (rows.length ? `<b>${rows.length} toko belum terbaca di Outlet Master.</b> Toko ini transaksi di Extract DMS bulan ini (omset ${idr(gsv)}) tapi channelnya tidak diketahui, jadi assortmentnya belum masuk hitungan SPM maupun Minis. Minta tim DT menambahkannya ke Outlet Master lalu upload ulang.` : '') +
-      (errs.length ? `<div style="margin-top:6px">Assortment gagal dihitung untuk: ${errs.map(e => esc(e.dist_nama)).join(', ')}.</div>` : '') +
-      (rows.length ? `<details class="box" style="margin-top:8px"><summary>Lihat daftar toko</summary><div class="scroll" style="margin-top:8px"><table class="gs"><tr><th>Toko</th><th class="n">Omset</th><th class="n">Lines</th></tr>` +
-        rows.slice(0, 40).map(r => `<tr><td>${esc(r.nama || r.outlet)}<div class="muted" style="font-size:11px">${esc(r.dt)} · ${esc(r.outlet)} · terakhir ${esc(tgl(r.terakhir))}</div></td><td class="n">${idr(r.gsv)}</td><td class="n">${r.lines}</td></tr>`).join('') +
-        '</table></div>' + (rows.length > 40 ? `<p class="gs-note">Menampilkan 40 dengan omset terbesar dari ${rows.length}.</p>` : '') + '</details>' : '') + '</div>';
+      (empty.length ? `<div><b>Outlet Master belum diisi:</b> ${empty.map(d => esc(d.dist_nama)).join(', ')}. Channel toko belum bisa dibaca, jadi assortment SPM dan Minis untuk DT ini belum terhitung. Otomatis terhitung setelah Outlet Master diisi.</div>` : '') +
+      (rows.length ? `<div${empty.length ? ' style="margin-top:8px"' : ''}><b>${rows.length} toko belum terbaca di Outlet Master.</b> Toko ini transaksi di Extract DMS bulan ini (omset ${idr(gsv)}) tapi channelnya tidak diketahui, jadi assortmentnya belum masuk hitungan SPM maupun Minis. Minta tim DT menambahkannya ke Outlet Master lalu upload ulang.</div>` : '') +
+      (errs.length ? `<div style="margin-top:8px">Assortment gagal dihitung untuk: ${errs.map(e => esc(e.dist_nama)).join(', ')}.</div>` : '') +
+      (rows.length ? `<details class="box" style="margin-top:10px"><summary>Lihat daftar toko</summary><div class="rk-list" style="margin-top:10px">` +
+        rows.slice(0, 40).map(r => `<div class="rk"><div class="rk-h"><span class="si warn">${svg('warn')}</span><div class="it-i"><div class="nm">${esc(r.nama || r.outlet)}</div><div class="sk">${esc(r.dt)} · terakhir ${esc(tgl(r.terakhir))}</div></div></div>` +
+          `<div class="rk-s two"><div><small>Omset</small><b>${idr(r.gsv)}</b></div><div><small>Lines</small><b>${r.lines}</b></div></div></div>`).join('') +
+        '</div>' + (rows.length > 40 ? `<p class="hint" style="margin-top:8px">Menampilkan 40 dengan omset terbesar dari ${rows.length}.</p>` : '') + '</details>' : '') + '</div>';
   }
-
-  const idr = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
 
   function renderAsrt(kp) {
     const as = asrtSummary(), dts = asrtDts();
     if (!as) { $('secAsrt').innerHTML = ''; return; }
     const first = dts.find(d => d.tanggalData) || {};
     const noTarget = ASRT_CH.some(c => as[c[0]].pct == null);
+    const tgtOf = (d, c) => ((DATA.asrt.targets) || []).filter(z => String(z.dist_kode) === String(d.dist_kode) && z.channel === c[1]).reduce((a, z) => a + (num(z.target_lines) || 0), 0);
     const head = ASRT_CH.map(c => {
       const a = as[c[0]], k = kp.find(x => x.kpi === c[3]);
+      const reg = dts.reduce((s, d) => s + ((d.channels && d.channels[c[0]] && d.channels[c[0]].registered) || 0), 0);
+      const ref = a.target > 0 && reg > 0 ? a.target / reg : null;
       return `<div class="kpi"><div class="l">${esc(c[2])}</div><div class="v">${a.pct == null ? '-' : pct(a.pct)}</div>` +
-        `<div class="s">${a.lines.toLocaleString('id-ID')} lines${a.target ? ' dari ' + a.target.toLocaleString('id-ID') : ', target belum diisi'}${k ? ' · poin ' + (k.poin == null ? '-' : k.poin.toFixed(1)) + '/' + k.bobot : ''}</div></div>`;
+        `<div class="s">${nf(a.lines)} lines${a.target ? ' dari ' + nf(a.target) : ', target belum diisi'}${k ? ' · poin ' + (k.poin == null ? '-' : k.poin.toFixed(1)) + '/' + k.bobot : ''}</div>` +
+        `<div class="s"><b>${nf1(a.perOutlet)}</b> base pack per toko aktif${ref ? ` · acuan <b>${nf1(ref)}</b> per toko` : ''}</div></div>`;
     }).join('');
-    const dtRows = dts.map(d => ASRT_CH.map(c => {
+    const cards = dts.map(d => ASRT_CH.map(c => {
       const x = d.channels && d.channels[c[0]];
       if (!x) return '';
-      const t = ((DATA.asrt.targets) || []).filter(z => String(z.dist_kode) === String(d.dist_kode) && z.channel === c[1]).reduce((a, z) => a + (num(z.target_lines) || 0), 0);
-      return `<tr><td>${esc(d.dist_nama)}<div class="muted" style="font-size:11px">${esc(c[2])}</div></td><td class="n">${x.lines.toLocaleString('id-ID')}${t ? ' / ' + t.toLocaleString('id-ID') : ''}</td><td class="n">${x.outlets}</td><td class="n">${x.perOutlet.toFixed(1).replace('.', ',')}</td></tr>`;
+      const t = tgtOf(d, c), ref = t > 0 && x.registered > 0 ? t / x.registered : null, v = t ? x.lines / t : NaN;
+      const tone = !isFinite(v) ? '' : v >= 1 ? 'okc' : v >= 0.8 ? 'amb' : 'neg';
+      const ic = !isFinite(v) ? ['plus', 'box'] : v >= 1 ? ['ok', 'check'] : v >= 0.8 ? ['warn', 'warn'] : ['neg', 'down'];
+      const tagTxt = !t ? '<span class="tag a">target belum diisi</span>' : `<span class="tag ${v >= 1 ? 'g' : v >= 0.8 ? 'a' : 'r'}">${pct(v)}</span>`;
+      return `<div class="rk"><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span><div class="it-i"><div class="nm">${esc(d.dist_nama)}</div><div class="sk">${esc(c[2])} · ${nf(x.registered)} toko terdaftar</div></div>${tagTxt}</div>` +
+        `<div class="rk-s four"><div class="${tone}"><small>Lines</small><b>${nf(x.lines)}</b><em>${t ? 'dari ' + nf(t) : 'tanpa target'}</em></div><div><small>Toko aktif</small><b>${nf(x.outlets)}</b><em>transaksi</em></div>` +
+        `<div><small>Per toko</small><b>${nf1(x.perOutlet)}</b><em>rata-rata kini</em></div><div class="${ref ? tone : ''}"><small>Acuan</small><b>${ref ? nf1(ref) : '-'}</b><em>per toko</em></div></div></div>`;
     }).join('')).join('');
+    const refAll = {};
+    ASRT_CH.forEach(c => { const reg = dts.reduce((s, d) => s + ((d.channels && d.channels[c[0]] && d.channels[c[0]].registered) || 0), 0); refAll[c[0]] = as[c[0]].target > 0 && reg > 0 ? as[c[0]].target / reg : null; });
     const low = ASRT_CH.map(c => {
       const items = [];
       dts.forEach(d => { const x = d.channels && d.channels[c[0]]; if (x) x.low.forEach(o => items.push(Object.assign({ dt: d.dist_nama }, o))); });
       items.sort((a, b) => a.lines - b.lines);
-      return items.length ? `<details class="box" style="margin-top:8px"><summary>Toko ${esc(c[2])} dengan base pack paling sedikit</summary><div class="scroll" style="margin-top:8px"><table class="gs"><tr><th>Toko</th><th class="n">Base pack</th></tr>` +
-        items.slice(0, 10).map(o => `<tr><td>${esc(o.nama)}<div class="muted" style="font-size:11px">${esc(o.dt)}</div></td><td class="n">${o.lines}</td></tr>`).join('') + '</table></div></details>' : '';
+      const ref = refAll[c[0]];
+      return items.length ? `<details class="box"><summary>Toko ${esc(c[2])} dengan base pack paling sedikit</summary><div class="rk-list" style="margin-top:10px">` +
+        items.slice(0, 10).map(o => `<div class="rk"><div class="rk-h"><span class="si ${ref && o.lines >= ref ? 'ok' : 'neg'}">${svg(ref && o.lines >= ref ? 'check' : 'down')}</span><div class="it-i"><div class="nm">${esc(o.nama)}</div><div class="sk">${esc(o.dt)}</div></div><b class="num">${o.lines}${ref ? ` <span class="muted" style="font-weight:600;font-size:11px">/ ${nf1(ref)}</span>` : ''}</b></div></div>`).join('') + '</div></details>' : '';
     }).join('');
-    $('secAsrt').innerHTML = `<h2>Assortment per channel</h2>` +
-      `<p class="gs-note">Dari Extract DMS${first.tanggalData ? ' s.d. ' + esc(tgl(first.tanggalData)) : ''}. Satu line = satu base pack di satu toko, dihitung kalau qty bersih bulan ini minimal ${DATA.asrt.moq} pcs. Base pack yang sama di toko yang sama hanya dihitung sekali, jadi tambah assortment dengan menjual base pack baru.${noTarget ? ' Target belum diisi untuk sebagian channel, jadi persennya belum muncul.' : ''}</p>` +
-      `<div class="kpis">${head}</div>` +
-      (dtRows ? `<div class="scroll" style="margin-top:10px"><table class="gs"><tr><th>DT dan channel</th><th class="n">Lines / target</th><th class="n">Toko</th><th class="n">Per toko</th></tr>${dtRows}</table></div>` : '') + low;
+    $('secAsrt').innerHTML = `<div class="card">${ciTitle('box', 'Assortment per channel')}` +
+      `<p class="hint">Dari Extract DMS${first.tanggalData ? ' s.d. ' + esc(tgl(first.tanggalData)) : ''}. Satu line = satu base pack di satu toko, dihitung kalau qty bersih bulan ini minimal ${DATA.asrt.moq} pcs. Base pack yang sama di toko yang sama hanya dihitung sekali, jadi tambah assortment dengan menjual base pack baru. Acuan per toko = target dibagi toko terdaftar di Outlet Master.${noTarget ? ' Target belum diisi untuk sebagian channel, jadi persennya belum muncul.' : ''}</p>` +
+      `<div class="kpis">${head}</div></div>` +
+      (cards ? `<div class="card">${ciTitle('store', 'Per DT dan channel')}<div class="rk-list">${cards}</div></div>` : '') + low;
   }
 
   function fopRows(channel) {
     return outlets('FOP').filter(o => o.channel === channel).map(o => ({ ...o, orders: num(o.v1) || 0, weekNow: String(o.v2) === '1', lastWeek: o.v3 }));
   }
 
-  function renderFop(id, channel, title, k) {
+  function renderFop(id, key, channel, title, k) {
     const rows = fopRows(channel);
-    if (!rows.length) { $(id).innerHTML = ''; return; }
-    const done = rows.filter(o => o.status === 'WEEKLY');
-    const todo = rows.filter(o => o.status !== 'WEEKLY').sort((a, b) => b.orders - a.orders || String(a.dist_nama).localeCompare(b.dist_nama));
-    $(id).innerHTML = `<h2>${esc(title)} ${k ? `<span class="lv ${level(k)}">${pct(k.aktual)}</span>` : ''}</h2>` +
-      `<p class="gs-note">${done.length} dari ${rows.length} toko aktif sudah WEEKLY di file. ${todo.length} toko belum: kejar sampai order ${FOP_NEED}x bulan ini, mulai dari yang paling dekat.</p>` +
-      (todo.length ? `<div class="scroll"><table class="gs"><tr><th>Toko</th><th>Order bln</th><th>Mg ini</th><th>Terakhir</th></tr>` +
-        todo.map(o => `<tr><td>${esc(o.outlet_nama)}<div class="muted" style="font-size:11px">${esc(o.dist_nama)} · ${esc(o.remark)} · ${esc(o.status || '-')}</div></td>` +
-          `<td class="n">${o.orders} / ${FOP_NEED}</td><td class="n ${o.weekNow ? 'ok' : 'no'}">${o.weekNow ? '✓' : '✗'}</td><td class="n">${o.lastWeek === '' ? '-' : 'mg ' + esc(o.lastWeek)}</td></tr>`).join('') +
-        '</table></div>' : '');
+    const el = $(id);
+    if (!rows.length) { el.innerHTML = ciTitle('cal', esc(title)) + '<div class="empty">Belum ada data toko. Upload file Great Sales lewat tool upload.</div>'; return; }
+    const done = rows.filter(o => o.status === 'WEEKLY').length;
+    el.innerHTML = ciTitle('cal', esc(title), k ? ` <span class="lv ${level(k)}">${pct(k.aktual)}</span>` : '') +
+      `<p class="hint">${done} dari ${rows.length} toko aktif sudah WEEKLY di file. Sisanya perlu order ${FOP_NEED}x bulan ini, mulai dari yang paling dekat.</p>` +
+      mountList(key, {
+        rows, defaultF: 'belum', empty: 'Belum ada toko.',
+        chips: [['belum', 'Belum WEEKLY'], ['minggu', 'Belum order mg ini'], ['weekly', 'WEEKLY'], ['semua', 'Semua']],
+        test: (f, o) => f === 'semua' || (f === 'belum' && o.status !== 'WEEKLY') || (f === 'minggu' && o.status !== 'WEEKLY' && !o.weekNow) || (f === 'weekly' && o.status === 'WEEKLY'),
+        hay: o => (o.outlet_nama + ' ' + o.dist_nama + ' ' + o.remark).toLowerCase(),
+        sort: (a, b) => (a.status === 'WEEKLY') - (b.status === 'WEEKLY') || b.orders - a.orders || String(a.outlet_nama).localeCompare(b.outlet_nama),
+        row: o => { const ok = o.status === 'WEEKLY'; return `<div class="rk"><div class="rk-h"><span class="si ${ok ? 'ok' : o.orders >= FOP_NEED - 1 ? 'warn' : 'neg'}">${svg(ok ? 'check' : o.orders >= FOP_NEED - 1 ? 'warn' : 'down')}</span>` +
+          `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)} · ${esc(o.status || '-')}</div></div><span class="tag ${o.weekNow ? 'g' : 'r'}">${o.weekNow ? 'order mg ini' : 'belum mg ini'}</span></div>` +
+          `<div class="rk-s two"><div class="${o.orders >= FOP_NEED ? 'okc' : o.orders >= FOP_NEED - 1 ? 'amb' : 'neg'}"><small>Order bulan ini</small><b>${o.orders} / ${FOP_NEED}</b></div><div><small>Order terakhir</small><b>${o.lastWeek === '' ? '-' : 'mg ' + esc(o.lastWeek)}</b></div></div></div>`; },
+      });
   }
 
   function renderPs(k) {
     const sm = psSummary(), st = psStores();
-    if (!sm) { $('secPs').innerHTML = ''; return; }
-    const not = st.filter(o => !isPerfect(o)).sort((a, b) => psMissing(a).length - psMissing(b).length || String(a.dist_nama).localeCompare(b.dist_nama));
-    const miss = {};
-    not.forEach(o => psMissing(o).forEach(m => { miss[m] = (miss[m] || 0) + 1; }));
-    const missTxt = Object.keys(miss).sort((a, b) => miss[b] - miss[a]).map(m => `${m} (${miss[m]} toko)`).join(', ');
+    if (!sm) { $('secPs').innerHTML = `<div class="card">${ciTitle('store', 'Perfect Stores')}<div class="empty">Belum ada data. Upload sheet Perfect Stores di tool upload (seminggu sekali).</div></div>`; return; }
     const need = Math.max(sm.target - sm.perfect, 0);
+    const v = sm.target ? sm.perfect / sm.target : 0;
     const dtRows = (DATA.ps.targets || []).map(t => {
       const mine = st.filter(o => String(o.dist_kode) === String(t.dist_kode));
-      const per = mine.filter(isPerfect).length, tg = (num(t.target_full) || 0) + (num(t.target_lite) || 0);
-      return `<tr><td>${esc(t.dist_nama)}</td><td class="n">${mine.filter(o => o.status === 'PS FULL').length}/${num(t.target_full) || 0}</td>` +
-        `<td class="n">${mine.filter(o => o.status === 'PS LITE').length}/${num(t.target_lite) || 0}</td><td class="n ${tg && per >= tg ? 'ok' : ''}">${tg ? pct(per / tg) : '-'}</td></tr>`;
+      const per = mine.filter(isPerfect).length, tg = (num(t.target_full) || 0) + (num(t.target_lite) || 0), vv = tg ? per / tg : NaN;
+      const tone = !isFinite(vv) ? '' : vv >= 1 ? 'okc' : vv >= 0.8 ? 'amb' : 'neg';
+      return `<div class="rk"><div class="rk-h"><span class="si ${tone === 'okc' ? 'ok' : tone === 'amb' ? 'warn' : tone === 'neg' ? 'neg' : 'plus'}">${svg(tone === 'okc' ? 'check' : tone === 'amb' ? 'warn' : 'down')}</span><div class="it-i"><div class="nm">${esc(t.dist_nama)}</div><div class="sk">${mine.length} toko di-audit</div></div><span class="tag ${tone === 'okc' ? 'g' : tone === 'amb' ? 'a' : 'r'}">${tg ? pct(vv) : '-'}</span></div>` +
+        `<div class="rk-s"><div><small>Full</small><b>${mine.filter(o => o.status === 'PS FULL').length}/${num(t.target_full) || 0}</b></div><div><small>Lite</small><b>${mine.filter(o => o.status === 'PS LITE').length}/${num(t.target_lite) || 0}</b></div><div class="${tone}"><small>Perfect</small><b>${per}/${tg}</b></div></div></div>`;
     }).join('');
-    $('secPs').innerHTML = `<h2>Perfect Stores ${k ? `<span class="lv ${level(k)}">${pct(k.aktual)}</span>` : ''}</h2>` +
-      `<p class="gs-note">Data ${esc(tgl(sm.tanggal))}, update mingguan. ${sm.perfect} toko perfect (Full ${sm.full}, Lite ${sm.lite}) dari target ${sm.target}` +
-      (need ? `: kurang ${need} toko lagi.` : ': target tercapai.') +
-      ` Toko yang belum perfect paling sering kurang: ${esc(missTxt || '-')}.</p>` +
-      (dtRows ? `<div class="scroll"><table class="gs"><tr><th>DT</th><th class="n">Full</th><th class="n">Lite</th><th class="n">Capai</th></tr>${dtRows}</table></div>` : '') +
-      `<p class="gs-note" style="margin-top:10px">Status Full atau Lite mengikuti hasil HO di file. Toko di bawah ini diurutkan dari yang paling dekat perfect.</p>` +
-      (not.length ? `<div class="scroll"><table class="gs"><tr><th>Toko</th><th>KPI</th><th>Kurang</th></tr>` +
-        not.map(o => `<tr><td>${esc(o.outlet_nama)}<div class="muted" style="font-size:11px">${esc(o.dist_nama)} · ${esc(o.channel)}</div></td>` +
-          `<td class="n">${esc(o.total_kpi)}</td><td class="no">${esc(psMissing(o).join(', ') || '-')}</td></tr>`).join('') + '</table></div>' : '');
+    const miss = {};
+    st.filter(o => !isPerfect(o)).forEach(o => psMissing(o).forEach(m => { miss[m] = (miss[m] || 0) + 1; }));
+    const missTxt = Object.keys(miss).sort((a, b) => miss[b] - miss[a]).map(m => `${m} (${miss[m]} toko)`).join(', ');
+    const rows = st.map(o => Object.assign({}, o, { miss: psMissing(o) }));
+    const comp = (o, p) => { const f = String(o[p[0]]); const sc = o['s_' + p[0]]; return `<div class="${f === '1' ? 'okc' : f === '0' ? 'neg' : ''}"><small>${p[1]}</small><b>${f === '1' ? '✓' : f === '0' ? '✗' : '–'}</b><em>${sc === '' || sc == null ? ' ' : Math.round(num(sc) * 100) + '%'}</em></div>`; };
+    $('secPs').innerHTML = `<div class="card">${ciTitle('store', 'Perfect Stores', k ? ` <span class="lv ${level(k)}">${pct(k.aktual)}</span>` : '')}` +
+      `<p class="hint">Data ${esc(tgl(sm.tanggal))}, update mingguan. Status Full atau Lite mengikuti hasil HO di file.</p>` +
+      `<div class="hero-units" style="margin-top:0;border-top:0;padding-top:0"><div><b>${sm.perfect}</b><span>Perfect</span></div><div><b>${sm.full} · ${sm.lite}</b><span>Full · Lite</span></div><div><b>${sm.target}</b><span>Target</span></div></div>` +
+      `<div class="bar"><i style="width:${Math.min(100, v * 100).toFixed(0)}%"></i></div><div class="bar-meta"><span>${need ? `Kurang <b>${need}</b> toko lagi` : 'Target tercapai'}</span><b>${pct(v)}</b></div>` +
+      `<p class="hint" style="margin-top:10px">Belum perfect paling sering kurang: ${esc(missTxt || '-')}.</p></div>` +
+      (dtRows ? `<div class="card">${ciTitle('store', 'Per DT')}<div class="rk-list">${dtRows}</div></div>` : '') +
+      `<div class="card">${ciTitle('store', 'Daftar toko')}` + mountList('ps', {
+        rows, defaultF: 'belum', empty: 'Belum ada toko.',
+        chips: [['belum', 'Belum perfect'], ['perfect', 'Perfect'], ...PS_PARTS.map(p => ['k' + p[0], 'Kurang ' + p[1]]), ['semua', 'Semua']],
+        test: (f, o) => f === 'semua' || (f === 'belum' && !isPerfect(o)) || (f === 'perfect' && isPerfect(o)) || (f.startsWith('k') && f !== 'k' && !isPerfect(o) && String(o[f.slice(1)]) === '0'),
+        hay: o => (o.outlet_nama + ' ' + o.dist_nama + ' ' + o.channel).toLowerCase(),
+        sort: (a, b) => isPerfect(a) - isPerfect(b) || a.miss.length - b.miss.length || String(a.outlet_nama).localeCompare(b.outlet_nama),
+        row: o => { const ok = isPerfect(o); return `<div class="rk"><div class="rk-h"><span class="si ${ok ? 'ok' : o.miss.length <= 1 ? 'warn' : 'neg'}">${svg(ok ? 'check' : o.miss.length <= 1 ? 'warn' : 'down')}</span><div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.channel)}</div></div><span class="tag ${ok ? 'g' : 'a'}">${esc(o.status === 'NOT PERFECT' ? o.total_kpi : o.status)}</span></div><div class="rk-s five">${PS_PARTS.map(p => comp(o, p)).join('')}</div></div>`; },
+      }) + '</div>';
   }
 
   function renderBanded(kMinis, kSpm) {
     const sku = ch => outlets('BANDED_SKU').filter(o => o.channel === ch);
     const outs = outlets('BANDED_OUTLET');
-    const list = (title, k, items) => `<details class="box" style="margin-top:8px"><summary>${esc(title)} ${k ? `<span class="lv ${level(k)}">${pct(k.aktual)} / target ${pct(k.target)}</span>` : ''} · ${items.length} SKU</summary>` +
+    const list = (title, k, items) => `<details class="box" style="margin-top:8px"><summary><span>${esc(title)} ${k ? `<span class="lv ${level(k)}">${pct(k.aktual)} / target ${pct(k.target)}</span>` : ''} · ${items.length} SKU</span></summary>` +
       `<ul class="sku-list">${items.map(o => `<li>${esc(o.outlet_kode)} ${esc(o.outlet_nama)}</li>`).join('')}</ul></details>`;
-    $('secBanded').innerHTML = '<h2>Banded</h2><p class="gs-note">SKU banded yang harus ada di toko monitoring. Pastikan tiap toko di daftar bawah sudah order semua SKU channel-nya.</p>' +
+    $('secBanded').innerHTML = ciTitle('box', 'Banded') + '<p class="hint">SKU banded yang harus ada di toko monitoring. Pastikan tiap toko di daftar sudah order semua SKU channel-nya.</p>' +
       list('Local Minis', kMinis, sku('LOCAL MINIS')) + list('Supermarket (SPM)', kSpm, sku('SPM')) +
-      (outs.length ? `<details class="box" style="margin-top:8px"><summary>Toko monitoring banded · ${outs.length} toko</summary><div class="scroll" style="margin-top:8px"><table class="gs"><tr><th>Toko</th><th>Channel</th></tr>` +
-        outs.map(o => `<tr><td>${esc(o.outlet_nama)}<div class="muted" style="font-size:11px">${esc(o.dist_nama)}</div></td><td>${esc(o.remark)}</td></tr>`).join('') + '</table></div></details>' : '');
+      (outs.length ? `<details class="box" style="margin-top:8px"><summary><span>Toko monitoring banded · ${outs.length} toko</span></summary><div class="rk-list" style="margin-top:10px">` +
+        outs.map(o => `<div class="rk"><div class="rk-h"><span class="si plus">${svg('store')}</span><div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)}</div></div><span class="tag a">${esc(o.remark)}</span></div></div>`).join('') + '</div></details>' : '');
   }
 
   function renderHist(snaps) {
-    if (snaps.length < 2) { $('secHist').innerHTML = '<h2>Riwayat</h2><p class="gs-note">Riwayat rank muncul setelah upload kedua (1 baris per hari upload).</p>'; return; }
-    $('secHist').innerHTML = '<h2>Riwayat rank</h2><div class="scroll"><table class="gs"><tr><th>Tanggal</th><th>Rank</th><th>Score</th></tr>' +
-      snaps.slice(-14).reverse().map(s => `<tr><td>${tgl(s.tanggal)}</td><td class="n">${esc(s.rows.RANK ? s.rows.RANK.aktual : '-')}</td><td class="n">${s.rows.SCORE ? (num(s.rows.SCORE.aktual) || 0).toFixed(2) : '-'}</td></tr>`).join('') + '</table></div>';
+    if (snaps.length < 2) { $('secHist').innerHTML = ciTitle('clock', 'Riwayat rank') + '<div class="empty">Riwayat rank muncul setelah upload kedua (1 baris per hari upload).</div>'; return; }
+    $('secHist').innerHTML = ciTitle('clock', 'Riwayat rank') + '<div class="scroll"><table><thead><tr><th>Tanggal</th><th class="n">Rank</th><th class="n">Score</th></tr></thead><tbody>' +
+      snaps.slice(-14).reverse().map(s => `<tr><td>${tgl(s.tanggal)}</td><td class="n">${esc(s.rows.RANK ? s.rows.RANK.aktual : '-')}</td><td class="n">${s.rows.SCORE ? (num(s.rows.SCORE.aktual) || 0).toFixed(2) : '-'}</td></tr>`).join('') + '</tbody></table></div>';
   }
 
   /** Teks pengingat untuk grup WhatsApp: rank, 3 KPI dengan poin hilang terbesar, toko FOP yang belum order minggu ini, toko PS yang kurang. */
@@ -336,9 +419,35 @@
   });
   $('waBtn').addEventListener('click', () => { window.open('https://wa.me/?text=' + encodeURIComponent(reminderText()), '_blank'); });
   $('copyBtn').addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(reminderText()); $('copyMsg').textContent = 'Teks pengingat disalin. Tempel di grup WhatsApp.'; }
-    catch (e) { $('copyMsg').textContent = 'Browser tidak mengizinkan salin otomatis. Pakai tombol WhatsApp.'; }
+    try { await navigator.clipboard.writeText(reminderText()); toast('Teks pengingat disalin. Tempel di grup WhatsApp.'); }
+    catch (e) { toast('Browser tidak mengizinkan salin otomatis. Pakai tombol WhatsApp.'); }
   });
+
+  /* tab, daftar (cari/filter/lagi), muat ulang, popover status */
+  const TABS = ['skor', 'fop', 'asrt', 'ps'];
+  function setTab(t) {
+    if (!TABS.includes(t)) t = 'skor';
+    TABS.forEach(k => { $('tab-' + k).hidden = k !== t; });
+    document.querySelectorAll('#tabsNav [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    try { localStorage.setItem('mh_gs_tab', t); } catch (e) { /* mode privat */ }
+    window.scrollTo({ top: 0 });
+  }
+  $('tabsNav').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
+  document.addEventListener('input', e => { const id = e.target.getAttribute && e.target.getAttribute('data-q'); if (!id) return; LST[id].q = e.target.value; LST[id].limit = 60; $('tb-' + id).querySelector('.clr').hidden = !e.target.value; fillList(id); });
+  document.addEventListener('click', e => {
+    const c = e.target.closest('[data-ch]'); if (c) { LST[c.dataset.ch].f = c.dataset.f; LST[c.dataset.ch].limit = 60; fillList(c.dataset.ch); return; }
+    const x = e.target.closest('[data-clr]'); if (x) { const id = x.dataset.clr; LST[id].q = ''; $('tb-' + id).querySelector('input').value = ''; x.hidden = true; fillList(id); return; }
+    const m = e.target.closest('[data-more]'); if (m) { const id = m.dataset.more; LST[id].limit = (LST[id].limit || 60) + 60; fillList(id); return; }
+    const r = e.target.closest('[data-reset]'); if (r) { const id = r.dataset.reset; LST[id].q = ''; LST[id].f = LISTS[id].defaultF; $('tb-' + id).querySelector('input').value = ''; fillList(id); return; }
+    $('syncPop').hidden = true;
+  });
+  $('syncInfo').addEventListener('click', e => { e.stopPropagation(); const p = $('syncPop'); p.hidden = !p.hidden; });
+  $('refreshBtn').addEventListener('click', () => {
+    const b = $('refreshBtn'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
+    refreshNote('Memperbarui data…');
+    login(CODE, true, true).then(ok => { if (ok) toast('Data diperbarui'); });
+  });
+  try { setTab(localStorage.getItem('mh_gs_tab') || 'skor'); } catch (e) { setTab('skor'); }
 
   let saved = null; try { saved = localStorage.getItem(LS_CODE); } catch (e) { /* mode privat */ }
   if (saved) { $('codeInput').value = saved; login(saved, true); }

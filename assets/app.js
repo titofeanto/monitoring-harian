@@ -567,10 +567,19 @@ if (typeof module !== 'undefined') {
   const CACHE_KEY = 'app';
   let touched = false, pendingRaw = null, cacheAt = 0;
   const jam = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0'); };
+  /* Status data di header (titik hijau/kuning/merah). Banner hanya muncul untuk gagal atau data baru yang menunggu. */
+  function setSync(state, text) { const el = $('sync'); el.className = 'sync ' + state; el.innerHTML = '<i></i><span>' + M.esc(text) + '</span>'; }
   function refreshNote(txt, done, btn) {
-    $('appRefresh').hidden = !txt; $('appRefresh').classList.toggle('done', !!done);
-    $('appRefreshTxt').textContent = txt || ''; $('appRefreshBtn').hidden = !btn;
+    const banner = $('appRefresh');
+    banner.hidden = true; $('appRefreshBtn').hidden = true;
+    if (!txt) { setSync('ok', 'Terbaru'); return; }
+    if (/^Memperbarui/.test(txt)) { setSync('wait', 'Memperbarui…'); return; }
+    if (/^Data diperbarui/.test(txt)) { setSync('ok', txt.replace('Data diperbarui pukul ', 'Terbaru ')); return; }
+    setSync(btn ? 'wait' : 'off', btn ? 'Data baru siap' : 'Gagal memperbarui');
+    banner.hidden = false; $('appRefreshTxt').textContent = txt; $('appRefreshBtn').hidden = !btn;
   }
+  let toastT;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2200); }
   ['input', 'change'].forEach(ev => $('appScreen').addEventListener(ev, () => { touched = true; }));
 
   /* Ganti data di layar dengan data baru tanpa kehilangan DT/DSR yang sedang dipilih. */
@@ -587,7 +596,7 @@ if (typeof module !== 'undefined') {
     refreshNote('Data diperbarui pukul ' + jam(Date.now()), true);
   });
 
-  async function tryLogin(code, silent) {
+  async function tryLogin(code, silent, noCache) {
     const base = (window.APP_CONFIG && window.APP_CONFIG.APPS_SCRIPT_URL) || '';
     if (!base || base.includes('PASTE_URL')) {
       loginProblem('APPS_SCRIPT_URL belum diisi di assets/config.js. Lihat README bagian 3.', silent, false);
@@ -596,7 +605,7 @@ if (typeof module !== 'undefined') {
     if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
     // Login otomatis: tampilkan salinan terakhir dulu, data baru menyusul di belakang.
     let shown = false;
-    if (silent) {
+    if (silent && !noCache) {
       const c = await window.MHBoot.cacheGet(CACHE_KEY);
       if (c && c.code === code && c.raw) {
         try {
@@ -618,7 +627,10 @@ if (typeof module !== 'undefined') {
       try { localStorage.setItem(LS_CODE, code); } catch {}
       const complete = !raw.dts || raw.dts.every(d => d.x);
       if (complete) window.MHBoot.cacheSet(CACHE_KEY, { code: code, at: Date.now(), raw: raw });
-      if (!shown) { applyRaw(raw); showApp(); return true; }
+      if (!shown) {
+        if (!$('appScreen').hidden) { if (touched) { pendingRaw = raw; refreshNote('Data baru tersedia. Layar belum diganti supaya isian Anda tidak hilang.', true, true); } else swapIn(raw); } else { applyRaw(raw); showApp(); }
+        refreshNote('Data diperbarui pukul ' + jam(Date.now()), true); return true;
+      }
       if (touched) { pendingRaw = raw; refreshNote('Data baru tersedia. Layar belum diganti supaya isian Anda tidak hilang.', true, true); }
       else { swapIn(raw); refreshNote('Data diperbarui pukul ' + jam(Date.now()), true); }
       return true;
@@ -675,7 +687,7 @@ if (typeof module !== 'undefined') {
     $('tabsNav').hidden = all;
     $('saveHasilBtn').hidden = all;
     $('saveHasilMsg').hidden = true; $('saveHasilMsg').textContent = '';
-    $('ovTitle').textContent = all ? 'Per DT' : 'Semua DSR';
+    $('ovTitleTxt').textContent = all ? 'Per DT' : 'Semua DSR';
     if (all) {
       openTab($('tab-ring'));
       renderHeaderAll();
@@ -700,6 +712,39 @@ if (typeof module !== 'undefined') {
     });
   }
 
+
+  /* ---- komponen tampilan bersama (pola: DESIGN.md) ---- */
+  const ICON = {
+    chart: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    warn: '<path d="M12 4l9 16H3L12 4z"/><path d="M12 10v4M12 17h.01"/>',
+    down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+    coin: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5h4a1.8 1.8 0 0 1 0 3.6h-3a1.8 1.8 0 0 0 0 3.6h4M12 7.5v1.8M12 16.7v1.8"/>',
+    box: '<path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/>',
+    store: '<path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6"/>',
+    cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  };
+  const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+  /* Bungkus tiap <h2> beserta isinya jadi kartu putih bergaya aplikasi, dengan chip ikon di judul. */
+  function wrapCards(html) {
+    const pick = t => /Insentif|Total/.test(t) ? 'coin' : /Omset|Secondary|Rekap SS/.test(t) ? 'chart' : /Toko/.test(t) ? 'store' : /Assortment|Norms/.test(t) ? 'box' : 'check';
+    return html.split(/(?=<h2)/).filter(Boolean).map(chunk => {
+      if (!chunk.startsWith('<h2')) return chunk;
+      const title = (chunk.match(/<h2[^>]*>([\s\S]*?)<\/h2>/) || [, ''])[1].replace(/<[^>]+>/g, '');
+      return '<section class="card">' + chunk.replace(/<h2[^>]*>/, m => m + '<span class="ci">' + svg(pick(title)) + '</span>') + '</section>';
+    }).join('');
+  }
+  const tone = v => !isFinite(v) ? '' : v >= 1 ? 'okc' : v >= 0.8 ? 'amb' : 'neg';
+  /* Kartu satu DSR (atau satu DT): ikon status, nama, skor dan insentif, lalu tiga angka capaian. */
+  function dsrCard(o) {
+    const ic = o.band === 'GREEN' ? ['ok', 'check'] : o.band === 'AMBER' ? ['warn', 'warn'] : o.band === 'RED' ? ['neg', 'down'] : ['plus', 'chart'];
+    const tag = o.band ? `<span class="tag ${o.band === 'GREEN' ? 'g' : o.band === 'AMBER' ? 'a' : 'r'}">${o.band}</span>` : (o.tagHtml || '');
+    const cell = (label, v, sub) => `<div class="${tone(v)}"><small>${label}</small><b>${pct(v)}</b><em>${sub || ' '}</em></div>`;
+    return `<div class="rk${o.cur ? ' is-cur' : ''}"${o.attr || ''}><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span><div class="it-i"><div class="nm">${M.esc(o.nama)}</div><div class="sk">${o.sub}</div></div>${tag}</div>
+      <div class="rk-s">${cell('SS', o.ss, o.ssSub)}${cell('Assortment', o.as, o.asSub)}${cell('ECO', o.eco, o.ecoSub)}</div></div>`;
+  }
+
+  function setBig(t) { const e = $('greetBig'); e.textContent = t; e.dataset.len = t.length > 26 ? 'xl' : t.length > 15 ? 'l' : ''; }
   function renderHeaderAll() {
     $('dtName').textContent = 'Semua DT';
     $('dtIcon').textContent = 'ALL';
@@ -707,7 +752,7 @@ if (typeof module !== 'undefined') {
     $('dtSub').textContent = [PUSAT.length + ' DT', bulan].filter(Boolean).join(' · ');
     const tgl = PUSAT.filter(d => d.model).map(d => d.model.lastUploadDate || d.model.tanggalData).filter(Boolean).sort();
     $('dtUpdated').textContent = tgl.length ? 'Data extract paling lama per ' + tgl[0] : '';
-    $('dtSepMid').hidden = !$('dtUpdated').textContent;
+    setBig(bulan || 'Semua DT');
   }
 
   function renderAllDt() {
@@ -729,24 +774,25 @@ if (typeof module !== 'undefined') {
     const T = { ssT: tot('ssT'), ssA: tot('ssA'), asT: tot('asT'), asA: tot('asA'), ecoP: tot('ecoP'), ecoT: tot('ecoT'), inc: tot('inc'), nDsr: tot('nDsr') };
     const ach = (a, t) => t ? a / t : NaN;
     const band = r => `<span class="tag g">${r.bands[0]}</span> <span class="tag a">${r.bands[1]}</span> <span class="tag r">${r.bands[2]}</span>`;
-    $('tOverview').innerHTML = `<thead><tr><th>DT</th><th class="n">SS</th><th class="n">Timegone</th><th class="n">Assortment</th><th class="n">ECO</th><th class="n">DSR</th><th>Status DSR</th><th class="n">Insentif</th></tr></thead><tbody>`
-      + rows.map(r => r.err
-        ? `<tr><td>${M.esc(r.d.nama)}</td><td colspan="7" class="muted">Gagal dimuat: ${M.esc(r.err)}</td></tr>`
-        : `<tr><td><button type="button" class="btn plain" data-dt="${r.i}" style="padding:2px 8px">${M.esc(r.d.nama)}</button>${r.warn ? ' <span class="tag r" title="Ada data yang perlu dicek">!</span>' : ''}</td><td class="n">${pct(ach(r.ssA, r.ssT))}</td><td class="n">${pct(r.tf)}</td><td class="n">${pct(ach(r.asA, r.asT))}</td><td class="n">${pct(ach(r.ecoT, r.ecoP))}</td><td class="n">${r.nDsr}</td><td>${band(r)}</td><td class="n">${M.rpFull(r.inc)}</td></tr>`).join('')
-      + `<tr class="tot"><td>Total</td><td class="n">${pct(ach(T.ssA, T.ssT))}</td><td></td><td class="n">${pct(ach(T.asA, T.asT))}</td><td class="n">${pct(ach(T.ecoT, T.ecoP))}</td><td class="n">${T.nDsr}</td><td></td><td class="n">${M.rpFull(T.inc)}</td></tr></tbody>`;
-    document.querySelectorAll('#tOverview [data-dt]').forEach(b => b.onclick = () => document.querySelector(`#dtChips .chip[data-k="${b.dataset.dt}"]`).click());
+    $('tOverview').innerHTML = rows.map(r => r.err
+        ? `<div class="rk"><div class="rk-h"><span class="si neg">${svg('warn')}</span><div class="it-i"><div class="nm">${M.esc(r.d.nama)}</div><div class="sk">Gagal dimuat: ${M.esc(r.err)}</div></div></div></div>`
+        : dsrCard({ nama: r.d.nama, attr: ` data-dt="${r.i}" role="button" tabindex="0"`,
+            sub: `${r.nDsr} DSR · timegone ${pct(r.tf)} · ${M.rpFull(r.inc)}${r.warn ? ' · ada data perlu dicek' : ''}`,
+            tagHtml: band(r), ss: ach(r.ssA, r.ssT), ssSub: rp(r.ssA), as: ach(r.asA, r.asT), asSub: idn1.format(r.asA) + '/' + idn1.format(r.asT), eco: ach(r.ecoT, r.ecoP), ecoSub: r.ecoT + '/' + r.ecoP })).join('')
+      + dsrCard({ nama: 'Total semua DT', cur: true, sub: `${T.nDsr} DSR · insentif ${M.rpFull(T.inc)}`, ss: ach(T.ssA, T.ssT), ssSub: rp(T.ssA), as: ach(T.asA, T.asT), asSub: idn1.format(T.asA) + '/' + idn1.format(T.asT), eco: ach(T.ecoT, T.ecoP), ecoSub: T.ecoT + '/' + T.ecoP });
+    document.querySelectorAll('#tOverview [data-dt]').forEach(b => { const go = () => document.querySelector(`#dtChips .chip[data-k="${b.dataset.dt}"]`).click(); b.onclick = go; b.onkeydown = e => { if (e.key === 'Enter') go(); }; });
 
     const W = rows.filter(r => r.err || r.warn);
     showIssues(W.flatMap(r => (r.err ? [r.err] : r.m.warn).map(w => `${r.d.nama}: ${w}`)), []);
 
-    $('ringDetail').innerHTML = `<div class="kpis" style="margin-top:14px">
+    const allCards = ok.flatMap(r => r.m.dsrList.map(x => { const c = M.calc(x, r.m.rules, M.zeroSim());
+      return dsrCard({ nama: x.nama, band: c.band, sub: `${M.esc(r.d.nama)} · skor ${Math.round(c.score)} · ${M.rpFull(c.total)}`, ss: c.ach.ss, ssSub: rp(x.ss.aktual), as: c.ach.asrt, asSub: idn1.format(x.asrt.aktual) + '/' + idn1.format(x.asrt.target), eco: c.ach.eco, ecoSub: x.eco.tx + '/' + x.eco.pjp }); }));
+    $('ringDetail').innerHTML = `<div class="kpis">
         <div class="kpi"><div class="l">Target SS total</div><div class="v">${rp(T.ssT)}</div><div class="s">Aktual ${rp(T.ssA)}</div></div>
         <div class="kpi"><div class="l">Capaian SS</div><div class="v">${pct(ach(T.ssA, T.ssT))}</div><div class="s">Kurang ${rp(Math.max(0, T.ssT - T.ssA))}</div></div>
-        <div class="kpi"><div class="l">Insentif total</div><div class="v">${rp(T.inc)}</div><div class="s">${T.nDsr} DSR</div></div></div>
-      ${omsetHarianAllDt(ok)}
-      <h2 style="margin-top:14px">Semua DSR</h2><div class="scroll"><table><thead><tr><th>DT</th><th>DSR</th><th class="n">SS</th><th class="n">Assortment</th><th class="n">ECO</th><th class="n">Skor</th><th>Status</th><th class="n">Insentif</th></tr></thead><tbody>`
-      + ok.flatMap(r => r.m.dsrList.map(x => { const c = M.calc(x, r.m.rules, M.zeroSim()); return `<tr><td>${M.esc(r.d.nama)}</td><td>${M.esc(x.nama)}</td><td class="n">${pct(c.ach.ss)}</td><td class="n">${pct(c.ach.asrt)}</td><td class="n">${pct(c.ach.eco)}</td><td class="n">${Math.round(c.score)}</td><td><span class="tag ${c.band === 'GREEN' ? 'g' : c.band === 'AMBER' ? 'a' : 'r'}">${c.band}</span></td><td class="n">${M.rpFull(c.total)}</td></tr>`; })).join('')
-      + '</tbody></table></div>';
+        <div class="kpi"><div class="l">Insentif total</div><div class="v">${rp(T.inc)}</div><div class="s">${T.nDsr} DSR</div></div></div>`
+      + wrapCards(omsetHarianAllDt(ok))
+      + `<section class="card"><h2><span class="ci">${svg('chart')}</span>Semua DSR</h2><div class="rk-list">${allCards.join('')}</div></section>`;
   }
 
   /* Omset s.d. kemarin vs omset tanggal terbaru, per DT (mode Semua DT) + total. */
@@ -822,7 +868,7 @@ if (typeof module !== 'undefined') {
     const tgl = MODEL.lastUploadDate || MODEL.tanggalData;
     const upd = tgl ? ('Data extract per ' + tgl) : '';
     $('dtUpdated').textContent = [upd, MODEL.hkRun + '/' + MODEL.hkTotal + ' HK'].filter(Boolean).join(' · ');
-    $('dtSepMid').hidden = !$('dtSub').textContent || !$('dtUpdated').textContent;
+    setBig(MODEL.bulan || 'Monitoring Harian');
   }
   function initialsOf(name) {
     const words = String(name || '').replace(/^(PT|CV)\.?\s+/i, '').trim().split(/\s+/).filter(Boolean);
@@ -846,30 +892,29 @@ if (typeof module !== 'undefined') {
   /* RINGKASAN */
   function renderRingkasan() {
     const calcs = MODEL.dsrList.map(d => M.calc(d, MODEL.rules, M.zeroSim()));
-    const rows = MODEL.dsrList.map((d, i) => {
-      const c = calcs[i];
-      return `<tr class="${i === CUR ? 'tot' : ''}"><td>${M.esc(d.nama)}</td><td class="n">${pct(c.ach.ss)}</td><td class="n">${pct(c.ach.asrt)}</td><td class="n">${pct(c.ach.eco)}</td><td class="n">${Math.round(c.score)}</td><td><span class="tag ${c.band === 'GREEN' ? 'g' : c.band === 'AMBER' ? 'a' : 'r'}">${c.band}</span></td><td class="n">${rpFullLocal(c.total)}</td></tr>`;
-    }).join('');
-    /* Total DT: dasar perhitungan insentif DSS (supervisor), dilihat dari pencapaian total sales-nya, bukan per DSR. */
     const ssT = MODEL.dsrList.reduce((s, d) => s + d.ss.target, 0), ssA = MODEL.dsrList.reduce((s, d) => s + d.ss.aktual, 0);
     const asT = MODEL.dsrList.reduce((s, d) => s + d.asrt.target, 0), asA = MODEL.dsrList.reduce((s, d) => s + d.asrt.aktual, 0);
     const ecoP = MODEL.dsrList.reduce((s, d) => s + d.eco.pjp, 0), ecoT = MODEL.dsrList.reduce((s, d) => s + d.eco.tx, 0);
     const incT = calcs.reduce((s, c) => s + c.total, 0);
     const achOf = (a, t) => t ? a / t : NaN;
-    $('tOverview').innerHTML = `<thead><tr><th>DSR</th><th class="n">SS</th><th class="n">Assortment</th><th class="n">ECO</th><th class="n">Skor</th><th>Status</th><th class="n">Insentif</th></tr></thead><tbody>${rows}
-      <tr class="tot"><td>Total DT</td><td class="n">${pct(achOf(ssA, ssT))}</td><td class="n">${pct(achOf(asA, asT))}</td><td class="n">${pct(achOf(ecoT, ecoP))}</td><td></td><td></td><td class="n">${rpFullLocal(incT)}</td></tr></tbody>`;
+    /* Total DT: dasar perhitungan insentif DSS (supervisor), dilihat dari pencapaian total sales-nya, bukan per DSR. */
+    $('tOverview').innerHTML = MODEL.dsrList.map((d, i) => { const c = calcs[i];
+        return dsrCard({ nama: d.nama, band: c.band, cur: i === CUR, attr: ` data-i="${i}" role="button" tabindex="0"`, sub: `Skor ${Math.round(c.score)} · insentif ${rpFullLocal(c.total)}`,
+          ss: c.ach.ss, ssSub: rp(d.ss.aktual), as: c.ach.asrt, asSub: idn1.format(d.asrt.aktual) + '/' + idn1.format(d.asrt.target), eco: c.ach.eco, ecoSub: d.eco.tx + '/' + d.eco.pjp }); }).join('')
+      + dsrCard({ nama: 'Total DT', sub: `${MODEL.dsrList.length} DSR · insentif ${rpFullLocal(incT)}`, tagHtml: '<span class="tag a">DSS</span>', ss: achOf(ssA, ssT), ssSub: rp(ssA), as: achOf(asA, asT), asSub: idn1.format(asA) + '/' + idn1.format(asT), eco: achOf(ecoT, ecoP), ecoSub: ecoT + '/' + ecoP });
+    document.querySelectorAll('#tOverview [data-i]').forEach(b => { const go = () => { CUR = +b.dataset.i; document.querySelectorAll('#dsrChips .chip').forEach(x => x.setAttribute('aria-pressed', x.dataset.i === b.dataset.i)); renderAll(); }; b.onclick = go; b.onkeydown = e => { if (e.key === 'Enter') go(); }; });
 
     showIssues(MODEL.warn, MODEL.note);
 
     /* Kartu ringkas Total DT, buat DSS lihat pencapaian total sales-nya sendiri (dasar insentif DSS). */
-    const totalDtKpis = `<h2>Total DT</h2><div class="kpis">
+    const totalDtKpis = `<div class="kpis">
         <div class="kpi"><div class="l">Target SS DT</div><div class="v">${rp(ssT)}</div><div class="s">Aktual ${rp(ssA)}</div></div>
         <div class="kpi"><div class="l">Capaian SS DT</div><div class="v">${pct(achOf(ssA, ssT))}</div><div class="s">Kurang ${rp(Math.max(0, ssT - ssA))}</div></div>
         <div class="kpi"><div class="l">Insentif DSR total</div><div class="v">${rp(incT)}</div><div class="s">${MODEL.dsrList.length} DSR</div></div></div>`;
 
     const d = MODEL.dsrList[CUR], base = M.calc(d, MODEL.rules, M.zeroSim());
-    $('ringDetail').innerHTML = totalDtKpis + omsetHarianTable(MODEL.dsrList, MODEL.lastDay, MODEL.bulan)
-      + `<h2 style="margin-top:14px">${M.esc(d.nama)}: insentif</h2>` + breakdownTable(d, base, base) + detailTables(d);
+    $('ringDetail').innerHTML = totalDtKpis + wrapCards(omsetHarianTable(MODEL.dsrList, MODEL.lastDay, MODEL.bulan)
+      + `<h2>${M.esc(d.nama)}: insentif</h2>` + breakdownTable(d, base, base) + detailTables(d));
   }
 
   /* Omset s.d. kemarin vs omset tanggal terbaru di DMS_EXTRACT, per DSR + total. */
@@ -982,7 +1027,7 @@ if (typeof module !== 'undefined') {
       <div class="kpi"><div class="l">Insentif sekarang</div><div class="v">${rpFullLocal(base.total)}</div><div class="s">Skor ${Math.round(base.score)} ${base.band}</div></div>
       <div class="kpi ${diff > 0 ? 'hot' : ''}"><div class="l">Insentif simulasi (perkiraan)</div><div class="v">${rpFullLocal(sim.total)}</div><div class="s">${diff > 0 ? 'Naik ' + rpFullLocal(diff) : diff < 0 ? 'Turun ' + rpFullLocal(-diff) : 'Sama dengan sekarang'}</div></div>
       <div class="kpi"><div class="l">Skor KPI simulasi</div><div class="v">${Math.round(sim.score)}</div><div class="s">${sim.band} · hijau mulai ${MODEL.rules.band.green}</div></div>`;
-    $('simBreak').innerHTML = breakdownTable(d, base, sim);
+    $('simBreak').innerHTML = wrapCards('<h2>Rincian insentif simulasi</h2>' + breakdownTable(d, base, sim));
     document.querySelectorAll('#steps .btn').forEach(b => { const on = s[b.dataset.id] >= +b.dataset.need; b.setAttribute('aria-pressed', on); b.textContent = on ? 'Dicoba' : 'Coba'; });
     document.querySelectorAll('#tLines input[type=checkbox]').forEach(c => { c.checked = s.picks.has(+c.dataset.i); });
   }
@@ -1010,10 +1055,33 @@ if (typeof module !== 'undefined') {
       document.querySelectorAll('#tLines input[type=checkbox]').forEach(c => c.onchange = () => { const i = +c.dataset.i; c.checked ? s.picks.add(i) : s.picks.delete(i); paintSim(); });
     }
 
-    $('tBelum').innerHTML = d.belum.length
-      ? '<thead><tr><th>Toko</th><th>Hari PJP</th><th>Channel</th></tr></thead><tbody>' + d.belum.slice(0, 60).map(o => `<tr><td class="wrap-cell">${M.esc(o.toko_nama)}</td><td>${M.esc(o.pjp_hari || '–')}</td><td class="wrap-cell">${M.esc(o.ch || '–')}</td></tr>`).join('') + '</tbody>'
-      : '<tbody><tr><td class="muted">Tidak ada toko PJP yang belum transaksi untuk DSR ini.</td></tr></tbody>';
+    BELUM.q = ''; $('belumQ').value = ''; renderBelum();
+
   }
+
+
+  /* Toko PJP belum transaksi: cari nama atau channel, daftar dibatasi 100 baris supaya tetap ringan. */
+  const BELUM = { q: '' };
+  function renderBelum() {
+    const d = MODEL.dsrList[CUR], q = BELUM.q.trim().toLowerCase();
+    $('belumTb').hidden = !d.belum.length;
+    $('belumClr').hidden = !q;
+    const list = q ? d.belum.filter(o => (o.toko_nama + ' ' + (o.ch || '') + ' ' + (o.pjp_hari || '')).toLowerCase().includes(q)) : d.belum;
+    $('belumMeta').textContent = list.length === d.belum.length ? idn.format(d.belum.length) + ' toko' : idn.format(list.length) + ' dari ' + idn.format(d.belum.length) + ' toko';
+    $('tBelum').innerHTML = !d.belum.length ? '<tbody><tr><td class="muted">Tidak ada toko PJP yang belum transaksi untuk DSR ini.</td></tr></tbody>'
+      : !list.length ? '<tbody><tr><td class="muted">Tidak ada toko yang cocok dengan pencarian.</td></tr></tbody>'
+      : '<thead><tr><th>Toko</th><th>Hari PJP</th><th>Channel</th></tr></thead><tbody>' + list.slice(0, 100).map(o => `<tr><td class="wrap-cell">${M.esc(o.toko_nama)}</td><td>${M.esc(o.pjp_hari || '–')}</td><td class="wrap-cell">${M.esc(o.ch || '–')}</td></tr>`).join('') + '</tbody>';
+  }
+  $('belumQ').addEventListener('input', e => { BELUM.q = e.target.value; renderBelum(); });
+  $('belumClr').addEventListener('click', () => { BELUM.q = ''; $('belumQ').value = ''; renderBelum(); $('belumQ').focus(); });
+
+  $('refreshBtn').addEventListener('click', () => {
+    const b = $('refreshBtn'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
+    refreshNote('Memperbarui data…');
+    tryLogin(AUTH_CODE, true, true).then(ok => { if (ok) toast('Data diperbarui'); });
+  });
+  $('syncInfo').addEventListener('click', e => { e.stopPropagation(); const p = $('syncPop'); p.hidden = !p.hidden; });
+  document.addEventListener('click', () => { $('syncPop').hidden = true; });
 
   /* login otomatis kalau kode tersimpan dari sesi sebelumnya */
   let saved = null; try { saved = localStorage.getItem(LS_CODE); } catch {}

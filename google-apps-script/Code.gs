@@ -494,16 +494,19 @@ function computeAsrt_(dms, produk, outletMaster, dtKode, moq) {
     const cS = col(produk[0], ['SKUCode']), cB = col(produk[0], ['LEVEL-9']);
     if (cS >= 0 && cB >= 0) produk.slice(1).forEach(r => { const a = String(r[cS]).trim(), b = String(r[cB]).trim(); if (a && b) sku2bp[a] = b; });
   }
-  const chOf = {}, nameOf = {};
+  const chOf = {}, nameOf = {}, registered = {};
+  let masterRows = 0;
   if (outletMaster.length) {
     const h = outletMaster[0], cC = col(h, ['Outlet Code']), cN = col(h, ['Outlet Name']), cT = col(h, ['Outlet Type Desc']);
     outletMaster.slice(1).forEach(r => {
       let c = String(r[cC] === undefined ? '' : r[cC]).trim(); if (!c) return;
       if (dtKode && c.indexOf(dtKode) === 0 && c.length > dtKode.length) c = c.slice(dtKode.length);
       chOf[c] = asrtChannelOf_(r[cT]); nameOf[c] = String(r[cN] === undefined ? '' : r[cN]).trim();
+      masterRows++;
+      if (chOf[c]) registered[chOf[c]] = (registered[chOf[c]] || 0) + 1;
     });
   }
-  const out = { bulan: '', tanggalData: '', channels: { SPM: null, MINIS: null, LAIN: null }, unmapped: [], noProduk: 0, rows: 0 };
+  const out = { bulan: '', tanggalData: '', channels: { SPM: null, MINIS: null, LAIN: null }, unmapped: [], noProduk: 0, rows: 0, masterRows: masterRows };
   if (!dms.length) return out;
   const cO = col(dms[0], ['Outlet', 'Kode Outlet Bersih']), cON = col(dms[0], ['Outlet Name', 'OutletName']), cK = col(dms[0], ['SKUCode', 'SKU Code']),
     cQ = col(dms[0], ['TotalQuantity(PCS)', 'TotalQuantity (PCS)']), cD = col(dms[0], ['INVDate', 'InvDate', 'Tanggal']), cG = col(dms[0], ['GSV']), cS = col(dms[0], ['Salesman', 'DSR Code (Hygiene)']);
@@ -548,8 +551,9 @@ function computeAsrt_(dms, produk, outletMaster, dtKode, moq) {
   Object.keys(agg).forEach(ch => {
     const a = agg[ch];
     a.list.sort((x, y) => x.lines - y.lines);
-    out.channels[ch] = { outlets: a.outlets, lines: a.lines, perOutlet: a.outlets ? a.lines / a.outlets : 0, low: a.list.slice(0, 10) };
+    out.channels[ch] = { outlets: a.outlets, lines: a.lines, perOutlet: a.outlets ? a.lines / a.outlets : 0, low: a.list.slice(0, 10), registered: registered[ch] || 0 };
   });
+  Object.keys(registered).forEach(ch => { if (!out.channels[ch]) out.channels[ch] = { outlets: 0, lines: 0, perOutlet: 0, low: [], registered: registered[ch] }; });
   out.unmapped.sort((x, y) => y.gsv - x.gsv);
   return out;
 }
@@ -565,7 +569,7 @@ function readAsrtTargets_(ss) {
 /** Assortment satu DT (cache 5 menit). MASTER_PRODUK dibaca penuh karena payload hanya memuat SKU yang dipakai norms/fokus. */
 function asrtForDt_(r) {
   const payload = getPayload_(r.sheet_id);
-  const key = 'asrt_v1_' + r.sheet_id + '_' + payload.builtAt;
+  const key = 'asrt_v2_' + r.sheet_id + '_' + payload.builtAt;
   const hit = cacheGet_(key);
   if (hit) return hit;
   const ss = SpreadsheetApp.openById(r.sheet_id);

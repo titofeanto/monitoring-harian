@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1769C8">
 <title>Monitoring Harian</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=202610240701">
-<script src="assets/boot.js?v=202610240701"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="assets/style.css?v=202610240724">
+<script src="assets/boot.js?v=202610240724"></script>
 </head>
 <body>
 
@@ -43,78 +44,99 @@
 </div>
 
 <!-- APP -->
-<div class="wrap" id="appScreen" hidden>
-  <header class="appbar"><div class="appbar-row">
-    <div class="icon" id="dtIcon">MH</div>
-    <div class="grow">
-      <h1 id="dtName">Monitoring Harian</h1>
-      <div class="sub"><span id="dtSub"></span><span class="sep" id="dtSepMid">·</span><span id="dtUpdated"></span></div>
+<div id="appScreen" hidden>
+  <header class="top">
+    <div class="top-row">
+      <div class="brand">
+        <span class="mark" id="dtIcon" aria-hidden="true">MH</span>
+        <div><div class="brand-t" id="dtName">Monitoring Harian</div><div class="brand-s" id="dtSub"></div></div>
+      </div>
+      <button class="hdr-btn" id="refreshBtn" type="button" aria-label="Muat ulang data"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
     </div>
-  </div></header>
-
-  <div class="identity-strip">
-    <span id="loginAs">Masuk dengan kode akses tim</span>
-    <a href="great-sales.html" style="color:inherit;white-space:nowrap">KPI Great Sales →</a>
-    <button type="button" id="saveHasilBtn" hidden>Simpan hasil ke Sheet</button>
-    <button type="button" id="logoutBtn">Ganti / Keluar</button>
-  </div>
-  <div class="refresh" id="appRefresh" hidden><span id="appRefreshTxt"></span> <button type="button" class="linkbtn" id="appRefreshBtn" hidden>Tampilkan data baru</button><div class="bar"><i></i></div></div>
-  <p class="muted" id="saveHasilMsg" style="max-width:640px;margin:-8px auto 14px;font-size:12.5px" hidden></p>
-
-  <div class="sec" id="dtSec" style="margin-bottom:10px" hidden>
-    <div class="chips" id="dtChips" role="group" aria-label="Pilih DT"></div>
-  </div>
-
-  <div class="sec" id="dsrSec" style="margin-bottom:14px">
-    <div class="chips" id="dsrChips" role="group" aria-label="Pilih DSR"></div>
-  </div>
+    <div class="greet">
+      <div class="greet-hi" id="dtUpdated"></div>
+      <a class="pill-link" href="great-sales.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/></svg><span>KPI Great Sales</span></a>
+      <div class="greet-big" id="greetBig">Monitoring Harian</div>
+      <div class="sync-wrap"><span class="sync ok" id="sync"><i></i><span>Terbaru</span></span><button class="sync-info" id="syncInfo" type="button" aria-label="Arti warna status data">i</button></div>
+      <div class="sync-pop" id="syncPop" hidden>
+        <div class="ok"><i></i><span><b>Terbaru.</b> Data sudah yang paling baru dari Sheet.</span></div>
+        <div class="wait"><i></i><span><b>Memperbarui.</b> Layar sementara memakai salinan terakhir, data baru sedang diambil.</span></div>
+        <div class="off"><i></i><span><b>Gagal memperbarui.</b> Layar memakai salinan tersimpan. Tarik layar atau ketuk muat ulang.</span></div>
+      </div>
+    </div>
+    <span id="dtSepMid" hidden></span>
+  </header>
+  <div class="banner" id="appRefresh" hidden style="margin:12px 16px 0"><span id="appRefreshTxt"></span> <button type="button" class="linkbtn" id="appRefreshBtn" hidden>Tampilkan data baru</button></div>
 
   <nav class="tabs" id="tabsNav" role="tablist" aria-label="Bagian">
-    <button role="tab" id="tab-ring" aria-controls="p-ring" aria-selected="true">📊 Ringkasan</button>
-    <button role="tab" id="tab-sim" aria-controls="p-sim" aria-selected="false">🧮 Simulator</button>
-    <button role="tab" id="tab-fruit" aria-controls="p-fruit" aria-selected="false">🎯 Low Hanging Fruit</button>
+    <button role="tab" id="tab-ring" aria-controls="p-ring" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><span>Ringkasan</span></button>
+    <button role="tab" id="tab-sim" aria-controls="p-sim" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span>Simulator</span></button>
+    <button role="tab" id="tab-fruit" aria-controls="p-fruit" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12h.01"/></svg><span class="lbl-l">Low Hanging Fruit</span><span class="lbl-s">Peluang</span></button>
+    <a href="great-sales.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/></svg><span class="lbl-l">KPI Great Sales</span><span class="lbl-s">KPI GS</span></a>
   </nav>
 
-  <!-- RINGKASAN -->
-  <section class="panel" id="p-ring" role="tabpanel" aria-labelledby="tab-ring">
-    <div class="sec">
-      <h2 id="ovTitle">Semua DSR</h2>
-      <div class="scroll"><table id="tOverview"></table></div>
+  <main>
+    <div class="sec" id="dtSec" hidden>
+      <div class="chips" id="dtChips" role="group" aria-label="Pilih DT"></div>
     </div>
-    <div class="sec">
+    <div class="sec" id="dsrSec">
+      <div class="chips" id="dsrChips" role="group" aria-label="Pilih DSR"></div>
+    </div>
+
+    <!-- RINGKASAN -->
+    <section class="tab" id="p-ring" role="tabpanel" aria-labelledby="tab-ring">
+      <div class="card">
+        <h2 id="ovTitle"><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span><span id="ovTitleTxt">Semua DSR</span></h2>
+        <div class="rk-list" id="tOverview"></div>
+      </div>
       <button type="button" id="ringIssuesBtn" class="issues-btn" hidden></button>
-      <div id="ringDetail"></div>
-    </div>
-  </section>
+      <div class="tab" id="ringDetail"></div>
+    </section>
 
-  <!-- SIMULATOR -->
-  <section class="panel" id="p-sim" role="tabpanel" aria-labelledby="tab-sim" hidden>
-    <div class="kpis" id="simKpis"></div>
-    <div class="sec">
-      <h2>Simulator</h2>
-      <p class="muted" style="font-size:13px">Geser untuk mencoba, atau pakai tombol "Coba" di tab Low Hanging Fruit. Ini perkiraan di atas pencapaian sekarang.</p>
-      <div class="box" style="padding-block:2px" id="simControls"></div>
-      <div id="simBreak"></div>
-    </div>
-  </section>
+    <!-- SIMULATOR -->
+    <section class="tab" id="p-sim" role="tabpanel" aria-labelledby="tab-sim" hidden>
+      <div class="kpis" id="simKpis"></div>
+      <div class="card">
+        <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></span>Simulator</h2>
+        <p class="hint">Geser untuk mencoba, atau pakai tombol "Coba" di tab Peluang. Ini perkiraan di atas pencapaian sekarang.</p>
+        <div id="simControls"></div>
+      </div>
+      <div class="tab" id="simBreak"></div>
+    </section>
 
-  <!-- LOW HANGING FRUIT -->
-  <section class="panel" id="p-fruit" role="tabpanel" aria-labelledby="tab-fruit" hidden>
-    <div class="sec">
-      <h2>Langkah termurah menuju insentif lebih besar</h2>
-      <p class="muted" style="font-size:13px">Diurutkan dari tambahan insentif per 1% target, paling murah dulu.</p>
-      <div class="box" style="padding-block:2px" id="steps"></div>
+    <!-- LOW HANGING FRUIT -->
+    <section class="tab" id="p-fruit" role="tabpanel" aria-labelledby="tab-fruit" hidden>
+      <div class="card">
+        <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12h.01"/></svg></span>Langkah termurah</h2>
+        <p class="hint">Menuju insentif lebih besar, diurutkan dari tambahan insentif per 1% target, paling murah dulu.</p>
+        <div id="steps"></div>
+      </div>
+      <div class="card">
+        <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>SKU yang nyaris capai</h2>
+        <p class="hint">SKU Fokus, NPD Regular, dan NPD Thematic yang tinggal sedikit lagi. Centang untuk memasukkannya ke simulator.</p>
+        <div class="scroll"><table id="tLines"></table></div>
+      </div>
+      <div class="card">
+        <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>Toko PJP belum transaksi</h2>
+        <div class="tb" id="belumTb" hidden>
+          <label class="sbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input type="search" id="belumQ" placeholder="Cari nama toko atau channel" autocomplete="off"><button type="button" class="clr" id="belumClr" aria-label="Hapus pencarian" hidden><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></label>
+          <div class="tb-meta"><span id="belumMeta"></span></div>
+        </div>
+        <div class="scroll"><table id="tBelum"></table></div>
+      </div>
+    </section>
+
+    <!-- AKUN -->
+    <div class="card">
+      <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 6l3 3"/></svg></span>Akun dan data</h2>
+      <p class="hint" id="loginAs">Masuk dengan kode akses tim</p>
+      <div class="row">
+        <button type="button" class="btn" id="saveHasilBtn" hidden>Simpan hasil ke Sheet</button>
+        <button type="button" class="btn danger" id="logoutBtn">Ganti / Keluar</button>
+      </div>
+      <p class="hint" id="saveHasilMsg" style="margin:10px 0 0" hidden></p>
     </div>
-    <div class="sec">
-      <h2>SKU yang nyaris capai</h2>
-      <p class="muted" style="font-size:13px">SKU Fokus, NPD Regular, dan NPD Thematic yang tinggal sedikit lagi. Centang untuk memasukkannya ke simulator.</p>
-      <div class="scroll"><table id="tLines"></table></div>
-    </div>
-    <div class="sec">
-      <h2>Toko PJP belum transaksi</h2>
-      <div class="scroll"><table id="tBelum"></table></div>
-    </div>
-  </section>
+  </main>
 </div>
 
 <!-- POPUP: cek data (warning/catatan), dibuka dari tombol ringIssuesBtn -->
@@ -128,7 +150,9 @@
   </div>
 </div>
 
-<script src="assets/config.js?v=202610240701"></script>
-<script src="assets/app.js?v=202610240701"></script>
+<div class="toast" id="toast" hidden></div>
+
+<script src="assets/config.js?v=202610240724"></script>
+<script src="assets/app.js?v=202610240724"></script>
 </body>
 </html>

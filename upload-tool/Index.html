@@ -5,85 +5,88 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1769C8">
 <title>Upload Data Monitoring Harian</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
+  /* Sistem tampilan sama dengan halaman web (lihat DESIGN.md): token, header gradien, kartu putih, tombol dan chip. */
   :root {
-    --bg: #f4f6fa; --card: #fff; --ink: #1f2430; --soft: #5b6472; --faint: #8a93a3; --line: #e4e7ec;
-    --blue: #1a73e8; --blue-bg: #eaf1fd;
-    --red: #c0392b; --red-bg: #fce8e6; --red-ink: #611a15; --red-line: #f1b4ac;
-    --amber: #d97706; --amber-bg: #fff6e0; --amber-ink: #6b4a00; --amber-line: #f0c674;
-    --green: #2e9e52; --green-bg: #e6f4ea; --green-ink: #1e4620; --green-line: #a9d9bb;
-  }
-  :root[data-theme="dark"] {
-    --bg: #14171d; --card: #1d222b; --ink: #e8ebf0; --soft: #aab2c0; --faint: #7d8696; --line: #2c3340;
-    --blue: #6aa6ff; --blue-bg: #1c2a44;
-    --red: #ff7b6b; --red-bg: #3a1d1a; --red-ink: #ffc9c1; --red-line: #6b3029;
-    --amber: #f0a43a; --amber-bg: #3a2c10; --amber-ink: #ffd994; --amber-line: #6b501a;
-    --green: #4cc27a; --green-bg: #15301f; --green-ink: #b6ebc8; --green-line: #2a5a3b;
+    color-scheme: light;
+    --bg: #EAF2FA; --card: #fff; --card2: #F2F7FC; --ink: #0F1B33; --soft: #5C6F86; --faint: #5C6F86; --line: #DCE7F2;
+    --blue: #1769C8; --blue2: #2B86E0; --deep: #0B3A8F; --blue-bg: #E3EFFC; --cyan: #19B5E0;
+    --red: #C0392B; --red-bg: #FBE4E0; --red-ink: #C0392B; --red-line: transparent;
+    --amber: #D99A00; --amber-bg: #FFF3C4; --amber-ink: #6B5200; --amber-line: transparent;
+    --green: #14804F; --green-bg: #DDF6E8; --green-ink: #14804F; --green-line: transparent;
+    --shadow: 0 8px 28px rgba(15,60,130,.12); --shadow-s: 0 2px 10px rgba(15,60,130,.07);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #14171d; --card: #1d222b; --ink: #e8ebf0; --soft: #aab2c0; --faint: #7d8696; --line: #2c3340;
-      --blue: #6aa6ff; --blue-bg: #1c2a44;
-      --red: #ff7b6b; --red-bg: #3a1d1a; --red-ink: #ffc9c1; --red-line: #6b3029;
-      --amber: #f0a43a; --amber-bg: #3a2c10; --amber-ink: #ffd994; --amber-line: #6b501a;
-      --green: #4cc27a; --green-bg: #15301f; --green-ink: #b6ebc8; --green-line: #2a5a3b;
+      color-scheme: dark;
+      --bg: #0B1220; --card: #141E33; --card2: #1B2742; --ink: #E8EEF9; --soft: #9AAAC6; --faint: #9AAAC6; --line: #27375A;
+      --blue: #3B8BEB; --blue2: #2B6FD0; --deep: #0B2A6B; --blue-bg: #1B2D55; --cyan: #27C3EC;
+      --red: #F08068; --red-bg: #3A211B; --red-ink: #F08068;
+      --amber: #D99A00; --amber-bg: #3A3110; --amber-ink: #F2D878;
+      --green: #6CC592; --green-bg: #16382B; --green-ink: #6CC592;
+      --shadow: 0 8px 28px rgba(0,0,0,.4); --shadow-s: 0 2px 10px rgba(0,0,0,.3);
     }
   }
   * { box-sizing: border-box; }
-  body { margin: 0 auto; max-width: 720px; padding: 22px 16px 60px; background: var(--bg); color: var(--ink);
-    font: 14px/1.5 "Poppins", -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
-  h1 { font-size: 20px; margin: 0 0 4px; font-weight: 700; }
-  .sub { color: var(--soft); font-size: 13px; margin-bottom: 16px; }
-  .dt-chips, .status-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-text-size-adjust: 100%; }
+  .top { background: linear-gradient(165deg, var(--blue2) 0%, var(--blue) 45%, var(--deep) 100%); color: #fff; padding: 18px 16px 22px; border-radius: 0 0 24px 24px; }
+  .top-in { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  .mark { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,.18); display: grid; place-items: center; font-weight: 800; font-size: 15px; flex: none; }
+  .top h1 { font-size: 16px; margin: 0; font-weight: 700; line-height: 1.2; }
+  .top .sub { color: #fff; opacity: .82; font-size: 12px; margin: 2px 0 0; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 60px; position: relative; }
+  h2 { font-size: 16px; margin: 22px 0 4px; font-weight: 700; }
+  .group-note { font-size: 13px; color: var(--soft); margin-bottom: 10px; }
+  .dt-chips, .status-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   button { font-family: inherit; cursor: pointer; }
-  .dt-chip { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 13px; font-weight: 600; }
-  .dt-chip[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
-  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 14px 0; }
-  .panel-label { font-size: 11px; font-weight: 700; color: var(--faint); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 9px; }
-  .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
-    background: var(--bg); color: var(--soft); font-size: 12px; font-weight: 600; }
+  .dt-chip { height: 34px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--card); color: var(--soft); font-size: 12px; font-weight: 600; box-shadow: var(--shadow-s); }
+  .dt-chip[aria-pressed="true"] { background: var(--blue); color: #fff; }
+  .panel { background: var(--card); border-radius: 16px; padding: 14px; margin: 14px 0; box-shadow: var(--shadow-s); }
+  .panel-label { font-size: 12px; font-weight: 700; color: var(--soft); margin-bottom: 9px; }
+  .status-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; border: 0; background: var(--card2); color: var(--soft); font-size: 12px; font-weight: 600; }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex-shrink: 0; }
-  .lv-red { background: var(--red-bg); color: var(--red-ink); border-color: var(--red-line); } .lv-red .dot { background: var(--red); }
-  .lv-amber { background: var(--amber-bg); color: var(--amber-ink); border-color: var(--amber-line); } .lv-amber .dot { background: var(--amber); }
-  .lv-green { background: var(--green-bg); color: var(--green-ink); border-color: var(--green-line); } .lv-green .dot { background: var(--green); }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--soft); margin-top: 10px; }
-  .legend span { display: inline-flex; align-items: center; gap: 5px; }
-  .banner { padding: 10px 12px; border-radius: 10px; font-size: 12.5px; margin: 8px 0; border: 1px solid; }
-  .banner.lv-red, .banner.lv-amber, .banner.lv-green { border-color: inherit; }
-  .banner.lv-red { border-color: var(--red-line); } .banner.lv-amber { border-color: var(--amber-line); } .banner.lv-green { border-color: var(--green-line); }
-  h2 { font-size: 14px; margin: 26px 0 4px; }
-  .group-note { font-size: 12px; color: var(--faint); margin-bottom: 10px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--faint); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; scroll-margin-top: 12px; }
-  .card.lv-red { border-left-color: var(--red); background: var(--card); color: inherit; }
-  .card.lv-amber { border-left-color: var(--amber); background: var(--card); color: inherit; }
-  .card.lv-green { border-left-color: var(--green); background: var(--card); color: inherit; }
+  .lv-red { background: var(--red-bg); color: var(--red-ink); } .lv-red .dot { background: var(--red); }
+  .lv-amber { background: var(--amber-bg); color: var(--amber-ink); } .lv-amber .dot { background: var(--amber); }
+  .lv-green { background: var(--green-bg); color: var(--green-ink); } .lv-green .dot { background: var(--green); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--soft); margin-top: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .banner { padding: 12px 14px; border-radius: 11px; font-size: 13px; margin: 8px 0; }
+  .card { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow-s); scroll-margin-top: 12px; position: relative; }
+  .card::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px; border-radius: 0 4px 4px 0; background: var(--line); }
+  .card.lv-red::before { background: var(--red); } .card.lv-amber::before { background: var(--amber); } .card.lv-green::before { background: var(--green); }
+  .card.lv-red, .card.lv-amber, .card.lv-green { background: var(--card); color: inherit; }
   .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .card h3 { font-size: 15px; margin: 0; }
-  .tab { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--faint); }
-  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; border: 1px solid; white-space: nowrap; }
-  .st-text { font-size: 12.5px; margin: 8px 0 2px; font-weight: 500; }
-  .meta { font-size: 11.5px; color: var(--faint); }
-  .desc { font-size: 12.5px; color: var(--soft); margin: 8px 0; }
-  .warnnote { font-size: 11.5px; color: var(--amber-ink); background: var(--amber-bg); border: 1px solid var(--amber-line); border-radius: 8px; padding: 6px 9px; margin: 6px 0; }
-  label { display: block; font-size: 12.5px; font-weight: 600; margin: 10px 0 4px; }
-  input[type=file], input[type=date] { width: 100%; font: inherit; font-size: 13px; color: var(--ink); }
-  input[type=date] { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
-  .file-chip { margin-top: 6px; padding: 6px 10px; border-radius: 8px; font-size: 11.5px; border: 1px dashed var(--line); color: var(--faint); word-break: break-all; }
-  .file-chip.ok { border-style: solid; border-color: var(--green-line); background: var(--green-bg); color: var(--green-ink); }
-  .file-chip.warn { border-style: solid; border-color: var(--amber-line); background: var(--amber-bg); color: var(--amber-ink); }
-  .go { margin-top: 12px; padding: 11px 18px; border: 0; border-radius: 9px; background: var(--blue); color: #fff; font-weight: 700; font-size: 13.5px; width: 100%; }
-  .go:disabled { background: var(--line); color: var(--faint); cursor: not-allowed; }
-  .restore { margin-top: 8px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--soft); font-size: 11px; font-weight: 600; }
-  .spin { display: none; margin-top: 8px; font-size: 12.5px; color: var(--soft); } .spin.show { display: block; }
-  .result { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 12.5px; white-space: pre-wrap; border: 1px solid; }
-  .loading { color: var(--faint); font-size: 13px; padding: 14px 0; }
+  .card h3 { font-size: 16px; margin: 0; font-weight: 700; }
+  .tab { font-size: 11px; color: var(--soft); font-weight: 500; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .st-text { font-size: 13px; margin: 8px 0 2px; font-weight: 500; }
+  .meta { font-size: 12px; color: var(--soft); }
+  .desc { font-size: 13px; color: var(--soft); margin: 8px 0; }
+  .warnnote { font-size: 12px; color: var(--amber-ink); background: var(--amber-bg); border-radius: 11px; padding: 8px 10px; margin: 6px 0; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--soft); margin: 10px 0 6px; }
+  input[type=file], input[type=date], input[type=number] { width: 100%; font: inherit; font-size: 14px; color: var(--ink); }
+  input[type=date], input[type=number] { padding: 10px 12px; min-height: 44px; border: 1.5px solid var(--line); border-radius: 11px; background: var(--card2); }
+  input[type=file]::file-selector-button { border: 0; border-radius: 999px; background: var(--blue-bg); color: var(--blue); font: 600 12px 'Inter', sans-serif; padding: 8px 14px; margin-right: 10px; cursor: pointer; }
+  input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-bg); }
+  .file-chip { margin-top: 6px; padding: 8px 10px; border-radius: 11px; font-size: 12px; border: 1.5px dashed var(--line); color: var(--soft); word-break: break-all; }
+  .file-chip.ok { border-style: solid; border-color: transparent; background: var(--green-bg); color: var(--green-ink); }
+  .file-chip.warn { border-style: solid; border-color: transparent; background: var(--amber-bg); color: var(--amber-ink); }
+  .go { margin-top: 12px; padding: 11px 18px; min-height: 46px; border: 0; border-radius: 11px; background: var(--blue); color: #fff; font-weight: 600; font-size: 14px; width: 100%; }
+  .go:disabled { opacity: .45; cursor: not-allowed; }
+  .restore { margin-top: 8px; height: 34px; padding: 0 12px; border-radius: 999px; border: 0; background: var(--blue-bg); color: var(--blue); font-size: 12px; font-weight: 600; }
+  .spin { display: none; margin-top: 8px; font-size: 13px; color: var(--soft); } .spin.show { display: block; }
+  .result { margin-top: 10px; padding: 12px 14px; border-radius: 11px; font-size: 13px; white-space: pre-wrap; }
+  .result.lv-red { background: var(--red-bg); color: var(--red-ink); } .result.lv-amber { background: var(--amber-bg); color: var(--amber-ink); } .result.lv-green { background: var(--green-bg); color: var(--green-ink); }
+  .loading { color: var(--soft); font-size: 13px; padding: 14px 0; }
+  table { border-collapse: collapse; }
 </style>
 </head>
 <body>
-<h1>Upload Data Monitoring Harian</h1>
-<div class="sub">Pilih DT, upload file mentah, dan lihat status update semua data. Merah, kuning, hijau menunjukkan mana yang perlu diurus.</div>
+<header class="top"><div class="top-in"><span class="mark" aria-hidden="true">UP</span><div><h1>Upload Data Monitoring Harian</h1><div class="sub">Pilih DT, upload file mentah, lihat status update. Merah, kuning, hijau menunjukkan mana yang perlu diurus.</div></div></div></header>
+<div class="wrap">
 
 <h2 style="margin-top:6px">KPI Great Sales</h2>
 <div class="group-note">Scorecard AAM nasional, tidak tergantung DT. Upload tiap hari supaya rank dan daftar toko di halaman Great Sales ikut update.</div>
@@ -141,6 +144,7 @@
 
 <div id="cards"><div class="loading" id="loading">Memuat daftar DT...</div></div>
 
+</div>
 <script>
   var GROUPS = [
     { key: 'daily', title: 'Update Harian', note: 'Diupdate tiap hari kerja atau setiap tarik report.' },
