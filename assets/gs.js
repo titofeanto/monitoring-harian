@@ -31,16 +31,20 @@
   /* Login otomatis (silent) yang gagal tidak boleh melempar ke layar login kecuali kodenya memang salah. */
   function problem(msg, silent, badCode) {
     if (!silent) { loginErr(msg); return; }
-    if (badCode) window.MHBoot.invalid(msg); else window.MHBoot.fail(msg);
+    if (badCode) { $('appScreen').hidden = true; $('loginScreen').hidden = false; refreshNote(''); window.MHBoot.invalid(msg); } else window.MHBoot.fail(msg);
   }
 
   const CACHE_KEY = 'mh_gs_cache';
+  let cacheAt = 0;
+  const jam = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0'); };
+  function refreshNote(txt, done) { $('gsRefresh').hidden = !txt; $('gsRefresh').classList.toggle('done', !!done); $('gsRefreshTxt').textContent = txt || ''; }
   /* Salinan respons terakhir: halaman langsung tampil saat dibuka/refresh, data baru menyusul di belakang. */
   function readCache(code) {
-    try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); return c && c.code === code && c.view === VIEW ? c.data : null; } catch (e) { return null; }
+    try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); if (c && c.code === code && c.view === VIEW) { cacheAt = c.at || 0; return c.data; } } catch (e) { /* salinan rusak */ }
+    return null;
   }
   function writeCache(code, data) {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ code, view: VIEW, data })); } catch (e) { /* penuh / mode privat */ }
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ code, view: VIEW, data, at: Date.now() })); } catch (e) { /* penuh / mode privat */ }
   }
 
   function enter(d, code) {
@@ -54,17 +58,20 @@
   async function login(code, silent) {
     if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
     const cached = silent ? readCache(code) : null;
-    if (cached && cached.mode === 'gs' && cached.scorecard && cached.scorecard.length) enter(cached, code);
+    const shown = !!(cached && cached.mode === 'gs' && cached.scorecard && cached.scorecard.length);
+    if (shown) { enter(cached, code); refreshNote('Memperbarui data… (tampilan sementara dari ' + (cacheAt ? 'pukul ' + jam(cacheAt) : 'data tersimpan') + ')'); }
     try {
       const d = await fetchGs(code, VIEW);
+      if (shown && d.error) refreshNote('Gagal memperbarui (' + (d.message || d.error) + '), ini data tersimpan.', true);
       if (d.error === 'invalid_code') { problem('Kode akses salah.', silent, true); return; }
       if (d.error === 'no_data') { problem('Data Great Sales belum diupload lewat tool upload.', silent, false); return; }
       if (d.error) { problem('Server Apps Script bermasalah: ' + (d.message || d.error), silent, false); return; }
       if (d.mode !== 'gs') { problem('API belum mendukung Great Sales. Deploy ulang Apps Script (lihat README).', silent, false); return; }
       writeCache(code, d);
       enter(d, code);
+      if (shown) refreshNote('Data diperbarui pukul ' + jam(Date.now()), true);
     } catch (err) {
-      if (cached) return; // sudah tampil dari salinan, abaikan gagal refresh
+      if (shown) { refreshNote('Gagal memperbarui, ini data tersimpan' + (cacheAt ? ' pukul ' + jam(cacheAt) : '') + '. Tarik layar untuk coba lagi.', true); return; }
       problem('Tidak bisa terhubung ke Apps Script (' + err.message + ').', silent, false);
     }
   }
