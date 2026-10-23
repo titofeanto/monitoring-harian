@@ -68,6 +68,36 @@
 
   const outlets = jenis => DATA.outlets.filter(o => o.jenis === jenis);
 
+  const PS_PARTS = [['cotc', 'COTC'], ['npd', 'NPD'], ['sos', 'SOS'], ['sstd', 'SSTD'], ['banded', 'Banded']];
+  const psStores = () => (DATA.ps && DATA.ps.stores) || [];
+  const psMissing = o => PS_PARTS.filter(p => String(o[p[0]]) === '0').map(p => p[1]);
+  const isPerfect = o => o.status === 'PS FULL' || o.status === 'PS LITE';
+
+  /** Ringkasan PS dari upload mingguan: target = jumlah target Full + Lite semua DT dalam cakupan. */
+  function psSummary() {
+    const st = psStores();
+    if (!st.length) return null;
+    const tg = (DATA.ps.targets || []).reduce((a, t) => ({ full: a.full + (num(t.target_full) || 0), lite: a.lite + (num(t.target_lite) || 0) }), { full: 0, lite: 0 });
+    const full = st.filter(o => o.status === 'PS FULL').length, lite = st.filter(o => o.status === 'PS LITE').length;
+    const target = tg.full + tg.lite;
+    return { stores: st.length, full, lite, perfect: full + lite, target, tFull: tg.full, tLite: tg.lite, tanggal: String(st[0].tanggal) };
+  }
+
+  /** PS dihitung dari upload Perfect Stores (perfect / target), bukan angka HO; skor total dihitung ulang dari poin. */
+  function applyPs(kp) {
+    const sm = psSummary();
+    if (!sm || !sm.target) return { kp, sm, score: null };
+    const k = kp.find(x => x.kpi === 'PS');
+    if (k) {
+      k.aktual = sm.perfect / sm.target;
+      k.poin = k.target ? k.bobot * Math.min(k.aktual / k.target, 1) : null;
+      k.hilang = k.poin == null ? 0 : k.bobot - k.poin;
+      k.catatan = 'Dihitung dari upload Perfect Stores ' + tgl(sm.tanggal) + ': ' + sm.perfect + ' dari target ' + sm.target + ' toko perfect';
+      kp.sort((a, b) => b.hilang - a.hilang);
+    }
+    return { kp, sm, score: kp.reduce((a, x) => a + (x.poin || 0), 0) };
+  }
+
   function render() {
     const snaps = snapshots(), cur = snaps[snaps.length - 1], prev = snaps.length > 1 ? snaps[snaps.length - 2] : null;
     const rank = num(cur.rows.RANK && cur.rows.RANK.aktual), score = num(cur.rows.SCORE && cur.rows.SCORE.aktual);
@@ -82,12 +112,13 @@
         `<button type="button" class="chip" data-dt="${esc(d.kode)}" aria-pressed="${d.kode === VIEW}">${esc(d.nama)}</button>`).join('');
     }
 
-    const kp = kpiList(cur);
+    const ap = applyPs(kpiList(cur)), kp = ap.kp;
+    const scoreShown = ap.score != null && DATA.ps && !DATA.scope ? ap.score : score;
     const delta = prevRank == null || rank == null ? '' : rank < prevRank ? `<span class="delta-up">▲ naik ${prevRank - rank} dari ${prevRank}</span>` : rank > prevRank ? `<span class="delta-down">▼ turun ${rank - prevRank} dari ${prevRank}</span>` : 'tetap';
     const gain = kp.reduce((s, k) => s + k.hilang, 0);
     $('topKpis').innerHTML =
       `<div class="kpi hot"><div class="l">Rank nasional</div><div class="v">${rank == null ? '-' : rank}</div><div class="s">${delta || 'belum ada pembanding'}</div></div>` +
-      `<div class="kpi"><div class="l">Score</div><div class="v">${score == null ? '-' : score.toFixed(2).replace('.', ',')}</div><div class="s">dari 100</div></div>` +
+      `<div class="kpi"><div class="l">Score</div><div class="v">${scoreShown == null ? '-' : scoreShown.toFixed(2).replace('.', ',')}</div><div class="s">${ap.sm && !DATA.scope ? 'PS hasil upload mingguan' : 'dari 100'}</div></div>` +
       `<div class="kpi warn"><div class="l">Poin yang masih bisa dikejar</div><div class="v">${gain.toFixed(1).replace('.', ',')}</div><div class="s">terbesar: ${esc(kp[0] ? kp[0].label : '-')}</div></div>`;
 
     $('tKpi').innerHTML = '<tr><th>KPI</th><th style="text-align:right">Poin hilang</th></tr>' + kp.map(k =>
@@ -121,17 +152,28 @@
   }
 
   function renderPs(k) {
-    const rows = outlets('PS');
-    if (!rows.length) { $('secPs').innerHTML = ''; return; }
-    const not = rows.filter(o => String(o.v2) !== '1');
+    const sm = psSummary(), st = psStores();
+    if (!sm) { $('secPs').innerHTML = ''; return; }
+    const not = st.filter(o => !isPerfect(o)).sort((a, b) => psMissing(a).length - psMissing(b).length || String(a.dist_nama).localeCompare(b.dist_nama));
     const miss = {};
-    not.forEach(o => String(o.detail).split(',').map(s => s.trim()).filter(Boolean).forEach(m => { miss[m] = (miss[m] || 0) + 1; }));
+    not.forEach(o => psMissing(o).forEach(m => { miss[m] = (miss[m] || 0) + 1; }));
     const missTxt = Object.keys(miss).sort((a, b) => miss[b] - miss[a]).map(m => `${m} (${miss[m]} toko)`).join(', ');
+    const need = Math.max(sm.target - sm.perfect, 0);
+    const dtRows = (DATA.ps.targets || []).map(t => {
+      const mine = st.filter(o => String(o.dist_kode) === String(t.dist_kode));
+      const per = mine.filter(isPerfect).length, tg = (num(t.target_full) || 0) + (num(t.target_lite) || 0);
+      return `<tr><td>${esc(t.dist_nama)}</td><td class="n">${mine.filter(o => o.status === 'PS FULL').length}/${num(t.target_full) || 0}</td>` +
+        `<td class="n">${mine.filter(o => o.status === 'PS LITE').length}/${num(t.target_lite) || 0}</td><td class="n ${tg && per >= tg ? 'ok' : ''}">${tg ? pct(per / tg) : '-'}</td></tr>`;
+    }).join('');
     $('secPs').innerHTML = `<h2>Perfect Stores ${k ? `<span class="lv ${level(k)}">${pct(k.aktual)}</span>` : ''}</h2>` +
-      `<p class="gs-note">${rows.length - not.length} dari ${rows.length} toko sudah Perfect di sheet Perfect Stores. Komponen paling sering kurang: ${esc(missTxt || '-')}.</p>` +
-      (not.length ? `<div class="scroll"><table class="gs"><tr><th>Toko</th><th>Status</th><th>Kurang</th></tr>` +
+      `<p class="gs-note">Data ${esc(tgl(sm.tanggal))}, update mingguan. ${sm.perfect} toko perfect (Full ${sm.full}, Lite ${sm.lite}) dari target ${sm.target}` +
+      (need ? `: kurang ${need} toko lagi.` : ': target tercapai.') +
+      ` Toko yang belum perfect paling sering kurang: ${esc(missTxt || '-')}.</p>` +
+      (dtRows ? `<div class="scroll"><table class="gs"><tr><th>DT</th><th class="n">Full</th><th class="n">Lite</th><th class="n">Capai</th></tr>${dtRows}</table></div>` : '') +
+      `<p class="gs-note" style="margin-top:10px">Status Full atau Lite mengikuti hasil HO di file. Toko di bawah ini diurutkan dari yang paling dekat perfect.</p>` +
+      (not.length ? `<div class="scroll"><table class="gs"><tr><th>Toko</th><th>KPI</th><th>Kurang</th></tr>` +
         not.map(o => `<tr><td>${esc(o.outlet_nama)}<div class="muted" style="font-size:11px">${esc(o.dist_nama)} · ${esc(o.channel)}</div></td>` +
-          `<td>${esc(o.status)} (${esc(o.v1)})</td><td class="no">${esc(o.detail || '-')}</td></tr>`).join('') + '</table></div>' : '');
+          `<td class="n">${esc(o.total_kpi)}</td><td class="no">${esc(psMissing(o).join(', ') || '-')}</td></tr>`).join('') + '</table></div>' : '');
   }
 
   function renderBanded(kMinis, kSpm) {
@@ -168,10 +210,10 @@
       L.push('', 'Toko ' + c[1] + ' belum order minggu ini (target ' + FOP_NEED + 'x sebulan):');
       todo.forEach(o => L.push('- ' + o.outlet_nama + ' (' + o.orders + '/' + FOP_NEED + ')'));
     });
-    const ps = outlets('PS').filter(o => String(o.v2) !== '1' && o.detail).slice(0, 10);
+    const ps = psStores().filter(o => !isPerfect(o) && psMissing(o).length).sort((a, b) => psMissing(a).length - psMissing(b).length).slice(0, 10);
     if (ps.length) {
       L.push('', 'Perfect Store, lengkapi:');
-      ps.forEach(o => L.push('- ' + o.outlet_nama + ': ' + o.detail));
+      ps.forEach(o => L.push('- ' + o.outlet_nama + ': ' + psMissing(o).join(', ')));
     }
     L.push('', 'Detail: ' + location.href.split('?')[0]);
     return L.join('\n');

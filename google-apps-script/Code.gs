@@ -433,6 +433,12 @@ function respondGs_(me, reg, dtWanted) {
     const mine = o => String(o.dist_kode) === scope.dt_kode || (word.length >= 4 && String(o.dist_nama).toUpperCase().indexOf(word) >= 0);
     outlets = outlets.filter(o => o.jenis === 'BANDED_SKU' || mine(o));
   }
+  // Perfect Stores: snapshot per toko + target per DT (GS_TARGET) + riwayat mingguan. DT hanya melihat distributornya sendiri.
+  let psStores = read('GS_PS'), psTargets = read('GS_TARGET'), psHist = read('GS_PS_HIST');
+  if (scope) {
+    const own = o => String(o.dist_kode) === scope.dt_kode;
+    psStores = psStores.filter(own); psTargets = psTargets.filter(own); psHist = psHist.filter(own);
+  }
   const dts = me.peran === 'pusat' ? reg.filter(r => r.peran === 'dt' && r.sheet_id).map(r => ({ kode: r.dt_kode, nama: r.nama_dt })) : null;
-  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets };
+  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets, ps: { stores: psStores, targets: psTargets, hist: psHist } };
 }

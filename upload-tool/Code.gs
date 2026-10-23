@@ -1001,3 +1001,163 @@ function getGreatSalesStatus() {
   const base = 'Rank ' + last.rank + trend + ' · score ' + (last.score === null ? '-' : last.score.toFixed(2)) + ' · data ' + fmtDateID_(last.tanggal);
   return { level: last.tanggal < expected ? 'amber' : 'green', text: (last.tanggal < expected ? 'Belum update hari ini. ' : '') + base, history: hist.slice(-14) };
 }
+
+// ====================== PERFECT STORES (upload mingguan) ======================
+// File: sheet "Perfect Stores" apa adanya (satu baris per toko). Status PS dari HO (PS FULL / PS LITE /
+// NOT PERFECT) dipakai apa adanya; 5 flag compliance disimpan untuk menunjukkan apa yang kurang.
+// Target toko perfect per DT (Full + Lite) angka HO, disimpan di GS_TARGET dan bisa diubah di tool.
+
+const PS_TAB = 'GS_PS';
+const PS_HIST_TAB = 'GS_PS_HIST';
+const PS_TARGET_TAB = 'GS_TARGET';
+const PS_HEADER = ['tanggal', 'periode', 'dist_kode', 'dist_nama', 'outlet_kode', 'outlet_nama', 'channel', 'status', 'total_kpi',
+  'cotc', 'npd', 'sos', 'sstd', 'banded', 's_cotc', 's_npd', 's_sos', 's_sstd', 's_banded'];
+const PS_HIST_HEADER = ['tanggal', 'dist_kode', 'target', 'full', 'lite', 'perfect'];
+const PS_TARGET_HEADER = ['dist_kode', 'dist_nama', 'target_full', 'target_lite'];
+// Nilai awal dari dashboard HO (Okt 2026); selanjutnya diubah lewat tool.
+const PS_TARGET_SEED = [['15168386', 'ADITAMA CITRA PAPUA GT', 0, 13], ['18078740', 'PT SWIKIE INDAH PRATAMA', 1, 3], ['15168388', 'PT.ADITAMA CITRA PAPUA - LMT - TIMIKA', 0, 2]];
+const PS_FLAGS = [['cotc', 'Store Compliance COTC'], ['npd', 'Store Compliance NPD'], ['sos', 'Store Compliance SOS Category'],
+  ['sstd', 'Store Compliance SSTD Category'], ['banded', 'Store Compliance Banded EVB']];
+const PS_SCORES = [['s_cotc', 'Score COTC'], ['s_npd', 'Score NPD'], ['s_sos', 'Score SOS'], ['s_sstd', 'Score SSTD'], ['s_banded', 'Score Banded']];
+
+/** Pure: sheets {nama: array2D} -> {stores:[...], periode, warnings}. Baris "Total" dibuang. */
+function parsePerfectStores_(sheets) {
+  const names = Object.keys(sheets);
+  let rows = null;
+  const pref = sheets['Perfect Stores'];
+  const cands = (pref ? [pref] : []).concat(names.map(n => sheets[n]));
+  for (let i = 0; i < cands.length && !rows; i++) rows = gsTable_(cands[i], ['Distributor Code&Name', 'Store Name', 'Status PS']);
+  if (!rows) throw new Error('Kolom Distributor Code&Name, Store Name, dan Status PS tidak ditemukan. Pastikan file berisi sheet Perfect Stores.');
+  const hdrKey = (o, prefix) => Object.keys(o).filter(k => normHdr_(k).indexOf(normHdr_(prefix)) === 0)[0];
+  const warnings = [];
+  const stores = [];
+  let periode = '';
+  rows.forEach(o => {
+    const name = gsStr_(o['Store Name']);
+    if (!name || normHdr_(o['Month']) === 'total') return;
+    const d = gsSplitCode_(o['Distributor Code&Name']), s = gsSplitCode_(name);
+    const st = gsStr_(o['Status PS']).toUpperCase();
+    const status = st === 'PS FULL' || st === 'PS LITE' ? st : 'NOT PERFECT';
+    if (!periode) periode = normPeriode_(o['Month']);
+    const rec = { periode: periode, dist_kode: d[0], dist_nama: d[1], outlet_kode: s[0], outlet_nama: s[1],
+      channel: gsStr_(o['Scope Channel']), status: status, total_kpi: gsStr_(o['Total Achieve KPI']) };
+    PS_FLAGS.forEach(f => { const k = hdrKey(o, f[1]); const v = k ? gsNum_(o[k]) : null; rec[f[0]] = v === null ? '' : (v >= 1 ? 1 : 0); });
+    PS_SCORES.forEach(f => { const k = hdrKey(o, f[1]); const v = k ? gsNum_(o[k]) : null; rec[f[0]] = v === null ? '' : v; });
+    stores.push(rec);
+  });
+  if (!stores.length) throw new Error('Tidak ada baris toko yang terbaca dari file Perfect Stores.');
+  return { stores: stores, periode: periode, warnings: warnings };
+}
+
+/** Pure: ringkasan per distributor {dist_kode: {nama, stores, full, lite, perfect}}. */
+function summarizePs_(stores) {
+  const by = {};
+  stores.forEach(s => {
+    const o = by[s.dist_kode] = by[s.dist_kode] || { kode: s.dist_kode, nama: s.dist_nama, stores: 0, full: 0, lite: 0, perfect: 0 };
+    o.stores++;
+    if (s.status === 'PS FULL') { o.full++; o.perfect++; }
+    if (s.status === 'PS LITE') { o.lite++; o.perfect++; }
+  });
+  return by;
+}
+
+function readPsTargets_(ss) {
+  let sh = ss.getSheetByName(PS_TARGET_TAB);
+  if (!sh) {
+    sh = ss.insertSheet(PS_TARGET_TAB);
+    const seed = [PS_TARGET_HEADER].concat(PS_TARGET_SEED);
+    sh.getRange(1, 1, seed.length, PS_TARGET_HEADER.length).setNumberFormat('@');
+    sh.getRange(1, 1, seed.length, PS_TARGET_HEADER.length).setValues(seed.map(r => r.map(v => String(v))));
+  }
+  if (sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, PS_TARGET_HEADER.length).getValues()
+    .filter(r => gsStr_(r[0])).map(r => ({ dist_kode: gsStr_(r[0]), dist_nama: gsStr_(r[1]), target_full: gsNum_(r[2]) || 0, target_lite: gsNum_(r[3]) || 0 }));
+}
+
+function writeText_(sh, rows) {
+  sh.clearContents();
+  ensureGrid_(sh, rows.length, rows[0].length);
+  sh.getRange(1, 1, rows.length, rows[0].length).setNumberFormat('@');
+  sh.getRange(1, 1, rows.length, rows[0].length).setValues(rows.map(r => r.map(v => String(v === null || v === undefined ? '' : v))));
+}
+
+function getPsTargets() { return readPsTargets_(SpreadsheetApp.getActiveSpreadsheet()); }
+
+/** list: [{dist_kode, dist_nama, target_full, target_lite}] -> ganti seluruh GS_TARGET. */
+function savePsTargets(list) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    readPsTargets_(ss);
+    const clean = (list || []).map(t => {
+      const f = Math.round(Number(t.target_full)), l = Math.round(Number(t.target_lite));
+      if (!gsStr_(t.dist_kode) || !(f >= 0) || !(l >= 0)) throw new Error('Target harus angka 0 atau lebih untuk tiap DT.');
+      return [gsStr_(t.dist_kode), gsStr_(t.dist_nama), f, l];
+    });
+    writeText_(ss.getSheetByName(PS_TARGET_TAB), [PS_TARGET_HEADER].concat(clean));
+    return { ok: true, targets: readPsTargets_(ss) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Upload mingguan Perfect Stores -> GS_PS (ganti total) + GS_PS_HIST (upsert tanggal hari ini). */
+function processPerfectStores(base64, filename) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheets = xlsxBase64ToSheets_(base64, filename);
+    const ps = parsePerfectStores_(sheets);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const today = todayIso_();
+    const warnings = ps.warnings.slice();
+    if (ps.periode && ps.periode !== today.slice(0, 7) + '-01' && ps.periode !== today.slice(0, 7)) {
+      warnings.push('File berisi periode ' + fmtPeriodeID_(ps.periode) + ', bukan bulan ini.');
+    }
+    const targets = readPsTargets_(ss);
+    const sum = summarizePs_(ps.stores);
+    const known = {}; targets.forEach(t => { known[t.dist_kode] = true; });
+    const added = Object.keys(sum).filter(k => !known[k]);
+    if (added.length) {
+      const all = targets.map(t => [t.dist_kode, t.dist_nama, t.target_full, t.target_lite]).concat(added.map(k => [k, sum[k].nama, 0, 0]));
+      writeText_(ss.getSheetByName(PS_TARGET_TAB), [PS_TARGET_HEADER].concat(all));
+      warnings.push('Distributor baru di file: ' + added.map(k => k + ' ' + sum[k].nama).join(', ') + '. Isi targetnya di kartu Perfect Stores.');
+    }
+    const prevSh = ss.getSheetByName(PS_TAB);
+    const prevPerfect = prevSh && prevSh.getLastRow() > 1
+      ? prevSh.getRange(2, 8, prevSh.getLastRow() - 1, 1).getValues().filter(r => r[0] === 'PS FULL' || r[0] === 'PS LITE').length : null;
+    const rows = [PS_HEADER].concat(ps.stores.map(s => PS_HEADER.map(k => k === 'tanggal' ? today : s[k])));
+    writeText_(prevSh || ss.insertSheet(PS_TAB), rows);
+
+    const hsh = ss.getSheetByName(PS_HIST_TAB) || ss.insertSheet(PS_HIST_TAB);
+    let old = hsh.getLastRow() > 1 ? hsh.getRange(2, 1, hsh.getLastRow() - 1, PS_HIST_HEADER.length).getValues() : [];
+    old = old.filter(r => normDate_(r[0]) && normDate_(r[0]) !== today).map(r => { r[0] = normDate_(r[0]); return r; });
+    const tmap = {}; readPsTargets_(ss).forEach(t => { tmap[t.dist_kode] = t.target_full + t.target_lite; });
+    const hist = Object.keys(sum).map(k => [today, k, tmap[k] || 0, sum[k].full, sum[k].lite, sum[k].perfect]);
+    writeText_(hsh, [PS_HIST_HEADER].concat(old, hist));
+
+    const tot = Object.keys(sum).reduce((a, k) => ({ perfect: a.perfect + sum[k].perfect, full: a.full + sum[k].full, lite: a.lite + sum[k].lite, target: a.target + (tmap[k] || 0) }),
+      { perfect: 0, full: 0, lite: 0, target: 0 });
+    if (prevPerfect !== null && tot.perfect < prevPerfect) warnings.push('Toko perfect TURUN dari ' + prevPerfect + ' ke ' + tot.perfect + ' dibanding upload sebelumnya.');
+    return { ok: true, stores: ps.stores.length, perfect: tot.perfect, full: tot.full, lite: tot.lite, target: tot.target,
+      prevPerfect: prevPerfect, perDt: Object.keys(sum).map(k => sum[k]), warnings: warnings };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getPsStatus() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(PS_TAB);
+  const targets = readPsTargets_(ss);
+  if (!sh || sh.getLastRow() < 2) return { level: 'red', text: 'Belum pernah diupload', targets: targets };
+  const v = sh.getRange(2, 1, sh.getLastRow() - 1, PS_HEADER.length).getValues();
+  const date = normDate_(v[0][0]), sum = summarizePs_(v.map(r => ({ dist_kode: r[2], dist_nama: r[3], status: r[7] })));
+  const tgt = targets.reduce((a, t) => a + t.target_full + t.target_lite, 0);
+  const per = Object.keys(sum).reduce((a, k) => a + sum[k].perfect, 0);
+  const age = daysBetween_(date, todayIso_());
+  const pct = tgt > 0 ? ' (' + (per / tgt * 100).toFixed(1).replace('.', ',') + '%)' : '';
+  return { level: age > 10 ? 'red' : age > 7 ? 'amber' : 'green',
+    text: per + ' dari target ' + tgt + ' toko perfect' + pct + ' · data ' + fmtDateID_(date) + (age > 7 ? ' · sudah ' + age + ' hari, update mingguan' : ''), targets: targets };
+}

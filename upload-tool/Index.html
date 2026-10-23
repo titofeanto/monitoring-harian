@@ -99,6 +99,22 @@
   <div id="gsRes"></div>
 </div>
 
+<div class="card" id="card-PS">
+  <div class="card-head"><div><h3>Perfect Stores (mingguan)</h3><span class="tab">GS_PS · GS_PS_HIST · GS_TARGET</span></div>
+    <span class="badge" id="psBadge"><i class="dot"></i>Memuat</span></div>
+  <div class="st-text" id="psText">Mengecek...</div>
+  <div class="desc">Sheet Perfect Stores apa adanya (satu baris per toko). Upload seminggu sekali. Hasil Full, Lite, dan toko yang kurang langsung masuk scorecard.</div>
+  <label for="psFile">File (.xlsx)</label>
+  <input type="file" id="psFile" accept=".xlsx">
+  <button type="button" class="go" id="psGo" disabled>Proses &amp; simpan Perfect Stores</button>
+  <div class="spin" id="psSpin">Memproses...</div>
+  <div id="psRes"></div>
+  <label style="margin-top:14px">Target toko perfect per DT (angka HO)</label>
+  <div id="psTargets" class="desc">Memuat...</div>
+  <button type="button" class="go" id="psSave" style="display:none">Simpan target</button>
+  <div id="psSaveRes"></div>
+</div>
+
 <h2>Data per DT</h2>
 <div class="dt-chips" id="dtChips" role="group" aria-label="Pilih DT"></div>
 
@@ -328,7 +344,60 @@
     });
   });
 
+  var psTargets = [];
+  function renderPsTargets() {
+    if (!psTargets.length) { el('psTargets').textContent = 'Belum ada target.'; el('psSave').style.display = 'none'; return; }
+    el('psTargets').innerHTML = '<table style="width:100%;font-size:12.5px;border-collapse:collapse"><tr><th style="text-align:left">DT</th><th>Full</th><th>Lite</th></tr>' +
+      psTargets.map(function (t, i) {
+        return '<tr><td style="padding:4px 0">' + esc(t.dist_kode) + ' ' + esc(t.dist_nama) + '</td>' +
+          '<td><input type="number" min="0" inputmode="numeric" data-i="' + i + '" data-f="target_full" value="' + t.target_full + '" style="width:64px"></td>' +
+          '<td><input type="number" min="0" inputmode="numeric" data-i="' + i + '" data-f="target_lite" value="' + t.target_lite + '" style="width:64px"></td></tr>';
+      }).join('') + '</table>';
+    el('psSave').style.display = '';
+  }
+  function loadPs() {
+    google.script.run.withSuccessHandler(function (st) {
+      var c = el('card-PS'); c.className = 'card lv-' + st.level;
+      el('psBadge').className = 'badge lv-' + st.level;
+      el('psBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.level];
+      el('psText').textContent = st.text;
+      psTargets = st.targets || []; renderPsTargets();
+    }).withFailureHandler(function (e) { el('psText').textContent = 'Gagal mengecek: ' + e.message; }).getPsStatus();
+  }
+  el('psTargets').addEventListener('input', function (e) {
+    var i = e.target.getAttribute('data-i'); if (i === null) return;
+    psTargets[+i][e.target.getAttribute('data-f')] = e.target.value;
+  });
+  el('psSave').addEventListener('click', function () {
+    el('psSave').disabled = true;
+    google.script.run.withSuccessHandler(function (res) {
+      el('psSave').disabled = false; psTargets = res.targets;
+      el('psSaveRes').innerHTML = '<div class="result lv-green">Target tersimpan.</div>'; loadPs();
+    }).withFailureHandler(function (e) {
+      el('psSave').disabled = false; el('psSaveRes').innerHTML = '<div class="result lv-red"><b>Gagal:</b> ' + esc(e.message) + '</div>';
+    }).savePsTargets(psTargets);
+  });
+  el('psFile').addEventListener('change', function () { el('psGo').disabled = !this.files[0]; });
+  el('psGo').addEventListener('click', function () {
+    var f = el('psFile').files[0]; if (!f) return;
+    el('psGo').disabled = true; el('psSpin').classList.add('show'); el('psRes').innerHTML = '';
+    readB64(f).then(function (b64) {
+      google.script.run.withSuccessHandler(function (res) {
+        el('psSpin').classList.remove('show'); el('psGo').disabled = false;
+        var html = '<b>Tersimpan.</b>\n' + res.perfect + ' toko perfect dari target ' + res.target + ' (Full ' + res.full + ', Lite ' + res.lite + ')' +
+          (res.prevPerfect != null ? '\nUpload sebelumnya: ' + res.prevPerfect + ' toko' : '') + '\nToko di file: ' + res.stores;
+        if (res.warnings.length) html += '\n\n<b>PERIKSA:</b>\n' + res.warnings.map(function (w) { return '- ' + esc(w); }).join('\n');
+        el('psRes').innerHTML = '<div class="result lv-' + (res.warnings.length ? 'amber' : 'green') + '">' + html + '</div>';
+        loadPs();
+      }).withFailureHandler(function (e) {
+        el('psSpin').classList.remove('show'); el('psGo').disabled = false;
+        el('psRes').innerHTML = '<div class="result lv-red"><b>Gagal:</b> ' + esc(e.message) + '</div>';
+      }).processPerfectStores(b64, f.name);
+    });
+  });
+
   loadGs();
+  loadPs();
   init();
 </script>
 </body>
