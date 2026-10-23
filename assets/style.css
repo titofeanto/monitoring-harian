@@ -158,3 +158,5 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
 .boot .btn+.btn{margin-top:8px}
 html.has-code #loginScreen{display:none}
 html.has-code .boot{display:grid}
+.boot .bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden;margin-top:14px;border:1px solid var(--line)}
+.boot .bar i{display:block;height:100%;width:0;border-radius:99px;background:var(--accent);transition:width .3s linear}

@@ -547,6 +547,7 @@ if (typeof module !== 'undefined') {
       if (data.error) { loginProblem('Server Apps Script bermasalah: ' + (data.message || data.error), silent, false); return false; }
       if (data.mode === 'pusat') {
         if (!silent) $('loginBtn').textContent = `Memuat ${data.dts.length} DT…`;
+        else window.MHBoot.stage(`Memuat ${data.dts.length} DT…`);
         // Tiap DT diambil terpisah supaya respons kecil dan cache per DT tetap terpakai.
         PUSAT = await Promise.all(data.dts.map(async d => {
           try {

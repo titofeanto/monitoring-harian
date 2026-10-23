@@ -15,7 +15,10 @@
 <div class="boot" id="bootBox" role="status">
   <div>
     <p id="bootMsg">Memuat data…</p>
-    <div id="bootSpin" class="muted" style="font-size:12px">Server kadang butuh beberapa detik.</div>
+    <div id="bootProg">
+      <div class="bar"><i id="bootBar"></i></div>
+      <div id="bootEta" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div>
     <div id="bootActions" hidden style="margin-top:14px">
       <button type="button" class="btn" id="bootRetry" style="width:100%">Coba lagi</button>
       <button type="button" class="btn plain" id="bootOther" style="width:100%">Pakai kode lain</button>
