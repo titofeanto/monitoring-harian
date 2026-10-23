@@ -24,7 +24,29 @@
   }
   function stop() { if (timer) { clearInterval(timer); timer = null; } }
 
+  /* Salinan respons API di IndexedDB (muat jauh lebih besar dari localStorage; respons Monitoring Harian beberapa MB). */
+  function idb() {
+    return new Promise((res, rej) => {
+      try {
+        const r = indexedDB.open('mh_cache', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('kv');
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      } catch (e) { rej(e); }
+    });
+  }
+  function kv(mode, fn) {
+    return idb().then(db => new Promise((res, rej) => {
+      const tx = db.transaction('kv', mode), req = fn(tx.objectStore('kv'));
+      tx.oncomplete = () => res(req ? req.result : null);
+      tx.onerror = tx.onabort = () => rej(tx.error);
+    })).catch(() => null); // IndexedDB tidak tersedia / mode privat: halaman tetap jalan tanpa salinan
+  }
+
   window.MHBoot = {
+    cacheGet: key => kv('readonly', st => st.get(key)),
+    cacheSet: (key, val) => kv('readwrite', st => st.put(val, key)),
+    cacheClear: key => kv('readwrite', st => st.delete(key)),
     /** Teks tahap, mis. "Memuat 2 DT…". */
     stage(msg) { if ($('bootMsg')) $('bootMsg').textContent = msg; },
     saved: saved,

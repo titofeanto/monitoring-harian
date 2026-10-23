@@ -168,3 +168,5 @@ html.has-code .boot{display:grid}
 .refresh.done .bar{display:none}
 @keyframes rf{0%{left:-35%}100%{left:100%}}
 @media (prefers-reduced-motion:reduce){.refresh .bar i{animation:none;width:100%}}
+.linkbtn{background:none;border:0;padding:0;font:600 12px var(--body);color:var(--accent);text-decoration:underline;cursor:pointer}
+#appRefresh{max-width:640px;margin:-4px auto 12px;padding:0 4px}

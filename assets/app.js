@@ -533,6 +533,60 @@ if (typeof module !== 'undefined') {
     return data;
   }
 
+  /* Ambil semua respons mentah: {data} (satu DT) atau {data, dts:[{kode, nama, x, err}]} (pusat). */
+  async function fetchAll(code, silent) {
+    const data = await fetchApi(code);
+    if (data.error || data.mode !== 'pusat') return { data };
+    if (silent) window.MHBoot.stage(`Memuat ${data.dts.length} DT…`); else $('loginBtn').textContent = `Memuat ${data.dts.length} DT…`;
+    // Tiap DT diambil terpisah supaya respons kecil dan cache per DT tetap terpakai.
+    const dts = await Promise.all(data.dts.map(async d => {
+      try {
+        const x = await fetchApi(code, d.kode);
+        if (x.error) throw new Error(x.message || x.error);
+        return { kode: d.kode, nama: d.nama, x: x, err: '' };
+      } catch (err) { return { kode: d.kode, nama: d.nama, x: null, err: err.message }; }
+    }));
+    return { data, dts };
+  }
+
+  /* Bangun model dari respons mentah (dari jaringan atau dari salinan). */
+  function applyRaw(raw) {
+    if (raw.dts) {
+      PUSAT = raw.dts.map(d => {
+        try { return { kode: d.kode, nama: d.nama, model: d.x ? M.buildModel(d.x) : null, err: d.err }; }
+        catch (err) { return { kode: d.kode, nama: d.nama, model: null, err: err.message }; }
+      });
+      VIEW = 'all';
+      MODEL = null;
+    } else {
+      PUSAT = null;
+      setModel(M.buildModel(raw.data));
+    }
+  }
+
+  const CACHE_KEY = 'app';
+  let touched = false, pendingRaw = null, cacheAt = 0;
+  const jam = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0'); };
+  function refreshNote(txt, done, btn) {
+    $('appRefresh').hidden = !txt; $('appRefresh').classList.toggle('done', !!done);
+    $('appRefreshTxt').textContent = txt || ''; $('appRefreshBtn').hidden = !btn;
+  }
+  ['input', 'change'].forEach(ev => $('appScreen').addEventListener(ev, () => { touched = true; }));
+
+  /* Ganti data di layar dengan data baru tanpa kehilangan DT/DSR yang sedang dipilih. */
+  function swapIn(raw) {
+    const prevView = VIEW, prevCur = CUR;
+    applyRaw(raw);
+    if (PUSAT && typeof prevView === 'number' && PUSAT[prevView] && PUSAT[prevView].model) { VIEW = prevView; setModel(PUSAT[prevView].model); }
+    if (MODEL) CUR = Math.min(prevCur, Math.max(MODEL.dsrList.length - 1, 0));
+    showApp();
+  }
+  $('appRefreshBtn').addEventListener('click', () => {
+    if (!pendingRaw) return;
+    swapIn(pendingRaw); pendingRaw = null; touched = false;
+    refreshNote('Data diperbarui pukul ' + jam(Date.now()), true);
+  });
+
   async function tryLogin(code, silent) {
     const base = (window.APP_CONFIG && window.APP_CONFIG.APPS_SCRIPT_URL) || '';
     if (!base || base.includes('PASTE_URL')) {
@@ -540,38 +594,47 @@ if (typeof module !== 'undefined') {
       return false;
     }
     if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
+    // Login otomatis: tampilkan salinan terakhir dulu, data baru menyusul di belakang.
+    let shown = false;
+    if (silent) {
+      const c = await window.MHBoot.cacheGet(CACHE_KEY);
+      if (c && c.code === code && c.raw) {
+        try {
+          applyRaw(c.raw); AUTH_CODE = code; cacheAt = c.at || 0; showApp(); shown = true;
+          refreshNote('Memperbarui data… (tampilan sementara dari ' + (cacheAt ? 'pukul ' + jam(cacheAt) : 'data tersimpan') + ')');
+        } catch (err) { shown = false; }
+      }
+    }
     try {
-      const data = await fetchApi(code);
-      if (data.error === 'invalid_code') { loginProblem('Kode akses salah.', silent, true); return false; }
-      if (data.error === 'missing_code') { loginProblem('Isi kode akses dulu.', silent, true); return false; }
-      if (data.error) { loginProblem('Server Apps Script bermasalah: ' + (data.message || data.error), silent, false); return false; }
-      if (data.mode === 'pusat') {
-        if (!silent) $('loginBtn').textContent = `Memuat ${data.dts.length} DT…`;
-        else window.MHBoot.stage(`Memuat ${data.dts.length} DT…`);
-        // Tiap DT diambil terpisah supaya respons kecil dan cache per DT tetap terpakai.
-        PUSAT = await Promise.all(data.dts.map(async d => {
-          try {
-            const x = await fetchApi(code, d.kode);
-            if (x.error) throw new Error(x.message || x.error);
-            return { kode: d.kode, nama: d.nama, model: M.buildModel(x), err: '' };
-          } catch (err) { return { kode: d.kode, nama: d.nama, model: null, err: err.message }; }
-        }));
-        VIEW = 'all';
-        MODEL = null;
-      } else {
-        PUSAT = null;
-        setModel(M.buildModel(data));
+      const raw = await fetchAll(code, silent);
+      const data = raw.data;
+      if (data.error === 'invalid_code') { dropShown(shown); loginProblem('Kode akses salah.', silent, true); return false; }
+      if (data.error === 'missing_code') { dropShown(shown); loginProblem('Isi kode akses dulu.', silent, true); return false; }
+      if (data.error) {
+        if (shown) { refreshNote('Gagal memperbarui (' + (data.message || data.error) + '), ini data tersimpan' + (cacheAt ? ' pukul ' + jam(cacheAt) : '') + '.', true); return true; }
+        loginProblem('Server Apps Script bermasalah: ' + (data.message || data.error), silent, false); return false;
       }
       AUTH_CODE = code;
       try { localStorage.setItem(LS_CODE, code); } catch {}
-      showApp();
+      const complete = !raw.dts || raw.dts.every(d => d.x);
+      if (complete) window.MHBoot.cacheSet(CACHE_KEY, { code: code, at: Date.now(), raw: raw });
+      if (!shown) { applyRaw(raw); showApp(); return true; }
+      if (touched) { pendingRaw = raw; refreshNote('Data baru tersedia. Layar belum diganti supaya isian Anda tidak hilang.', true, true); }
+      else { swapIn(raw); refreshNote('Data diperbarui pukul ' + jam(Date.now()), true); }
       return true;
     } catch (err) {
+      if (shown) { refreshNote('Gagal memperbarui, ini data tersimpan' + (cacheAt ? ' pukul ' + jam(cacheAt) : '') + '. Tarik layar untuk coba lagi.', true); return true; }
       loginProblem('Tidak bisa terhubung ke Apps Script. Cek koneksi internet, lalu coba lagi. (' + err.message + ')', silent, false);
       return false;
     } finally {
       if (!silent) { $('loginBtn').disabled = false; $('loginBtn').textContent = 'Masuk'; }
     }
+  }
+  /* Kode ternyata salah padahal salinan sudah tampil: tutup tampilan dan buang salinan. */
+  function dropShown(shown) {
+    if (!shown) return;
+    $('appScreen').hidden = true; $('loginScreen').hidden = false; refreshNote('');
+    MODEL = null; PUSAT = null; window.MHBoot.cacheClear(CACHE_KEY);
   }
   /* Login otomatis (silent) yang gagal tidak boleh melempar ke layar login kecuali kodenya memang salah. */
   function loginProblem(msg, silent, badCode) {
@@ -721,6 +784,7 @@ if (typeof module !== 'undefined') {
 
   $('logoutBtn').addEventListener('click', () => {
     try { localStorage.removeItem(LS_CODE); } catch {}
+    window.MHBoot.cacheClear(CACHE_KEY); refreshNote(''); pendingRaw = null;
     MODEL = null; PUSAT = null; VIEW = 'all'; AUTH_CODE = '';
     $('appScreen').hidden = true;
     $('loginScreen').hidden = false;
