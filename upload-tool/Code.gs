@@ -502,7 +502,8 @@ function processUpload(dtKode, key, base64, filename, dateStr) {
     const info = infoLine_(spec, nw, compare);
     recordLog_(ss, spec.key, spec.label, written, info, compare);
     const cacheCleared = clearWebCache_(r.dt_kode);
-    return { ok: true, key: key, rowsWritten: written, info: info, warnings: warnings, cacheCleared: cacheCleared, sheetUsed: picked.name };
+    const snapshot = spec.key === 'DMS_EXTRACT' && cacheCleared ? snapshotLines_(snapshotViaApi_(r.dt_kode)) : null;
+    return { ok: true, key: key, rowsWritten: written, info: info, warnings: warnings, cacheCleared: cacheCleared, sheetUsed: picked.name, snapshot: snapshot };
   } finally {
     lock.releaseLock();
   }
@@ -1199,4 +1200,261 @@ function saveAsrtTargets(list) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ====================== REFERENSI GREAT SALES: DAFTAR TOKO MONITORING + SKU BANDED ======================
+// Weekly FOP dan Banded dihitung live oleh API dari DMS Extract. Dua daftar ini yang menentukan "toko mana" dan "SKU mana".
+// File: workbook yang sama dengan Monitoring DAILY KPI GREAT SALES (sheet Weekly FOP / LIST OUTLET MONITORING BANDED untuk toko,
+// Banded SPM / Banded Local Minis untuk SKU). Bagian yang tidak ada di file tidak mengubah data lama.
+
+const GS_TOKO_TAB = 'GS_TOKO';
+const GS_BSKU_TAB = 'GS_BANDED_SKU';
+const GS_CFG_TAB = 'GS_CONFIG';
+const GS_MANUAL_TAB = 'GS_MANUAL';
+const GS_TOKO_HEADER = ['tanggal', 'dist_kode', 'dist_nama', 'outlet_kode', 'outlet_nama', 'channel', 'subchannel', 'remark', 'status'];
+const GS_BSKU_HEADER = ['tanggal', 'channel', 'sku_kode', 'sku_nama'];
+const GS_CFG_HEADER = ['key', 'value', 'keterangan'];
+const GS_MANUAL_HEADER = ['tanggal', 'rank', 'dr', 'waktu'];
+// Sama dengan GS_CFG_DEFAULT di API (Code.gs live); nilai di tab GS_CONFIG menang.
+const GS_CFG_DEFS = [
+  ['remark_spm', 'LOCAL SPM', 'REMARK toko yang dihitung sebagai Supermarket (pisahkan koma)'],
+  ['remark_minis', 'TOP 1000 LOCAL MINIS, LOCAL MINIS', 'REMARK toko yang dihitung sebagai Local Minis (pisahkan koma)'],
+  ['fop_weekly', 3, 'Minggu order dalam sebulan supaya toko dihitung WEEKLY'],
+  ['fop_biweekly', 2, 'Minggu order supaya toko dihitung BIWEEKLY (di bawahnya MONTHLY)'],
+  ['banded_spm', 0.8, 'Ambang toko SPM tercapai Banded: bagian SKU banded SPM yang sudah dibeli bulan ini (0-1)'],
+  ['banded_minis', 0.7, 'Ambang toko Local Minis tercapai Banded (0-1)'],
+];
+
+function gsChannelOf_(v, fallbackName) {
+  const t = (String(v || '') + ' ' + String(fallbackName || '')).toUpperCase();
+  return t.indexOf('MINIS') >= 0 ? 'MINIS' : t.indexOf('SPM') >= 0 || t.indexOf('SUPERMARKET') >= 0 ? 'SPM' : '';
+}
+
+/** Pure: sheets {nama: array2D} -> {stores, skus, storeSheet, warnings}. */
+function parseGsRef_(sheets) {
+  const warnings = [], stores = [], skus = [];
+  const names = Object.keys(sheets);
+  let rows = null, storeSheet = '';
+  const order = ['Weekly FOP', 'LIST OUTLET MONITORING BANDED'].filter(n => sheets[n]).concat(names);
+  for (let i = 0; i < order.length && !rows; i++) {
+    rows = gsTable_(sheets[order[i]], ['Distributor', 'Outlet', 'Outlet Name', 'REMARK']);
+    if (rows) storeSheet = order[i];
+  }
+  if (rows) {
+    const seen = {};
+    rows.forEach(o => {
+      const code = gsStr_(o['Outlet']); if (!code || seen[code]) return;
+      seen[code] = true;
+      stores.push({ dist_kode: gsStr_(o['Distributor']), dist_nama: gsStr_(o['Distributor Name']), outlet_kode: code, outlet_nama: gsStr_(o['Outlet Name']),
+        channel: gsStr_(o['Channel']), subchannel: gsStr_(o['Subchannel']), remark: gsStr_(o['REMARK']).toUpperCase(),
+        status: gsStr_(o['STATUS']) ? gsStr_(o['STATUS']).toUpperCase() : 'ACTIVE' });
+    });
+  }
+  names.filter(n => /banded/i.test(n) && !/outlet|monitoring/i.test(n)).forEach(n => {
+    const r = sheets[n];
+    const h = findHeader_(r, { required: [['LIST SKU']], maxScan: 5 });
+    if (!h.ok) return;
+    const cS = colIdx_(r[h.rowIdx], ['LIST SKU']), cC = colIdx_(r[h.rowIdx], ['CHANNEL']);
+    r.slice(h.rowIdx + 1).forEach(row => {
+      const s = gsStr_(row[cS]); if (!s) return;
+      const m = /^(\d+)\s*-\s*(.*)$/.exec(s);
+      const ch = gsChannelOf_(cC >= 0 ? row[cC] : '', n);
+      if (!m || !ch) { warnings.push('Baris SKU banded tidak terbaca di sheet "' + n + '": ' + s.slice(0, 40)); return; }
+      skus.push({ channel: ch, sku_kode: m[1], sku_nama: m[2].trim() });
+    });
+  });
+  if (!stores.length && !skus.length) throw new Error('Tidak ada daftar toko (kolom Distributor, Outlet, Outlet Name, REMARK) maupun daftar SKU banded (kolom LIST SKU) di file ini.');
+  return { stores: stores, skus: skus, storeSheet: storeSheet, warnings: warnings };
+}
+
+function readGsConfig_(ss) {
+  let sh = ss.getSheetByName(GS_CFG_TAB);
+  if (!sh) { sh = ss.insertSheet(GS_CFG_TAB); writeText_(sh, [GS_CFG_HEADER].concat(GS_CFG_DEFS)); }
+  const have = {};
+  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach(r => { have[gsStr_(r[0])] = r[1]; });
+  const out = {};
+  GS_CFG_DEFS.forEach(d => { const v = have[d[0]]; out[d[0]] = v === undefined || gsStr_(v) === '' ? d[1] : (typeof d[1] === 'number' ? gsNum_(String(v).replace(',', '.')) : gsStr_(v)); });
+  return out;
+}
+
+function getGsConfig() { return readGsConfig_(SpreadsheetApp.getActiveSpreadsheet()); }
+
+function saveGsConfig(cfg) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const rows = GS_CFG_DEFS.map(d => {
+      let v = cfg[d[0]];
+      if (typeof d[1] === 'number') {
+        v = gsNum_(String(v).replace(',', '.'));
+        const ok = d[0].indexOf('banded') === 0 ? v !== null && v > 0 && v <= 1 : v !== null && v >= 1 && v <= 6 && v === Math.round(v);
+        if (!ok) throw new Error(d[0].indexOf('banded') === 0 ? 'Ambang banded harus antara 0 dan 1 (contoh 0,8).' : 'Jumlah minggu harus bilangan bulat 1 sampai 6.');
+      } else {
+        v = gsStr_(v);
+        if (!v) throw new Error('Daftar REMARK tidak boleh kosong.');
+      }
+      return [d[0], v, d[2]];
+    });
+    if (rows[2][1] < rows[3][1]) throw new Error('Minggu WEEKLY tidak boleh lebih kecil dari BIWEEKLY.');
+    writeText_(ss.getSheetByName(GS_CFG_TAB) || ss.insertSheet(GS_CFG_TAB), [GS_CFG_HEADER].concat(rows));
+    return { ok: true, cfg: readGsConfig_(ss) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function summarizeGsRef_(ss) {
+  const sh = ss.getSheetByName(GS_TOKO_TAB), sk = ss.getSheetByName(GS_BSKU_TAB);
+  const stores = sh && sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, GS_TOKO_HEADER.length).getValues() : [];
+  const skus = sk && sk.getLastRow() > 1 ? sk.getRange(2, 1, sk.getLastRow() - 1, GS_BSKU_HEADER.length).getValues() : [];
+  return { stores: stores, skus: skus };
+}
+
+/** Hitung toko per grup (SPM / MINIS / tidak dihitung) berdasarkan config; dipakai kartu status dan hasil upload. */
+function gsRefCounts_(stores, cfg) {
+  const spm = String(cfg.remark_spm).toUpperCase().split(',').map(s => s.trim()), mini = String(cfg.remark_minis).toUpperCase().split(',').map(s => s.trim());
+  const c = { SPM: 0, MINIS: 0, excluded: 0, inactive: 0, excludedBy: {} };
+  stores.forEach(r => {
+    const remark = String(r.remark === undefined ? r[7] : r.remark).toUpperCase().trim(), status = String(r.status === undefined ? r[8] : r.status).toUpperCase();
+    if (status === 'INACTIVE') { c.inactive++; return; }
+    if (spm.indexOf(remark) >= 0) c.SPM++; else if (mini.indexOf(remark) >= 0) c.MINIS++;
+    else { c.excluded++; c.excludedBy[remark || '(kosong)'] = (c.excludedBy[remark || '(kosong)'] || 0) + 1; }
+  });
+  return c;
+}
+
+function processGsRef(base64, filename) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sheets = xlsxBase64ToSheets_(base64, filename);
+    const ref = parseGsRef_(sheets);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const today = todayIso_(), warnings = ref.warnings.slice();
+    const cfg = readGsConfig_(ss);
+    const before = summarizeGsRef_(ss);
+    const done = [];
+    if (ref.stores.length) {
+      const rows = [GS_TOKO_HEADER].concat(ref.stores.map(s => [today, s.dist_kode, s.dist_nama, s.outlet_kode, s.outlet_nama, s.channel, s.subchannel, s.remark, s.status]));
+      writeText_(ss.getSheetByName(GS_TOKO_TAB) || ss.insertSheet(GS_TOKO_TAB), rows);
+      const c = gsRefCounts_(ref.stores, cfg);
+      done.push(ref.stores.length + ' toko dari sheet "' + ref.storeSheet + '": dihitung ' + c.SPM + ' SPM + ' + c.MINIS + ' Local Minis; nonaktif ' + c.inactive + '; tidak dihitung ' + c.excluded + (c.excluded ? ' (' + Object.keys(c.excludedBy).map(k => k + ' ' + c.excludedBy[k]).join(', ') + ')' : ''));
+      if (c.excluded && !(c.SPM + c.MINIS)) warnings.push('Tidak ada toko dengan REMARK yang cocok dengan config. Cek remark_spm / remark_minis.');
+      const reg = {}; readRegistry_().forEach(r => { if (r.peran === 'dt' && r.sheet_id) reg[String(r.dt_kode)] = true; });
+      const unk = {}; ref.stores.forEach(s => { if (!reg[s.dist_kode]) unk[s.dist_kode + ' ' + s.dist_nama] = true; });
+      if (Object.keys(unk).length) warnings.push('Distributor ini belum terdaftar di DAFTAR_DT, tokonya tidak bisa dihitung dari DMS: ' + Object.keys(unk).join(', ') + '.');
+    }
+    if (ref.skus.length) {
+      writeText_(ss.getSheetByName(GS_BSKU_TAB) || ss.insertSheet(GS_BSKU_TAB), [GS_BSKU_HEADER].concat(ref.skus.map(k => [today, k.channel, k.sku_kode, k.sku_nama])));
+      const n = { SPM: 0, MINIS: 0 }; ref.skus.forEach(k => { n[k.channel]++; });
+      done.push('SKU banded: ' + n.SPM + ' SPM, ' + n.MINIS + ' Local Minis');
+    }
+    if (!ref.stores.length) warnings.push('Daftar toko tidak ada di file ini, daftar toko lama tetap dipakai.');
+    if (!ref.skus.length) warnings.push('Daftar SKU banded tidak ada di file ini, daftar SKU lama tetap dipakai.');
+    if (before.stores.length && ref.stores.length && ref.stores.length < before.stores.length * 0.8) warnings.push('Jumlah toko turun dari ' + before.stores.length + ' ke ' + ref.stores.length + '. Pastikan file lengkap.');
+    return { ok: true, done: done, warnings: warnings };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getGsRefStatus() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const cfg = readGsConfig_(ss), s = summarizeGsRef_(ss);
+  if (!s.stores.length) return { level: 'red', text: 'Belum ada daftar toko monitoring', cfg: cfg };
+  const c = gsRefCounts_(s.stores, cfg), date = normDate_(s.stores[0][0]);
+  const n = { SPM: 0, MINIS: 0 }; s.skus.forEach(r => { n[String(r[1])] = (n[String(r[1])] || 0) + 1; });
+  const miss = !s.skus.length ? ' · SKU banded belum ada' : '';
+  const rekap = readRekapStatus_(ss);
+  return { level: !s.skus.length ? 'amber' : 'green', cfg: cfg, rekap: rekap,
+    text: 'Dihitung ' + c.SPM + ' toko SPM + ' + c.MINIS + ' Local Minis · SKU banded ' + n.SPM + ' SPM / ' + n.MINIS + ' Minis · daftar ' + fmtDateID_(date) + miss };
+}
+
+// ====================== RANK & %DR (isian manual mingguan) ======================
+/** rank bilangan bulat >= 1; drPct persen 0-100 (boleh koma). Satu baris per tanggal, hari yang sama ditimpa. */
+function saveManualKpi(rank, drPct) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const r = gsNum_(String(rank).replace(',', '.')), d = gsNum_(String(drPct).replace(',', '.'));
+    if (r === null || r < 1 || r !== Math.round(r)) throw new Error('Rank harus bilangan bulat 1 atau lebih.');
+    if (d === null || d < 0 || d > 100) throw new Error('%DR harus angka 0 sampai 100.');
+    const ss = SpreadsheetApp.getActiveSpreadsheet(), today = todayIso_();
+    const sh = ss.getSheetByName(GS_MANUAL_TAB) || ss.insertSheet(GS_MANUAL_TAB);
+    let old = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, GS_MANUAL_HEADER.length).getValues() : [];
+    old = old.filter(x => normDate_(x[0]) && normDate_(x[0]) !== today).map(x => [normDate_(x[0]), x[1], x[2], x[3]]);
+    const now = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+    writeText_(sh, [GS_MANUAL_HEADER].concat(old, [[today, r, d / 100, now]]));
+    return { ok: true, status: getManualStatus() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getManualStatus() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(GS_MANUAL_TAB);
+  if (!sh || sh.getLastRow() < 2) return { level: 'red', text: 'Belum pernah diisi', rank: '', dr: '' };
+  const v = sh.getRange(2, 1, sh.getLastRow() - 1, GS_MANUAL_HEADER.length).getValues().filter(r => normDate_(r[0]));
+  const l = v[v.length - 1], date = normDate_(l[0]), age = daysBetween_(date, todayIso_());
+  const drTxt = (gsNum_(l[2]) * 100).toFixed(1).replace('.', ',') + '%';
+  return { level: age > 10 ? 'red' : age > 7 ? 'amber' : 'green', rank: l[1], dr: Math.round(gsNum_(l[2]) * 1000) / 10,
+    text: 'Rank ' + l[1] + ' · %DR ' + drTxt + ' · diisi ' + fmtDateID_(date) + (age > 7 ? ' · sudah ' + age + ' hari, update mingguan' : '') };
+}
+
+
+// ====================== REKAP BULANAN OTOMATIS ======================
+// Setelah upload DMS, API menyimpan hasil bulan data (FOP, SKU banded, assortment) ke GS_BULANAN / GS_BULANAN_ASRT.
+// FINAL kalau data sudah sampai hari kerja terakhir bulan itu; selain itu draft yang ditimpa tiap upload.
+
+/** Panggil admin=snapshot di API live. dtKode kosong = semua DT. Hasil: array {status, periode, ...} atau {error}. */
+function snapshotViaApi_(dtKode) {
+  try {
+    const pusat = readRegistry_().filter(r => r.peran === 'pusat')[0];
+    if (!pusat) return { error: 'kode pusat tidak ada di DAFTAR_DT' };
+    const url = API_URL + '?admin=snapshot&code=' + encodeURIComponent(pusat.kode_akses) + '&dt=' + encodeURIComponent(dtKode || '');
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+    const j = JSON.parse(res.getContentText());
+    return j.ok ? j.saved : { error: j.error || ('HTTP ' + res.getResponseCode()) };
+  } catch (e) {
+    return { error: String(e) };
+  }
+}
+
+/** Pure. Hasil snapshotViaApi_ -> {lines:[teks], final:bool, ok:bool}. */
+function snapshotLines_(saved) {
+  if (!saved || saved.error) return { ok: false, final: false, lines: ['Rekap bulanan GAGAL disimpan: ' + (saved && saved.error || 'tidak ada jawaban') + '. Upload DMS tetap berhasil; coba tombol "Simpan rekap sekarang" di kartu Daftar toko.'] };
+  const lines = []; let final = false;
+  saved.forEach(x => {
+    const nm = (x.dist_nama || x.dist_kode) + ' ' + (x.periode ? fmtPeriodeID_(x.periode) : '');
+    if (x.status === 'final') { final = true; lines.push('SUDAH DI-SAVE (FINAL): rekap ' + nm + ', data sampai ' + fmtDateID_(x.dataSampai) + (x.catatan ? '. ' + x.catatan : '')); }
+    else if (x.status === 'draft') lines.push('Rekap ' + nm + ' diperbarui sebagai draft (data sampai ' + fmtDateID_(x.dataSampai) + '). Final setelah data sampai ' + fmtDateID_(x.hariKerjaTerakhir) + ', hari kerja terakhir bulan itu.');
+    else if (x.status === 'dilewati') lines.push('Rekap ' + nm + ' tidak ditimpa: yang tersimpan lebih lengkap (sampai ' + fmtDateID_(x.tersimpanSampai) + ').');
+    else if (x.status === 'kosong') lines.push('Rekap ' + (x.dist_nama || x.dist_kode) + ' dilewati: DMS Extract kosong.');
+    else if (x.status === 'error') lines.push('Rekap ' + (x.dist_nama || x.dist_kode) + ' GAGAL: ' + x.error);
+  });
+  return { ok: true, final: final, lines: lines };
+}
+
+/** Tombol manual di kartu Daftar toko: simpan rekap semua DT dari DMS yang sekarang ada. */
+function saveRekapNow() {
+  return snapshotLines_(snapshotViaApi_(''));
+}
+
+/** Ringkasan rekap tersimpan untuk kartu status: ['Okt 2026 final (sampai 31 Okt)', ...]. */
+function readRekapStatus_(ss) {
+  const sh = ss.getSheetByName('GS_BULANAN'), sa = ss.getSheetByName('GS_BULANAN_ASRT');
+  const by = {};
+  [sh, sa].forEach((t, i) => {
+    if (!t || t.getLastRow() < 2) return;
+    const hdr = t.getRange(1, 1, 1, t.getLastColumn()).getValues()[0].map(String);
+    const cP = hdr.indexOf('periode'), cS = hdr.indexOf('data_sampai'), cF = hdr.indexOf('final');
+    t.getRange(2, 1, t.getLastRow() - 1, hdr.length).getValues().forEach(r => {
+      const p = String(r[cP]); if (!p) return;
+      const o = by[p] = by[p] || { sampai: '', final: true };
+      if (String(r[cS]) > o.sampai) o.sampai = String(r[cS]);
+      if (String(r[cF]) !== '1') o.final = false;
+    });
+  });
+  return Object.keys(by).sort().map(p => fmtPeriodeID_(p) + (by[p].final ? ' final' : ' draft') + ' (sampai ' + fmtDateID_(by[p].sampai) + ')');
 }

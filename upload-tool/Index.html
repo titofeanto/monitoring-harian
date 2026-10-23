@@ -118,6 +118,40 @@
   <div id="psSaveRes"></div>
 </div>
 
+<div class="card" id="card-REF">
+  <div class="card-head"><div><h3>Daftar toko monitoring &amp; SKU banded</h3><span class="tab">GS_TOKO · GS_BANDED_SKU · GS_CONFIG</span></div>
+    <span class="badge" id="refBadge"><i class="dot"></i>Memuat</span></div>
+  <div class="st-text" id="refText">Mengecek...</div>
+  <div class="desc">Weekly FOP dan Banded dihitung otomatis dari Extract DMS. Daftar ini menentukan toko dan SKU-nya, jadi cukup diupload saat daftar berubah. Pakai file yang sama dengan Monitoring DAILY KPI GREAT SALES (sheet Weekly FOP atau LIST OUTLET MONITORING BANDED untuk toko, Banded SPM dan Banded Local Minis untuk SKU). Toko dihitung hanya kalau REMARK-nya ada di aturan di bawah.</div>
+  <label for="refFile">File (.xlsx)</label>
+  <input type="file" id="refFile" accept=".xlsx">
+  <button type="button" class="go" id="refGo" disabled>Proses &amp; simpan daftar</button>
+  <div class="spin" id="refSpin">Memproses...</div>
+  <div id="refRes"></div>
+  <label style="margin-top:14px">Rekap bulanan</label>
+  <div class="desc" id="rekapText">Memuat...</div>
+  <button type="button" class="go" id="rekapGo">Simpan rekap sekarang</button>
+  <div class="spin" id="rekapSpin">Menyimpan...</div>
+  <div id="rekapRes"></div>
+  <label style="margin-top:14px">Aturan hitung</label>
+  <div id="cfgRows" class="desc">Memuat...</div>
+  <button type="button" class="go" id="cfgSave" style="display:none">Simpan aturan</button>
+  <div id="cfgRes"></div>
+</div>
+
+<div class="card" id="card-MAN">
+  <div class="card-head"><div><h3>Rank &amp; %DR (update mingguan)</h3><span class="tab">GS_MANUAL</span></div>
+    <span class="badge" id="manBadge"><i class="dot"></i>Memuat</span></div>
+  <div class="st-text" id="manText">Mengecek...</div>
+  <div class="desc">Dua angka dari HO yang tidak bisa dihitung dari DMS. Isi seminggu sekali. Nilai terakhir dipakai di scorecard dan ditandai "update mingguan".</div>
+  <label for="manRank">Rank nasional</label>
+  <input type="number" id="manRank" min="1" step="1" inputmode="numeric" placeholder="contoh 52">
+  <label for="manDr">%DR (angka 0-100)</label>
+  <input type="number" id="manDr" min="0" max="100" step="0.1" inputmode="decimal" placeholder="contoh 96,4">
+  <button type="button" class="go" id="manGo">Simpan Rank &amp; %DR</button>
+  <div id="manRes"></div>
+</div>
+
 <div class="card" id="card-AT">
   <div class="card-head"><div><h3>Target Assortment per DT</h3><span class="tab">GS_ASRT_TARGET</span></div></div>
   <div class="desc">Total lines (toko x base pack) per channel, dari rata-rata kuartal 4 2025. Realisasinya dihitung otomatis dari Extract DMS dan Outlet Master tiap DT, tidak perlu upload tersendiri.</div>
@@ -286,7 +320,8 @@
       google.script.run.withSuccessHandler(function (res) {
         busy[s.key] = false;
         var html = '<b>Berhasil ditulis ke ' + s.key + '.</b>\nBaris ditulis: ' + res.rowsWritten + (res.info ? '\n' + esc(res.info) : '') +
-          (res.cacheCleared ? '\nCache web app sudah dibersihkan, data langsung terbaca.' : '\nCache web app belum bisa dibersihkan otomatis, tunggu sampai 5 menit sebelum cek di web app.');
+          (res.cacheCleared ? '\nCache web app sudah dibersihkan, data langsung terbaca.' : '\nCache web app belum bisa dibersihkan otomatis, tunggu sampai 5 menit sebelum cek di web app.') +
+          (res.snapshot ? '\n\n<b>Rekap bulanan</b>\n' + res.snapshot.lines.map(esc).join('\n') : '');
         var level = 'green';
         if (res.warnings && res.warnings.length) {
           level = 'amber';
@@ -431,8 +466,91 @@
   google.script.run.withSuccessHandler(function (r) { atRows = r; renderAt(); })
     .withFailureHandler(function (e) { el('atRows').textContent = 'Gagal memuat: ' + e.message; }).getAsrtTargets();
 
+  /* ---- daftar toko & SKU banded + aturan ---- */
+  var CFG_LABELS = [
+    ['remark_spm', 'REMARK dihitung sebagai SPM', 'text'], ['remark_minis', 'REMARK dihitung sebagai Local Minis', 'text'],
+    ['fop_weekly', 'Minggu order = WEEKLY', 'int'], ['fop_biweekly', 'Minggu order = BIWEEKLY', 'int'],
+    ['banded_spm', 'Ambang toko tercapai Banded SPM (0-1)', 'num'], ['banded_minis', 'Ambang toko tercapai Banded Minis (0-1)', 'num']];
+  var cfgData = {};
+  function renderCfg() {
+    el('cfgRows').innerHTML = CFG_LABELS.map(function (c) {
+      return '<div style="margin:6px 0"><small style="display:block;color:var(--muted)">' + esc(c[1]) + '</small><input data-k="' + c[0] + '" ' +
+        (c[2] === 'text' ? 'type="text"' : 'type="number" step="' + (c[2] === 'int' ? '1' : '0.05') + '" inputmode="decimal"') + ' value="' + esc(String(cfgData[c[0]])) + '" style="width:100%"></div>';
+    }).join('');
+    el('cfgSave').style.display = '';
+  }
+  function loadRef() {
+    google.script.run.withSuccessHandler(function (st) {
+      var c = el('card-REF'); c.className = 'card lv-' + st.level;
+      el('refBadge').className = 'badge lv-' + st.level;
+      el('refBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.level];
+      el('refText').textContent = st.text;
+      el('rekapText').textContent = st.rekap && st.rekap.length ? 'Tersimpan: ' + st.rekap.join(' · ') : 'Belum ada rekap. Tersimpan otomatis tiap upload DMS; FINAL kalau data sudah sampai hari kerja terakhir bulan itu.';
+      cfgData = st.cfg || cfgData; renderCfg();
+    }).withFailureHandler(function (e) { el('refText').textContent = 'Gagal mengecek: ' + e.message; }).getGsRefStatus();
+  }
+  el('cfgRows').addEventListener('input', function (e) { var k = e.target.getAttribute('data-k'); if (k) cfgData[k] = e.target.value; });
+  el('cfgSave').addEventListener('click', function () {
+    el('cfgSave').disabled = true;
+    google.script.run.withSuccessHandler(function (res) {
+      el('cfgSave').disabled = false; cfgData = res.cfg; renderCfg();
+      el('cfgRes').innerHTML = '<div class="result lv-green">Aturan tersimpan. Berlaku di halaman Great Sales pada muat berikutnya.</div>'; loadRef();
+    }).withFailureHandler(function (e) {
+      el('cfgSave').disabled = false; el('cfgRes').innerHTML = '<div class="result lv-red"><b>Gagal:</b> ' + esc(e.message) + '</div>';
+    }).saveGsConfig(cfgData);
+  });
+  el('rekapGo').addEventListener('click', function () {
+    el('rekapGo').disabled = true; el('rekapSpin').classList.add('show'); el('rekapRes').innerHTML = '';
+    google.script.run.withSuccessHandler(function (res) {
+      el('rekapSpin').classList.remove('show'); el('rekapGo').disabled = false;
+      el('rekapRes').innerHTML = '<div class="result lv-' + (res.ok ? (res.final ? 'green' : 'amber') : 'red') + '">' + res.lines.map(esc).join('\n') + '</div>'; loadRef();
+    }).withFailureHandler(function (e) {
+      el('rekapSpin').classList.remove('show'); el('rekapGo').disabled = false;
+      el('rekapRes').innerHTML = '<div class="result lv-red"><b>Gagal:</b> ' + esc(e.message) + '</div>';
+    }).saveRekapNow();
+  });
+  el('refFile').addEventListener('change', function () { el('refGo').disabled = !this.files[0]; });
+  el('refGo').addEventListener('click', function () {
+    var f = el('refFile').files[0]; if (!f) return;
+    el('refGo').disabled = true; el('refSpin').classList.add('show'); el('refRes').innerHTML = '';
+    readB64(f).then(function (b64) {
+      google.script.run.withSuccessHandler(function (res) {
+        el('refSpin').classList.remove('show'); el('refGo').disabled = false;
+        var html = '<b>Tersimpan.</b>\n' + res.done.map(esc).join('\n');
+        if (res.warnings.length) html += '\n\n<b>PERIKSA:</b>\n' + res.warnings.map(function (w) { return '- ' + esc(w); }).join('\n');
+        el('refRes').innerHTML = '<div class="result lv-' + (res.warnings.length ? 'amber' : 'green') + '">' + html + '</div>';
+        loadRef();
+      }).withFailureHandler(function (e) {
+        el('refSpin').classList.remove('show'); el('refGo').disabled = false;
+        el('refRes').innerHTML = '<div class="result lv-red"><b>Gagal:</b> ' + esc(e.message) + '</div>';
+      }).processGsRef(b64, f.name);
+    });
+  });
+
+  /* ---- rank & %DR manual ---- */
+  function loadMan() {
+    google.script.run.withSuccessHandler(function (st) {
+      var c = el('card-MAN'); c.className = 'card lv-' + st.level;
+      el('manBadge').className = 'badge lv-' + st.level;
+      el('manBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.level];
+      el('manText').textContent = st.text;
+      if (st.rank !== '' && !el('manRank').value) { el('manRank').value = st.rank; el('manDr').value = st.dr; }
+    }).withFailureHandler(function (e) { el('manText').textContent = 'Gagal mengecek: ' + e.message; }).getManualStatus();
+  }
+  el('manGo').addEventListener('click', function () {
+    el('manGo').disabled = true; el('manRes').innerHTML = '';
+    google.script.run.withSuccessHandler(function (res) {
+      el('manGo').disabled = false;
+      el('manRes').innerHTML = '<div class="result lv-green">Tersimpan. ' + esc(res.status.text) + '</div>'; loadMan();
+    }).withFailureHandler(function (e) {
+      el('manGo').disabled = false; el('manRes').innerHTML = '<div class="result lv-red"><b>Gagal:</b> ' + esc(e.message) + '</div>';
+    }).saveManualKpi(el('manRank').value, el('manDr').value);
+  });
+
   loadGs();
   loadPs();
+  loadRef();
+  loadMan();
   init();
 </script>
 </body>

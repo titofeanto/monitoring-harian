@@ -279,6 +279,9 @@ details.devd[open] summary::after{transform:rotate(180deg)}
 .tag.g,.lv.green{background:var(--ok-bg);color:var(--ok)}
 .tag.a,.lv.amber{background:var(--warn-bg);color:var(--warn-ink)}
 .tag.r,.lv.red{background:var(--minus-bg);color:var(--minus)}
+.tag.b{background:var(--brand-soft);color:var(--brand-deep);font-size:10px;padding:2px 7px;vertical-align:1px}
+@media (prefers-color-scheme:dark){.tag.b{color:var(--ink)}}
+.hero-units .tag.b{display:inline-flex;margin-top:3px}
 .lv::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 
 /* ---------- tabel padat (rincian) ---------- */

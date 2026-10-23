@@ -79,6 +79,21 @@ function doGet(e) {
       targets.forEach(x => cacheClearKey_(CACHE_KEY + '_' + x.sheet_id));
       return jsonOut({ ok: true, cleared: targets.map(x => x.dt_kode) });
     }
+    // &admin=snapshot&dt=<dt_kode>: simpan rekap bulanan dari DMS Extract DT itu (dipanggil tool upload setelah upload DMS).
+    if (e.parameter && e.parameter.admin === 'snapshot') {
+      const regS = readRegistry_();
+      const meS = regS.find(x => x.kode_akses === String(e.parameter.code || '').trim());
+      if (!meS || meS.peran !== 'pusat') return jsonOut({ error: 'invalid_code' });
+      const lockS = LockService.getScriptLock();
+      lockS.waitLock(30000);
+      try {
+        const ssS = SpreadsheetApp.getActiveSpreadsheet();
+        const tokoS = readObjs_(ssS, 'GS_TOKO'), skuS = readObjs_(ssS, 'GS_BANDED_SKU').map(b => ({ channel: String(b.channel), sku_kode: String(b.sku_kode), sku_nama: String(b.sku_nama) }));
+        const cfgS = readGsCfg_(ssS);
+        const outS = regS.filter(x => x.peran === 'dt' && x.sheet_id && (!e.parameter.dt || x.dt_kode === e.parameter.dt)).map(x => snapshotDt_(ssS, x, tokoS, skuS, cfgS));
+        return jsonOut({ ok: true, saved: outS });
+      } finally { lockS.releaseLock(); }
+    }
     const p = e.parameter || {};
     const code = String(p.code || '').trim();
     if (!code) return jsonOut({ error: 'missing_code' });
@@ -445,8 +460,23 @@ function respondGs_(me, reg, dtWanted) {
   asrtDts.forEach(x => {
     try { asrt.perDt.push(asrtForDt_(x)); } catch (err) { asrt.perDt.push({ dist_kode: x.dt_kode, dist_nama: x.nama_dt, error: String(err) }); }
   });
+  // Weekly FOP & Banded: daftar toko monitoring + SKU banded + config, dihitung dari DMS Extract tiap DT dalam cakupan.
+  const toko = read('GS_TOKO').filter(t => !scope || String(t.dist_kode) === scope.dt_kode);
+  const bandedSku = read('GS_BANDED_SKU').map(b => ({ channel: String(b.channel), sku_kode: String(b.sku_kode), sku_nama: String(b.sku_nama) }));
+  const cfg = readGsCfg_(ss);
+  const hist = read('GS_BULANAN').filter(h => !scope || String(h.dist_kode) === scope.dt_kode);
+  const mon = { cfg: cfg, hasList: toko.length > 0, bandedSku: bandedSku, perDt: [], noDt: [], manual: read('GS_MANUAL').slice(-60), recap: monRecap_(hist, read('GS_BULANAN_ASRT').filter(a => !scope || String(a.dist_kode) === scope.dt_kode), bandedSku, cfg) };
+  if (toko.length) {
+    const kodes = {}; toko.forEach(t => { kodes[String(t.dist_kode)] = t.dist_nama; });
+    asrtDts.forEach(x => {
+      if (!kodes[String(x.dt_kode)]) return;
+      try { mon.perDt.push(monForDt_(x, toko, bandedSku, cfg, hist)); } catch (err) { mon.perDt.push({ dist_kode: x.dt_kode, dist_nama: x.nama_dt, error: String(err) }); }
+    });
+    const have = {}; asrtDts.forEach(x => { have[String(x.dt_kode)] = true; });
+    Object.keys(kodes).filter(k => !have[k]).forEach(k => mon.noDt.push({ dist_kode: k, dist_nama: kodes[k], stores: toko.filter(t => String(t.dist_kode) === k).length }));
+  }
   const dts = me.peran === 'pusat' ? reg.filter(r => r.peran === 'dt' && r.sheet_id).map(r => ({ kode: r.dt_kode, nama: r.nama_dt })) : null;
-  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets, ps: { stores: psStores, targets: psTargets, hist: psHist }, asrt: asrt };
+  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets, ps: { stores: psStores, targets: psTargets, hist: psHist }, asrt: asrt, mon: mon };
 }
 
 // ====================== ASSORTMENT PER CHANNEL (dari DMS Extract) ======================
@@ -579,4 +609,231 @@ function asrtForDt_(r) {
   res.dist_kode = r.dt_kode; res.dist_nama = r.nama_dt;
   cachePut_(key, res);
   return res;
+}
+
+// ====================== WEEKLY FOP & BANDED (dari DMS Extract + daftar toko monitoring) ======================
+// Daftar toko (GS_TOKO) dan SKU banded (GS_BANDED_SKU) diisi lewat tool upload dari file referensi.
+// Toko yang dihitung = toko ACTIVE dengan REMARK yang ada di GS_CONFIG (remark_spm / remark_minis); toko lain
+// (mis. OTHERS) tidak dihitung. Daftar yang sama dipakai untuk Weekly FOP dan Banded.
+//  - Weekly FOP: minggu (ISO, dihitung per bulan data) yang qty bersihnya positif. 3 minggu = WEEKLY, 2 = BIWEEKLY, 1 = MONTHLY.
+//    Minggu yang melewati pergantian bulan dihitung di kedua bulan, sama dengan kolom 05.2026 / 05.20261 di file HO.
+//  - Banded: toko tercapai kalau SKU banded channel-nya yang sudah dibeli (qty bersih bulan data > 0) >= ambang
+//    (banded_spm / banded_minis di GS_CONFIG).
+
+const GS_CFG_DEFAULT = { remark_spm: 'LOCAL SPM', remark_minis: 'TOP 1000 LOCAL MINIS, LOCAL MINIS', banded_spm: 0.8, banded_minis: 0.7, fop_weekly: 3, fop_biweekly: 2 };
+
+function monIsoWeek_(iso) {
+  const p = iso.split('-'), ms = Date.UTC(+p[0], +p[1] - 1, +p[2]), d = new Date(ms);
+  const day = d.getUTCDay() || 7;
+  const thu = new Date(ms + (4 - day) * 86400000);
+  const y0 = Date.UTC(thu.getUTCFullYear(), 0, 1);
+  return Math.ceil(((thu.getTime() - y0) / 86400000 + 1) / 7);
+}
+
+/** '2026-10' -> '2026-Q4'. */
+function monQuarter_(p) { return String(p).slice(0, 4) + '-Q' + Math.ceil(+String(p).slice(5, 7) / 3); }
+
+function monList_(v) { return String(v === null || v === undefined ? '' : v).split(',').map(s => s.trim().toUpperCase()).filter(Boolean); }
+
+/** Config GS_CONFIG (key | value | keterangan) digabung dengan nilai awal. */
+function readGsCfg_(ss) {
+  const cfg = {}; Object.keys(GS_CFG_DEFAULT).forEach(k => { cfg[k] = GS_CFG_DEFAULT[k]; });
+  const sh = ss.getSheetByName('GS_CONFIG');
+  if (sh && sh.getLastRow() > 1) {
+    sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().forEach(r => {
+      const k = String(r[0]).trim(); if (!(k in GS_CFG_DEFAULT) || String(r[1]).trim() === '') return;
+      cfg[k] = typeof GS_CFG_DEFAULT[k] === 'number' ? asrtNum_(String(r[1]).replace(',', '.')) : String(r[1]).trim();
+    });
+  }
+  return cfg;
+}
+
+/**
+ * Pure. dms = array 2D (baris 1 = header); stores = [{outlet_kode, outlet_nama, remark, status, channel}] milik satu DT;
+ * bandedSku = [{channel:'SPM'|'MINIS', sku_kode, sku_nama}]. Hasil per grup SPM / MINIS.
+ */
+function computeMon_(dms, stores, bandedSku, cfg, hist) {
+  const col = (hdr, alts) => { const h = hdr.map(x => String(x).replace(/\s+/g, ' ').trim().toLowerCase()); for (let i = 0; i < alts.length; i++) { const k = h.indexOf(alts[i].toLowerCase()); if (k >= 0) return k; } return -1; };
+  const remarkOf = { SPM: monList_(cfg.remark_spm), MINIS: monList_(cfg.remark_minis) };
+  const groupOf = s => { const r = String(s.remark || '').trim().toUpperCase(); return remarkOf.SPM.indexOf(r) >= 0 ? 'SPM' : remarkOf.MINIS.indexOf(r) >= 0 ? 'MINIS' : ''; };
+  const out = { bulan: '', tanggalData: '', week: null, qLabel: '', qMonths: [], groups: { SPM: [], MINIS: [] }, excluded: 0, inactive: 0, rows: 0 };
+  const monitored = [];
+  stores.forEach(s => {
+    if (String(s.status || '').trim().toUpperCase() === 'INACTIVE') { out.inactive++; return; }
+    const g = groupOf(s); if (!g) { out.excluded++; return; }
+    monitored.push({ s: s, g: g });
+  });
+  if (!dms.length) { out.noData = true; return out; }
+  const cO = col(dms[0], ['Outlet', 'Kode Outlet Bersih']), cK = col(dms[0], ['SKUCode', 'SKU Code']),
+    cQ = col(dms[0], ['TotalQuantity(PCS)', 'TotalQuantity (PCS)']), cD = col(dms[0], ['INVDate', 'InvDate', 'Tanggal']);
+  if (cO < 0 || cQ < 0 || cD < 0) { out.noData = true; return out; }
+  const body = dms.slice(1);
+  let maxIso = '';
+  body.forEach(r => { const d = asrtIso_(r[cD]); if (d > maxIso) maxIso = d; });
+  if (!maxIso) { out.noData = true; return out; }
+  const bulan = maxIso.slice(0, 7);
+  out.bulan = bulan; out.tanggalData = maxIso; out.week = monIsoWeek_(maxIso);
+  // EVB kuartal: SKU banded yang pernah dibeli di bulan-bulan sebelumnya dalam kuartal yang sama (dari rekap GS_BULANAN) + bulan data ini.
+  const prior = {}, qHave = {};
+  (hist || []).forEach(h => {
+    if (String(h.periode) >= bulan || monQuarter_(h.periode) !== monQuarter_(bulan)) return;
+    qHave[h.periode] = true;
+    const o = String(h.outlet_kode).trim(); prior[o] = prior[o] || {};
+    String(h.banded_sku || '').split(',').forEach(k => { k = k.trim(); if (k) prior[o][k] = true; });
+  });
+  out.qLabel = monQuarter_(bulan).split('-')[1] + ' ' + bulan.slice(0, 4);
+  out.qMonths = Object.keys(qHave).sort().concat(bulan);
+  const wk = {}, sku = {};
+  body.forEach(r => {
+    const d = asrtIso_(r[cD]); if (!d || d.slice(0, 7) !== bulan) return;
+    const o = String(r[cO]).trim(); if (!o) return;
+    out.rows++;
+    const q = asrtNum_(r[cQ]), w = monIsoWeek_(d);
+    (wk[o] = wk[o] || {})[w] = ((wk[o] || {})[w] || 0) + q;
+    if (cK >= 0) { const k = String(r[cK]).trim(); if (k) (sku[o] = sku[o] || {})[k] = ((sku[o] || {})[k] || 0) + q; }
+  });
+  const need = Math.max(1, Math.round(cfg.fop_weekly)), mid = Math.max(1, Math.round(cfg.fop_biweekly));
+  const skusOf = g => bandedSku.filter(b => b.channel === g);
+  monitored.forEach(m => {
+    const o = String(m.s.outlet_kode).trim();
+    const ws = Object.keys(wk[o] || {}).filter(w => wk[o][w] > 0).map(Number);
+    const n = ws.length;
+    const list = skusOf(m.g), month = list.filter(b => ((sku[o] || {})[b.sku_kode] || 0) > 0);
+    const bought = list.filter(b => ((sku[o] || {})[b.sku_kode] || 0) > 0 || (prior[o] && prior[o][b.sku_kode]));
+    const thr = m.g === 'SPM' ? cfg.banded_spm : cfg.banded_minis;
+    const share = list.length ? bought.length / list.length : null;
+    out.groups[m.g].push({
+      outlet_kode: o, outlet_nama: m.s.outlet_nama, remark: m.s.remark, weeks: n,
+      status: n >= need ? 'WEEKLY' : n >= mid ? 'BIWEEKLY' : n >= 1 ? 'MONTHLY' : 'BELUM ORDER',
+      weekNow: ws.indexOf(out.week) >= 0 ? 1 : 0, lastWeek: n ? Math.max.apply(null, ws) : '',
+      bTotal: list.length, bBought: bought.length, bMonth: month.length, bSkus: month.map(b => b.sku_kode), bShare: share,
+      bHit: share !== null && Math.round(share * 1000) / 1000 >= thr ? 1 : 0,
+      bMiss: list.filter(b => bought.indexOf(b) < 0).map(b => b.sku_kode),
+    });
+  });
+  return out;
+}
+
+/** Hitungan satu DT dari DMS_EXTRACT-nya (tokonya sesuai dist_kode di GS_TOKO). */
+function monForDt_(r, toko, bandedSku, cfg, hist) {
+  const mine = toko.filter(t => String(t.dist_kode).trim() === String(r.dt_kode).trim());
+  if (!mine.length) return { dist_kode: r.dt_kode, dist_nama: r.nama_dt, stores: 0 };
+  const payload = getPayload_(r.sheet_id);
+  const res = computeMon_(payload.tabs.DMS_EXTRACT || [], mine, bandedSku, cfg, (hist || []).filter(h => String(h.dist_kode) === String(r.dt_kode)));
+  res.dist_kode = r.dt_kode; res.dist_nama = r.nama_dt; res.stores = mine.length;
+  return res;
+}
+
+
+// ====================== REKAP BULANAN (disimpan otomatis) ======================
+// Tiap upload DMS memicu admin=snapshot: hasil bulan data disimpan ke GS_BULANAN (per toko: minggu order, status FOP,
+// SKU banded yang dibeli) dan GS_BULANAN_ASRT (assortment per DT x channel). final=1 kalau data sudah sampai hari kerja
+// terakhir bulan itu (bukan Minggu, bukan HARI_LIBUR); selain itu draft yang ditimpa tiap upload. Snapshot yang datanya
+// lebih lama dari yang tersimpan tidak menimpa. Bulan-bulan tersimpan dipakai untuk EVB kuartal (SKU banded yang pernah dibeli).
+
+const BUL_TAB = 'GS_BULANAN';
+const BUL_ASRT_TAB = 'GS_BULANAN_ASRT';
+const BUL_HEADER = ['periode', 'dist_kode', 'dist_nama', 'outlet_kode', 'outlet_nama', 'grup', 'remark', 'minggu', 'status_fop', 'banded_sku', 'data_sampai', 'final', 'disimpan'];
+const BUL_ASRT_HEADER = ['periode', 'dist_kode', 'dist_nama', 'channel', 'outlet_aktif', 'lines', 'terdaftar', 'data_sampai', 'final', 'disimpan'];
+
+/** Hari kerja terakhir bulan 'YYYY-MM' (bukan Minggu, bukan di daftar libur). libur = array 2D tab HARI_LIBUR (baris 1 header). */
+function monLastWorkingDay_(bulan, libur) {
+  const off = {}; (libur || []).slice(1).forEach(r => { const d = asrtIso_(r[0]); if (d) off[d] = true; });
+  const y = +bulan.slice(0, 4), m = +bulan.slice(5, 7), last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  for (let d = last; d >= 1; d--) {
+    const iso = bulan + '-' + (d < 10 ? '0' : '') + d, dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    if (dow !== 0 && !off[iso]) return iso;
+  }
+  return bulan + '-01';
+}
+
+function readObjs_(ss, name) {
+  const sh = ss.getSheetByName(name);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const v = sh.getDataRange().getValues(), h = v[0].map(x => String(x).trim());
+  return v.slice(1).filter(r => r.some(c => c !== '')).map(r => { const o = {}; h.forEach((k, i) => { o[k] = r[i]; }); return o; });
+}
+
+function writeObjs_(ss, name, header, rows) {
+  const sh = ss.getSheetByName(name) || ss.insertSheet(name);
+  sh.clearContents();
+  const all = [header].concat(rows);
+  if (sh.getMaxRows() < all.length) sh.insertRowsAfter(sh.getMaxRows(), all.length - sh.getMaxRows());
+  sh.getRange(1, 1, all.length, header.length).setNumberFormat('@');
+  sh.getRange(1, 1, all.length, header.length).setValues(all.map(r => r.map(v => String(v === null || v === undefined ? '' : v))));
+}
+
+/** Pure. Baris snapshot dari hasil computeMon_ (mon) dan computeAsrt_ (asrt) satu DT. */
+function snapshotRows_(r, mon, asrt, libur, stamp) {
+  const bulan = (mon && mon.bulan) || (asrt && asrt.bulan) || '';
+  const sampai = (mon && mon.tanggalData) || (asrt && asrt.tanggalData) || '';
+  if (!bulan || !sampai) return null;
+  const lastWd = monLastWorkingDay_(bulan, libur), final = sampai >= lastWd ? 1 : 0;
+  const stores = [];
+  if (mon) ['SPM', 'MINIS'].forEach(g => mon.groups[g].forEach(o => {
+    stores.push([bulan, r.dt_kode, r.nama_dt, o.outlet_kode, o.outlet_nama, g, o.remark, o.weeks, o.status, (o.bSkus || []).join(','), sampai, final, stamp]);
+  }));
+  const as = [];
+  if (asrt) ['SPM', 'MINIS'].forEach(g => { const c = asrt.channels && asrt.channels[g]; if (c) as.push([bulan, r.dt_kode, r.nama_dt, g, c.outlets, c.lines, c.registered || 0, sampai, final, stamp]); });
+  return { bulan: bulan, sampai: sampai, final: final, lastWd: lastWd, stores: stores, asrt: as };
+}
+
+/** Simpan snapshot satu DT. Hasil: {dist_kode, dist_nama, status: 'final'|'draft'|'dilewati'|'kosong'|'error', ...}. */
+function snapshotDt_(ss, r, toko, bandedSku, cfg) {
+  const info = { dist_kode: r.dt_kode, dist_nama: r.nama_dt };
+  try {
+    const payload = getPayload_(r.sheet_id), dms = payload.tabs.DMS_EXTRACT || [];
+    if (dms.length < 2) { info.status = 'kosong'; return info; }
+    const mine = toko.filter(t => String(t.dist_kode).trim() === String(r.dt_kode).trim());
+    const hist = readObjs_(ss, BUL_TAB).filter(h => String(h.dist_kode) === String(r.dt_kode));
+    const mon = mine.length ? computeMon_(dms, mine, bandedSku, cfg, hist) : null;
+    const asrt = asrtForDt_(r);
+    const stamp = Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd HH:mm');
+    const snap = snapshotRows_(r, mon && !mon.noData ? mon : null, asrt, payload.tabs.HARI_LIBUR, stamp);
+    if (!snap) { info.status = 'kosong'; return info; }
+    Object.assign(info, { periode: snap.bulan, dataSampai: snap.sampai, hariKerjaTerakhir: snap.lastWd, stores: snap.stores.length, asrtRows: snap.asrt.length });
+    const old = readObjs_(ss, BUL_TAB).filter(h => String(h.periode) === snap.bulan && String(h.dist_kode) === String(r.dt_kode));
+    const oldSampai = old.reduce((a, h) => String(h.data_sampai) > a ? String(h.data_sampai) : a, '');
+    const oldAsrt = readObjs_(ss, BUL_ASRT_TAB).filter(h => String(h.periode) === snap.bulan && String(h.dist_kode) === String(r.dt_kode));
+    const oldSampai2 = oldAsrt.reduce((a, h) => String(h.data_sampai) > a ? String(h.data_sampai) : a, oldSampai);
+    if (oldSampai2 && oldSampai2 > snap.sampai) { info.status = 'dilewati'; info.tersimpanSampai = oldSampai2; return info; }
+    const keep = (name, header) => readObjs_(ss, name).filter(h => !(String(h.periode) === snap.bulan && String(h.dist_kode) === String(r.dt_kode))).map(h => header.map(k => h[k]));
+    writeObjs_(ss, BUL_TAB, BUL_HEADER, keep(BUL_TAB, BUL_HEADER).concat(snap.stores));
+    writeObjs_(ss, BUL_ASRT_TAB, BUL_ASRT_HEADER, keep(BUL_ASRT_TAB, BUL_ASRT_HEADER).concat(snap.asrt));
+    info.status = snap.final ? 'final' : 'draft';
+    if (!mine.length) info.catatan = 'Daftar toko monitoring belum ada, hanya assortment yang tersimpan.';
+    return info;
+  } catch (err) {
+    info.status = 'error'; info.error = String(err); return info;
+  }
+}
+
+/** Pure. Rekap per periode x grup untuk halaman: FOP, Banded bulan itu, EVB kuartal berjalan, dan assortment per channel. */
+function monRecap_(hist, asrtRows, bandedSku, cfg) {
+  const total = { SPM: 0, MINIS: 0 }; bandedSku.forEach(b => { total[b.channel] = (total[b.channel] || 0) + 1; });
+  const thr = { SPM: cfg.banded_spm, MINIS: cfg.banded_minis };
+  const periodes = {};
+  hist.forEach(h => { (periodes[h.periode] = periodes[h.periode] || []).push(h); });
+  const out = [];
+  Object.keys(periodes).sort().forEach(p => {
+    const q = monQuarter_(p);
+    ['SPM', 'MINIS'].forEach(g => {
+      const rows = periodes[p].filter(h => h.grup === g);
+      if (!rows.length) return;
+      const skus = h => String(h.banded_sku || '').split(',').map(x => x.trim()).filter(Boolean);
+      const evb = {};
+      Object.keys(periodes).filter(x => monQuarter_(x) === q && x <= p).forEach(x => periodes[x].filter(h => h.grup === g).forEach(h => {
+        const k = h.dist_kode + '|' + h.outlet_kode; evb[k] = evb[k] || {}; skus(h).forEach(c => { evb[k][c] = true; });
+      }));
+      const hit = n => total[g] > 0 && Math.round(n / total[g] * 1000) / 1000 >= thr[g];
+      out.push({ periode: p, grup: g, toko: rows.length,
+        weekly: rows.filter(h => h.status_fop === 'WEEKLY').length,
+        bandedBulan: rows.filter(h => hit(skus(h).length)).length,
+        evbQ: rows.filter(h => hit(Object.keys(evb[h.dist_kode + '|' + h.outlet_kode] || {}).length)).length,
+        sampai: rows.reduce((a, h) => String(h.data_sampai) > a ? String(h.data_sampai) : a, ''),
+        final: rows.every(h => String(h.final) === '1') ? 1 : 0, disimpan: rows[0].disimpan });
+    });
+  });
+  const asrt = asrtRows.map(a => ({ periode: a.periode, dist_kode: a.dist_kode, dist_nama: a.dist_nama, channel: a.channel, outlet_aktif: a.outlet_aktif, lines: a.lines, terdaftar: a.terdaftar, sampai: a.data_sampai, final: a.final }));
+  return { fop: out, asrt: asrt };
 }

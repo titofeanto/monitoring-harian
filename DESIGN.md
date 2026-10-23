@@ -51,7 +51,7 @@ Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya 
 - **Tile `.kpi` / `.tile`**: 2 kolom di HP, 4 di desktop, latar tint bergantian. Label 12 px/700, angka 24 px/800 berwarna, keterangan 11,5 px. Jumlah ganjil: tile terakhir melebar penuh di HP.
 - **Kartu data `.rk`**: kepala (ikon status bulat 34 px, nama 14 px/600 maks 2 baris, keterangan 12 px, tag di kanan), lalu garis, lalu 2 sampai 5 kolom angka dipisah garis vertikal (`.rk-s`, `.two`, `.four`, `.five`): label 11 px, angka 16 px/800, keterangan 11 px. Warna angka mengikuti nada: `okc` hijau, `amb` oranye, `neg` merah.
 - **Toolbar daftar**: kolom cari 42 px dengan tombol hapus bulat, baris chip filter (geser horizontal, tiap chip memuat jumlah, chip kosong diredupkan), baris meta (jumlah kanan). Filter bawaan = yang perlu ditindak. Kalau pencarian membuat filter kosong, filter kembali ke bawaan. Daftar dibatasi 60 baris dengan tombol "Tampilkan lebih banyak (N lagi)".
-- **Tag dan pil** (`.tag`, `.pill`, `.lv`): bulat penuh, 11 sampai 12 px/700, latar lembut dengan teks berwarna.
+- **Tag dan pil** (`.tag`, `.pill`, `.lv`): bulat penuh, 11 sampai 12 px/700, latar lembut dengan teks berwarna. `.tag.b` (biru, 10 px) dipakai sebagai penanda "Update mingguan" untuk angka yang diisi manual seminggu sekali (Rank, %DR).
 - **Tombol**: utama biru, `plain` biru muda, `danger` merah muda, `sm` bulat. Nonaktif = opacity .45.
 - **Kotak info**: `.banner` / `.notice` kuning, `.confirm` merah (konfirmasi inline), `.empty` untuk kosong (tulis apa yang harus dilakukan berikutnya).
 - **Toast**: pil gelap di atas tab bawah, hilang sendiri 2,2 detik, dipakai untuk hasil tindakan singkat.
