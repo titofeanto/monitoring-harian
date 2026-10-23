@@ -151,3 +151,10 @@ input[type=range]{width:100%;accent-color:var(--accent);min-height:32px}
 .empty .t{font-size:14.5px;font-weight:700;color:var(--ink)}
 
 @media print{nav.tabs,.btn,.chip,.identity-strip{display:none}}
+
+/* Layar "Memuat" saat kode akses tersimpan (lihat assets/boot.js): login tidak berkedip saat refresh. */
+.boot{display:none;min-height:60vh;place-items:center;text-align:center;color:var(--ink2);font-size:14px}
+.boot>div{max-width:320px;padding:0 16px}
+.boot .btn+.btn{margin-top:8px}
+html.has-code #loginScreen{display:none}
+html.has-code .boot{display:grid}

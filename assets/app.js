@@ -536,15 +536,15 @@ if (typeof module !== 'undefined') {
   async function tryLogin(code, silent) {
     const base = (window.APP_CONFIG && window.APP_CONFIG.APPS_SCRIPT_URL) || '';
     if (!base || base.includes('PASTE_URL')) {
-      showLoginError('APPS_SCRIPT_URL belum diisi di assets/config.js. Lihat README bagian 3.');
+      loginProblem('APPS_SCRIPT_URL belum diisi di assets/config.js. Lihat README bagian 3.', silent, false);
       return false;
     }
     if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
     try {
       const data = await fetchApi(code);
-      if (data.error === 'invalid_code') { showLoginError('Kode akses salah.'); return false; }
-      if (data.error === 'missing_code') { showLoginError('Isi kode akses dulu.'); return false; }
-      if (data.error) { showLoginError('Server Apps Script bermasalah: ' + (data.message || data.error)); return false; }
+      if (data.error === 'invalid_code') { loginProblem('Kode akses salah.', silent, true); return false; }
+      if (data.error === 'missing_code') { loginProblem('Isi kode akses dulu.', silent, true); return false; }
+      if (data.error) { loginProblem('Server Apps Script bermasalah: ' + (data.message || data.error), silent, false); return false; }
       if (data.mode === 'pusat') {
         if (!silent) $('loginBtn').textContent = `Memuat ${data.dts.length} DT…`;
         // Tiap DT diambil terpisah supaya respons kecil dan cache per DT tetap terpakai.
@@ -566,11 +566,17 @@ if (typeof module !== 'undefined') {
       showApp();
       return true;
     } catch (err) {
-      showLoginError('Tidak bisa terhubung ke Apps Script. Cek koneksi internet, atau URL di config.js. (' + err.message + ')');
+      loginProblem('Tidak bisa terhubung ke Apps Script. Cek koneksi internet, lalu coba lagi. (' + err.message + ')', silent, false);
       return false;
     } finally {
       if (!silent) { $('loginBtn').disabled = false; $('loginBtn').textContent = 'Masuk'; }
     }
+  }
+  /* Login otomatis (silent) yang gagal tidak boleh melempar ke layar login kecuali kodenya memang salah. */
+  function loginProblem(msg, silent, badCode) {
+    if (!silent) { showLoginError(msg); return; }
+    if (badCode) { window.MHBoot.invalid(msg); return; }
+    window.MHBoot.fail(msg);
   }
   function showLoginError(msg) { $('loginErr').textContent = msg; }
 
@@ -589,6 +595,7 @@ if (typeof module !== 'undefined') {
   }
 
   function showApp() {
+    window.MHBoot.done();
     $('loginScreen').hidden = true;
     $('appScreen').hidden = false;
     $('loginAs').textContent = PUSAT ? `Masuk sebagai PUSAT · ${PUSAT.length} DT` : 'Masuk dengan kode akses DT';

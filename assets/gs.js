@@ -28,20 +28,44 @@
 
   function loginErr(msg) { $('loginErr').textContent = msg; $('loginBtn').disabled = false; $('loginBtn').textContent = 'Masuk'; }
 
+  /* Login otomatis (silent) yang gagal tidak boleh melempar ke layar login kecuali kodenya memang salah. */
+  function problem(msg, silent, badCode) {
+    if (!silent) { loginErr(msg); return; }
+    if (badCode) window.MHBoot.invalid(msg); else window.MHBoot.fail(msg);
+  }
+
+  const CACHE_KEY = 'mh_gs_cache';
+  /* Salinan respons terakhir: halaman langsung tampil saat dibuka/refresh, data baru menyusul di belakang. */
+  function readCache(code) {
+    try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); return c && c.code === code && c.view === VIEW ? c.data : null; } catch (e) { return null; }
+  }
+  function writeCache(code, data) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ code, view: VIEW, data })); } catch (e) { /* penuh / mode privat */ }
+  }
+
+  function enter(d, code) {
+    DATA = d; CODE = code;
+    try { localStorage.setItem(LS_CODE, code); } catch (e) { /* mode privat */ }
+    window.MHBoot.done();
+    $('loginScreen').hidden = true; $('appScreen').hidden = false;
+    render();
+  }
+
   async function login(code, silent) {
     if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
+    const cached = silent ? readCache(code) : null;
+    if (cached && cached.mode === 'gs' && cached.scorecard && cached.scorecard.length) enter(cached, code);
     try {
       const d = await fetchGs(code, VIEW);
-      if (d.error === 'invalid_code') { loginErr('Kode akses salah.'); return; }
-      if (d.error === 'no_data') { loginErr('Data Great Sales belum diupload lewat tool upload.'); return; }
-      if (d.error) { loginErr('Server Apps Script bermasalah: ' + (d.message || d.error)); return; }
-      if (d.mode !== 'gs') { loginErr('API belum mendukung Great Sales. Deploy ulang Apps Script (lihat README).'); return; }
-      DATA = d; CODE = code;
-      try { localStorage.setItem(LS_CODE, code); } catch (e) { /* mode privat */ }
-      $('loginScreen').hidden = true; $('appScreen').hidden = false;
-      render();
+      if (d.error === 'invalid_code') { problem('Kode akses salah.', silent, true); return; }
+      if (d.error === 'no_data') { problem('Data Great Sales belum diupload lewat tool upload.', silent, false); return; }
+      if (d.error) { problem('Server Apps Script bermasalah: ' + (d.message || d.error), silent, false); return; }
+      if (d.mode !== 'gs') { problem('API belum mendukung Great Sales. Deploy ulang Apps Script (lihat README).', silent, false); return; }
+      writeCache(code, d);
+      enter(d, code);
     } catch (err) {
-      if (!silent) loginErr('Tidak bisa terhubung ke Apps Script (' + err.message + ').');
+      if (cached) return; // sudah tampil dari salinan, abaikan gagal refresh
+      problem('Tidak bisa terhubung ke Apps Script (' + err.message + ').', silent, false);
     }
   }
 
@@ -220,12 +244,12 @@
   }
 
   $('loginForm').addEventListener('submit', e => { e.preventDefault(); $('loginErr').textContent = ''; login($('codeInput').value.trim()); });
-  $('logoutBtn').addEventListener('click', () => { try { localStorage.removeItem(LS_CODE); } catch (e) { /* mode privat */ } location.reload(); });
+  $('logoutBtn').addEventListener('click', () => { try { localStorage.removeItem(LS_CODE); localStorage.removeItem(CACHE_KEY); } catch (e) { /* mode privat */ } location.reload(); });
   $('dtChips').addEventListener('click', async e => {
     const b = e.target.closest('.chip'); if (!b) return;
     VIEW = b.getAttribute('data-dt');
     b.textContent = 'Memuat…';
-    try { const d = await fetchGs(CODE, VIEW); if (!d.error) { DATA = d; render(); } } catch (err) { render(); }
+    try { const d = await fetchGs(CODE, VIEW); if (!d.error) { DATA = d; writeCache(CODE, d); render(); } } catch (err) { render(); }
   });
   $('waBtn').addEventListener('click', () => { window.open('https://wa.me/?text=' + encodeURIComponent(reminderText()), '_blank'); });
   $('copyBtn').addEventListener('click', async () => {

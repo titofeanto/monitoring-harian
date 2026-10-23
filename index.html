@@ -7,10 +7,22 @@
 <title>Monitoring Harian</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="assets/style.css">
+<script src="assets/boot.js"></script>
 </head>
 <body>
 
 <!-- LOGIN -->
+<div class="boot" id="bootBox" role="status">
+  <div>
+    <p id="bootMsg">Memuat data…</p>
+    <div id="bootSpin" class="muted" style="font-size:12px">Server kadang butuh beberapa detik.</div>
+    <div id="bootActions" hidden style="margin-top:14px">
+      <button type="button" class="btn" id="bootRetry" style="width:100%">Coba lagi</button>
+      <button type="button" class="btn plain" id="bootOther" style="width:100%">Pakai kode lain</button>
+    </div>
+  </div>
+</div>
+
 <div class="login-wrap" id="loginScreen">
   <div class="login-box">
     <div class="icon">MH</div>
