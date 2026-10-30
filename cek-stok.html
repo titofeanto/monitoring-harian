@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1769C8">
+<title>Cek Stok &amp; Harga Naik</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="assets/style.css?v=202610301700">
+<script src="assets/boot.js?v=202610301700"></script>
+</head>
+<body>
+
+<div class="boot" id="bootBox" role="status">
+  <div>
+    <p id="bootMsg">Memuat data…</p>
+    <div id="bootProg">
+      <div class="bar"><i id="bootBar"></i></div>
+      <div id="bootEta" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div>
+    <div id="bootActions" hidden style="margin-top:14px;display:grid;gap:8px">
+      <button type="button" class="btn" id="bootRetry">Coba lagi</button>
+      <button type="button" class="btn plain" id="bootOther">Pakai kode lain</button>
+    </div>
+  </div>
+</div>
+
+<div class="login-wrap" id="loginScreen">
+  <div class="login-box">
+    <div class="icon">CS</div>
+    <h1>Cek Stok &amp; Harga Naik</h1>
+    <p>Stok gudang untuk barang yang harganya naik. Masukkan kode akses tim yang sama dengan Monitoring Harian.</p>
+    <form id="loginForm" autocomplete="off">
+      <div class="field">
+        <label for="codeInput">Kode akses tim</label>
+        <input type="text" id="codeInput" autocomplete="off" placeholder="kode akses tim">
+      </div>
+      <button type="submit" class="btn" id="loginBtn" style="width:100%">Masuk</button>
+      <div class="err" id="loginErr" role="alert"></div>
+    </form>
+  </div>
+</div>
+
+<div id="appScreen" hidden>
+  <header class="top">
+    <div class="top-row">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">CS</span>
+        <div><div class="brand-t">Cek Stok &amp; Harga Naik</div><div class="brand-s" id="csSub"></div></div>
+      </div>
+      <button class="hdr-btn" id="refreshBtn" type="button" aria-label="Muat ulang data"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
+    </div>
+    <div class="greet">
+      <div class="greet-hi" id="csUpdated"></div>
+      <a class="pill-link" href="./"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><span>Monitoring Harian</span></a>
+      <div class="greet-big" id="csBig">Stok harga naik</div>
+    </div>
+  </header>
+  <div class="banner" id="csBanner" hidden style="margin:12px 16px 0"></div>
+
+  <main>
+    <div class="sec" id="dtSec" hidden><div class="chips" id="dtChips" role="group" aria-label="Pilih DT"></div></div>
+
+    <div class="card">
+      <div class="cs-search">
+        <div class="sbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="csQ" type="search" inputmode="search" autocomplete="off" placeholder="Scan / ketik barcode, nama, atau SKU"></div>
+        <button class="btn" id="csScan" type="button">Scan</button>
+      </div>
+      <div class="cs-reader" id="csReader" hidden><div id="csReaderView"></div><button class="btn plain" id="csScanStop" type="button" style="width:100%;margin-top:8px">Tutup kamera</button></div>
+      <div class="chips" id="csChips" role="group" aria-label="Filter harga" style="margin-top:10px">
+        <button type="button" data-f="naik" aria-pressed="true">Harga naik</button>
+        <button type="button" data-f="turun" aria-pressed="false">Harga turun</button>
+        <button type="button" data-f="semua" aria-pressed="false">Semua</button>
+      </div>
+      <div class="cs-filters">
+        <select id="csBrand" aria-label="Filter brand"><option value="">Semua brand</option></select>
+        <label class="chk"><input id="csOnly" type="checkbox" checked> Hanya yang ada stok</label>
+      </div>
+      <div class="cs-bar"><span id="csCount" class="muted"></span><button class="btn ic" id="csExport" type="button">Export Excel</button></div>
+    </div>
+
+    <div id="csList"></div>
+    <button class="btn plain" id="csMore" type="button" hidden style="width:100%;margin:12px 0">Tampilkan lebih banyak</button>
+
+    <div class="card">
+      <h2>Akun</h2>
+      <p class="hint">Login dibagi dengan Monitoring Harian. Keluar menghapus kode dan salinan data di HP ini.</p>
+      <div class="row"><button type="button" class="btn danger" id="logoutBtn">Ganti / Keluar</button></div>
+    </div>
+    <p class="hint" style="padding:0 4px 24px">Harga toko per karton, sudah termasuk PPN, dari daftar harga Unilever. Stok sesuai laporan gudang pada tanggal di atas. Harga dapat berubah tanpa pemberitahuan.</p>
+  </main>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="assets/config.js?v=202610301700"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="assets/stok.js?v=202610301700"></script>
+</body>
+</html>

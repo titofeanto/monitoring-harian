@@ -16,6 +16,8 @@
  *   tambah &cek=1                        -> jumlah baris per tab saja
  *   tambah &view=gs                      -> KPI Great Sales (tab GS_* di Sheet pusat,
  *                                           diisi tool upload); kode DT hanya melihat toko DT-nya
+ *   tambah &view=stok                    -> Cek Stok & harga naik (tab STOK_GUDANG per DT + HARGA_PL
+ *                                           di Sheet pusat, diisi tool upload); kode DT hanya melihat stok DT-nya
  *
  * Endpoint tulis (POST, body JSON):
  *   {action:'simpanHasil', code, dt?, periode:'YYYY-MM', rows:[...]}
@@ -102,6 +104,7 @@ function doGet(e) {
     const me = reg.find(r => r.kode_akses === code);
     if (!me) return jsonOut({ error: 'invalid_code' });
     if (p.view === 'gs') return jsonOut(respondGs_(me, reg, String(p.dt || '').trim()));
+    if (p.view === 'stok') return jsonOut(respondStok_(me, reg, String(p.dt || '').trim()));
 
     if (me.peran === 'pusat') {
       const dts = reg.filter(r => r.peran === 'dt' && r.sheet_id);
@@ -420,6 +423,36 @@ function clearCacheFor_(sheetId) {
   const keys = [key + '_n'];
   for (let i = 0; i < n; i++) keys.push(key + '_' + i);
   cache.removeAll(keys);
+}
+
+/**
+ * Cek Stok: stok gudang per DT (STOK_GUDANG) + daftar harga lama/baru (HARGA_PL), digabung di halaman.
+ * Kode DT hanya menerima stok DT-nya; kode pusat menerima semua DT (atau satu DT lewat &dt=).
+ * Biaya beli / MAP tidak pernah disimpan di tab ini.
+ */
+function respondStok_(me, reg, dtWanted) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const harga = readObjs_(ss, 'HARGA_PL');
+  if (!harga.length) return { error: 'no_data', message: 'Daftar harga belum diupload.' };
+  let stok = readObjs_(ss, 'STOK_GUDANG');
+  let dts = reg.filter(x => x.peran === 'dt' && x.sheet_id);
+  if (me.peran === 'dt') dts = dts.filter(x => x.dt_kode === me.dt_kode);
+  else if (dtWanted) dts = dts.filter(x => x.dt_kode === dtWanted);
+  const ok = {}; dts.forEach(x => { ok[x.dt_kode] = true; });
+  stok = stok.filter(r => ok[String(r.dt_kode)]);
+  if (!stok.length) return { error: 'no_data', message: 'Stok gudang belum diupload untuk DT ini.' };
+  const iso = v => v instanceof Date ? Utilities.formatDate(v, ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : String(v);
+  const tanggal = {};
+  stok.forEach(r => { tanggal[String(r.dt_kode)] = iso(r.tanggal); });
+  return {
+    mode: 'stok',
+    dts: dts.filter(x => tanggal[x.dt_kode]).map(x => ({ kode: x.dt_kode, nama: x.nama_dt, tanggal: tanggal[x.dt_kode] })),
+    stok: stok.map(r => [String(r.dt_kode), String(r.sku), +r.karton || 0, +r.lusin || 0, +r.pcs || 0, +r.isi || 1]),
+    harga: harga.map(r => ({ sku: String(r.sku), bc: String(r.barcode), brand: String(r.brand), nama: String(r.nama), kemasan: String(r.kemasan),
+      isi: +r.isi || 1, mulai: iso(r.mulai || ''), hNew: r.h_new === '' ? null : +r.h_new, hOld: r.h_old === '' ? null : +r.h_old,
+      sNew: r.s_new === '' ? null : +r.s_new, sOld: r.s_old === '' ? null : +r.s_old })),
+    hargaTanggal: harga.length ? String(harga[0].tanggal_pl || '') : '',
+  };
 }
 
 /**

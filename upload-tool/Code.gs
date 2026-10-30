@@ -1458,3 +1458,80 @@ function readRekapStatus_(ss) {
   });
   return Object.keys(by).sort().map(p => fmtPeriodeID_(p) + (by[p].final ? ' final' : ' draft') + ' (sampai ' + fmtDateID_(by[p].sampai) + ')');
 }
+
+// ====================== CEK STOK & HARGA NAIK ======================
+// Dua file, diparse di browser (Index.html) lalu dikirim sebagai baris bersih:
+//  - Daftar harga Unilever (sheet HARGA BARU + HARGA LAMA) -> HARGA_PL, ganti total, berlaku untuk semua DT.
+//  - Distributor Stock Report per DT -> STOK_GUDANG, hanya baris DT itu yang diganti.
+// Halaman cek-stok.html membaca keduanya lewat API (?view=stok). Nilai beli / MAP tidak pernah dikirim.
+
+const HARGA_TAB = 'HARGA_PL';
+const HARGA_HEADER = ['sku', 'barcode', 'brand', 'nama', 'kemasan', 'isi', 'mulai', 'h_new', 'h_old', 's_new', 's_old', 'tanggal_pl'];
+const STOK_TAB = 'STOK_GUDANG';
+const STOK_HEADER = ['dt_kode', 'tanggal', 'sku', 'karton', 'lusin', 'pcs', 'isi'];
+
+function writeTextTab_(ss, name, header, rows) {
+  const sh = ss.getSheetByName(name) || ss.insertSheet(name);
+  sh.clearContents();
+  const all = [header].concat(rows.map(r => r.map(v => String(v === null || v === undefined ? '' : v))));
+  ensureGrid_(sh, all.length, header.length);
+  sh.getRange(1, 1, all.length, header.length).setNumberFormat('@');
+  sh.getRange(1, 1, all.length, header.length).setValues(all);
+}
+
+function readTextTab_(ss, name, header) {
+  const sh = ss.getSheetByName(name);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, header.length).getValues().filter(r => r.some(c => c !== ''));
+}
+
+/** rows: [{sku, barcode, brand, nama, kemasan, isi, mulai, h_new, h_old, s_new, s_old}] */
+function saveHargaPL(rows, tanggalPl) {
+  if (!Array.isArray(rows) || rows.length < 100) throw new Error('Daftar harga terlalu sedikit (' + (rows ? rows.length : 0) + ' baris). Upload dibatalkan.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const out = rows.map(r => [r.sku, r.barcode, r.brand, r.nama, r.kemasan, r.isi, r.mulai, r.h_new, r.h_old, r.s_new, r.s_old, tanggalPl || '']);
+    writeTextTab_(ss, HARGA_TAB, HARGA_HEADER, out);
+    const naik = rows.filter(r => r.h_new !== '' && r.h_old !== '' && +r.h_new - +r.h_old > 0.5).length;
+    return { ok: true, rows: rows.length, naik: naik };
+  } finally { lock.releaseLock(); }
+}
+
+/** rows: [[sku, karton, lusin, pcs, isi]] untuk satu DT. */
+function saveStokGudang(dtKode, tanggal, rows) {
+  const dt = resolveDt_(dtKode);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(tanggal))) throw new Error('Tanggal laporan stok tidak terbaca.');
+  if (!Array.isArray(rows) || rows.length < 10) throw new Error('Laporan stok terlalu sedikit (' + (rows ? rows.length : 0) + ' baris). Upload dibatalkan.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const keep = readTextTab_(ss, STOK_TAB, STOK_HEADER).filter(r => String(r[0]) !== dt.dt_kode);
+    const mine = rows.map(r => [dt.dt_kode, tanggal, r[0], r[1], r[2], r[3], r[4]]);
+    writeTextTab_(ss, STOK_TAB, STOK_HEADER, keep.concat(mine));
+    return { ok: true, dt: dt.nama_dt, rows: mine.length };
+  } finally { lock.releaseLock(); }
+}
+
+/** Status dua kotak di halaman upload. */
+function getStokStatus() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const h = readTextTab_(ss, HARGA_TAB, HARGA_HEADER);
+  const today = todayIso_(), expected = expectedDate_(today, {});
+  const harga = h.length
+    ? { level: 'green', text: h.length + ' SKU · daftar harga ' + (h[0][11] || '-') }
+    : { level: 'red', text: 'Belum pernah diupload' };
+  const byDt = {};
+  readTextTab_(ss, STOK_TAB, STOK_HEADER).forEach(r => {
+    const d = r[1] instanceof Date ? Utilities.formatDate(r[1], Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(r[1]);
+    const o = byDt[r[0]] = byDt[r[0]] || { tanggal: d, n: 0 }; o.n++;
+  });
+  const stok = readRegistry_().filter(x => x.peran === 'dt' && x.sheet_id).map(x => {
+    const o = byDt[x.dt_kode];
+    if (!o) return { kode: x.dt_kode, nama: x.nama_dt, level: 'red', text: 'Belum pernah diupload' };
+    return { kode: x.dt_kode, nama: x.nama_dt, level: o.tanggal < expected ? 'amber' : 'green', text: o.n + ' SKU · stok per ' + fmtDateID_(o.tanggal) };
+  });
+  return { harga: harga, stok: stok };
+}

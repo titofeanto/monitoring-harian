@@ -88,6 +88,31 @@
 <header class="top"><div class="top-in"><span class="mark" aria-hidden="true">UP</span><div><h1>Upload Data Monitoring Harian</h1><div class="sub">Pilih DT, upload file mentah, lihat status update. Merah, kuning, hijau menunjukkan mana yang perlu diurus.</div></div></div></header>
 <div class="wrap">
 
+<h2 style="margin-top:6px">Cek Stok &amp; Harga Naik</h2>
+<div class="group-note">Untuk halaman Cek Stok: stok gudang yang tersedia untuk barang harga naik, bisa diexport Excel ke toko.</div>
+<div class="card" id="card-HPL">
+  <div class="card-head"><div><h3>Daftar Harga Unilever</h3><span class="tab">HARGA_PL</span></div>
+    <span class="badge" id="hplBadge"><i class="dot"></i>Memuat</span></div>
+  <div class="st-text" id="hplText">Mengecek...</div>
+  <div class="desc">File SUMMARY PRICE LIST (.xlsx) dengan sheet HARGA BARU dan HARGA LAMA. Berlaku untuk semua DT, ganti total tiap ada daftar harga baru.</div>
+  <label for="hplFile">File (.xlsx)</label>
+  <input type="file" id="hplFile" accept=".xlsx">
+  <button type="button" class="go" id="hplGo" disabled>Proses &amp; simpan daftar harga</button>
+  <div class="spin" id="hplSpin">Memproses...</div>
+  <div id="hplRes"></div>
+</div>
+<div class="card" id="card-STK">
+  <div class="card-head"><div><h3>Stok Gudang DT</h3><span class="tab">STOK_GUDANG</span></div>
+    <span class="badge" id="stkBadge"><i class="dot"></i>Memuat</span></div>
+  <div class="st-text" id="stkText">Mengecek...</div>
+  <div class="desc">File Distributor Stock Report (.xlsx). DT dibaca otomatis dari file (baris Selected Parameters), jadi tidak perlu pilih DT di atas. Upload tiap hari.</div>
+  <label for="stkFile">File (.xlsx)</label>
+  <input type="file" id="stkFile" accept=".xlsx">
+  <button type="button" class="go" id="stkGo" disabled>Proses &amp; simpan stok gudang</button>
+  <div class="spin" id="stkSpin">Memproses...</div>
+  <div id="stkRes"></div>
+</div>
+
 <h2 style="margin-top:6px">KPI Great Sales</h2>
 <div class="group-note">Scorecard AAM nasional, tidak tergantung DT. Upload tiap hari supaya rank dan daftar toko di halaman Great Sales ikut update.</div>
 <div class="card" id="card-GS">
@@ -179,6 +204,7 @@
 <div id="cards"><div class="loading" id="loading">Memuat daftar DT...</div></div>
 
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
   var GROUPS = [
     { key: 'daily', title: 'Update Harian', note: 'Diupdate tiap hari kerja atau setiap tarik report.' },
@@ -547,6 +573,129 @@
     }).saveManualKpi(el('manRank').value, el('manDr').value);
   });
 
+  /* ---- Cek Stok & Harga Naik: file dibaca di browser (SheetJS), server hanya menerima baris bersih ---- */
+  function xnum(v) {
+    if (typeof v === 'number') return v;
+    var s = String(v == null ? '' : v).replace(/,/g, '').trim(), n = parseFloat(s);
+    return s === '' || isNaN(n) ? '' : n;
+  }
+  function xstr(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); }
+  function xiso(v) {
+    if (typeof v === 'number') { var d = new Date(Math.round((v - 25569) * 86400000)); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }
+    var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(xstr(v));
+    if (m) return m[3] + '-' + pad(m[2]) + '-' + pad(m[1]);
+    return /^\d{4}-\d{2}-\d{2}/.test(xstr(v)) ? xstr(v).slice(0, 10) : '';
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function readXlsx(file) {
+    return new Promise(function (ok, no) {
+      var r = new FileReader();
+      r.onload = function () { try { ok(XLSX.read(r.result, { type: 'array' })); } catch (e) { no(e); } };
+      r.onerror = function () { no(new Error('File tidak bisa dibaca.')); };
+      r.readAsArrayBuffer(file);
+    });
+  }
+  function aoa(wb, name) {
+    if (!wb.Sheets[name]) throw new Error('Sheet "' + name + '" tidak ada di file. Pastikan ini file yang benar.');
+    return XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: null });
+  }
+  /* Satu sheet harga: peta sku -> {barcode, brand, ..., fib, sat} (kolom "Dengan PPN" Per Fib dan Per Satuan). */
+  function parseHargaSheet(rows) {
+    var h = -1;
+    for (var i = 0; i < rows.length; i++) if (xstr(rows[i][3]) === 'SKU' || (xstr(rows[i][2]) === 'SKU')) { h = i; break; }
+    if (h < 0) throw new Error('Header SKU tidak ditemukan.');
+    var hd = rows[h].map(xstr), c = function (n) { return hd.indexOf(n); };
+    var cSku = c('SKU'), cBc = c('Barcode'), cNm = c('Nama Produk'), cKm = c('Kemasan'), cJ = c('Jumlah'), cMl = c('Mulai'), cBr = c('Brand'), cHt = c('Harga Toko');
+    if ([cSku, cBc, cNm, cMl, cHt].some(function (x) { return x < 0; })) throw new Error('Kolom daftar harga berubah (SKU/Barcode/Nama Produk/Mulai/Harga Toko).');
+    var out = {};
+    for (var j = h + 1; j < rows.length; j++) {
+      var r = rows[j], sku = xstr(r[cSku]);
+      if (!/^\d+$/.test(sku)) continue;
+      out[sku] = { sku: sku, barcode: xstr(r[cBc]), brand: xstr(r[cBr]), nama: xstr(r[cNm]), kemasan: xstr(r[cKm]), isi: xnum(r[cJ]) || 1,
+        mulai: xiso(r[cMl]), fib: xnum(r[cHt + 3]), sat: xnum(r[cHt + 5]) };
+    }
+    return out;
+  }
+  function parseHarga(wb) {
+    var nw = parseHargaSheet(aoa(wb, 'HARGA BARU')), old = parseHargaSheet(aoa(wb, 'HARGA LAMA'));
+    /* SKU baru (ganti kode) belum ada di HARGA LAMA: cocokkan lewat barcode, sama seperti sheet SUMMARY. */
+    var oldBc = {};
+    Object.keys(old).forEach(function (k) { (oldBc[old[k].barcode] = oldBc[old[k].barcode] || []).push(old[k]); });
+    var rows = Object.keys(nw).map(function (k) {
+      var n = nw[k], o = old[k];
+      if (!o && n.barcode && oldBc[n.barcode]) { var c = oldBc[n.barcode], same = c.filter(function (x) { return x.kemasan === n.kemasan; }); o = same.length === 1 ? same[0] : (c.length === 1 ? c[0] : null); }
+      return { sku: n.sku, barcode: n.barcode, brand: n.brand, nama: n.nama, kemasan: n.kemasan, isi: n.isi, mulai: n.mulai,
+        h_new: n.fib, h_old: o ? o.fib : '', s_new: n.sat, s_old: o ? o.sat : '' };
+    });
+    var tgl = '';
+    var top = aoa(wb, 'HARGA BARU').slice(0, 4);
+    top.forEach(function (r) { r.forEach(function (v) { var m = /Tanggal\s+(\d{1,2}\/\d{1,2}\/\d{4})/.exec(xstr(v)); if (m) tgl = xiso(m[1]); }); });
+    return { rows: rows, tanggal: tgl };
+  }
+  function parseStok(wb) {
+    var rows = aoa(wb, wb.Sheets['Sheet1'] ? 'Sheet1' : wb.SheetNames[0]), h = -1;
+    for (var i = 0; i < rows.length; i++) if (xstr(rows[i][0]) === 'PCODE') { h = i; break; }
+    if (h < 0) throw new Error('Kolom PCODE tidak ditemukan. Ini bukan Distributor Stock Report.');
+    var out = [];
+    for (var j = h + 1; j < rows.length; j++) {
+      var r = rows[j], sku = xstr(r[0]);
+      if (!/^\d+$/.test(sku)) continue;
+      out.push([sku, xnum(r[4]) || 0, xnum(r[5]) || 0, xnum(r[6]) || 0, xnum(r[2]) || 1]);
+    }
+    var dt = '', tgl = '';
+    if (wb.Sheets['Selected Parameters']) {
+      aoa(wb, 'Selected Parameters').forEach(function (r) {
+        r.forEach(function (v, k) {
+          var s = xstr(v), m = /^(\d+)~/.exec(s);
+          if (m && !dt) dt = m[1];
+          if (s === 'Tanggal:') { for (var q = k + 1; q < r.length; q++) { var t = xiso(r[q]); if (t) { tgl = t; break; } } }
+        });
+      });
+    }
+    if (!dt) throw new Error('Kode DT tidak terbaca dari sheet Selected Parameters.');
+    if (!tgl) throw new Error('Tanggal laporan tidak terbaca dari sheet Selected Parameters.');
+    return { dt: dt, tanggal: tgl, rows: out };
+  }
+  function loadStk() {
+    google.script.run.withSuccessHandler(function (st) {
+      el('card-HPL').className = 'card lv-' + st.harga.level;
+      el('hplBadge').className = 'badge lv-' + st.harga.level; el('hplBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.harga.level];
+      el('hplText').textContent = st.harga.text;
+      var worst = st.stok.reduce(function (a, d) { return d.level === 'red' || a === 'red' ? 'red' : d.level === 'amber' || a === 'amber' ? 'amber' : 'green'; }, 'green');
+      el('card-STK').className = 'card lv-' + worst;
+      el('stkBadge').className = 'badge lv-' + worst; el('stkBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[worst];
+      el('stkText').textContent = st.stok.map(function (d) { return d.nama + ': ' + d.text; }).join('\n');
+    }).withFailureHandler(function (e) { el('hplText').textContent = 'Gagal mengecek: ' + e.message; }).getStokStatus();
+  }
+  function stkRun(prefix, work) {
+    var f = el(prefix + 'File').files[0]; if (!f) return;
+    el(prefix + 'Go').disabled = true; el(prefix + 'Spin').classList.add('show'); el(prefix + 'Res').innerHTML = '';
+    var done = function (lv, html) {
+      el(prefix + 'Spin').classList.remove('show'); el(prefix + 'Go').disabled = false;
+      el(prefix + 'Res').innerHTML = '<div class="result lv-' + lv + '">' + html + '</div>';
+    };
+    readXlsx(f).then(function (wb) { return work(wb, done); }).catch(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); });
+  }
+  el('hplFile').addEventListener('change', function () { el('hplGo').disabled = !this.files[0]; });
+  el('stkFile').addEventListener('change', function () { el('stkGo').disabled = !this.files[0]; });
+  el('hplGo').addEventListener('click', function () {
+    stkRun('hpl', function (wb, done) {
+      var p = parseHarga(wb);
+      google.script.run.withSuccessHandler(function (res) {
+        done('green', '<b>Tersimpan.</b>\n' + res.rows + ' SKU · ' + res.naik + ' harga naik' + (p.tanggal ? ' · daftar harga ' + p.tanggal : '')); loadStk();
+      }).withFailureHandler(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); }).saveHargaPL(p.rows, p.tanggal);
+    });
+  });
+  el('stkGo').addEventListener('click', function () {
+    stkRun('stk', function (wb, done) {
+      var p = parseStok(wb);
+      google.script.run.withSuccessHandler(function (res) {
+        done('green', '<b>Tersimpan.</b>\n' + esc(res.dt) + ' · ' + res.rows + ' SKU · stok per ' + p.tanggal); loadStk();
+      }).withFailureHandler(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); }).saveStokGudang(p.dt, p.tanggal, p.rows);
+    });
+  });
+
+  loadStk();
   loadGs();
   loadPs();
   loadRef();
