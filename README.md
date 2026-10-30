@@ -228,7 +228,7 @@ untuk komunikasi ke toko. Data di Sheet PUSAT (bukan Sheet DT):
 Stock distributor yang diunggah tim di SBA Logbook App ikut terkirim ke tab `STOK_GUDANG` (aksi `simpanStok`),
 jadi tidak perlu upload dua kali. Hanya DT yang ada di `DAFTAR_DT` yang diterima; DT lain diabaikan.
 
-Setup sekali: di Apps Script API (project "probe") buka **Project Settings > Script properties**, tambahkan
-`STOK_TOKEN` dengan nilai yang sama dengan `MONITORING.token` di `backend-config.js` SBA Logbook App.
-Tanpa itu, SBA menerima balasan `not_configured` dan stock tidak terkirim (upload di SBA tetap berhasil).
-Kotak "Stok Gudang DT" di tool upload tetap ada sebagai cadangan manual.
+Tanpa token, karena repo SBA publik. Server menolak (balasan `skipped`) DT yang tidak terdaftar, laporan yang lebih
+lama dari yang tersimpan, dan laporan dengan jumlah SKU kurang dari 50% data tersimpan. Isi tab sebelum ditimpa
+disalin ke tab tersembunyi `(Backup) STOK_GUDANG` (satu generasi). Kotak "Stok Gudang DT" di tool upload tetap
+ada sebagai cadangan manual.

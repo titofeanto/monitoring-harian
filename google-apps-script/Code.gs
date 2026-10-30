@@ -28,8 +28,9 @@
  *
  *   {action:'simpanStok', token, dt, tanggal:'YYYY-MM-DD', rows:[[sku,karton,lusin,pcs,isi],...]}
  *   Dikirim otomatis oleh SBA Logbook App tiap stock distributor diunggah. Menggantikan HANYA baris DT itu
- *   di tab STOK_GUDANG. Token harus sama dengan Script property STOK_TOKEN. DT yang tidak ada di DAFTAR_DT
- *   diabaikan (balasan skipped). Tidak menulis tab lain.
+ *   di tab STOK_GUDANG. Tanpa token (repo SBA publik): dijaga validasi. DT yang tidak ada di DAFTAR_DT, laporan
+ *   yang lebih lama dari yang tersimpan, dan laporan dengan jumlah SKU < 50% dari sebelumnya diabaikan
+ *   (balasan skipped). Isi tab sebelum ditimpa disalin ke tab tersembunyi "(Backup) STOK_GUDANG".
  *
  * Skrip sendiri tidak menghitung pencapaian/insentif: halaman web yang
  * menghitung, skrip ini hanya membaca data mentah dan menyimpan hasilnya
@@ -880,12 +881,10 @@ function monRecap_(hist, asrtRows, bandedSku, cfg) {
 const STOK_TAB = 'STOK_GUDANG';
 const STOK_HEADER = ['dt_kode', 'tanggal', 'sku', 'karton', 'lusin', 'pcs', 'isi'];
 const STOK_MAX_ROWS = 8000;
+const STOK_BACKUP_TAB = '(Backup) STOK_GUDANG';
 
 /** Terima stock gudang satu DT dari SBA Logbook App. Mengganti baris DT itu saja di STOK_GUDANG. */
 function simpanStok_(body) {
-  const token = PropertiesService.getScriptProperties().getProperty('STOK_TOKEN');
-  if (!token) return { error: 'not_configured', message: 'Script property STOK_TOKEN belum diisi.' };
-  if (String(body.token || '') !== token) return { error: 'invalid_token' };
   const dt = String(body.dt || '').trim();
   const reg = readRegistry_().find(r => r.peran === 'dt' && r.dt_kode === dt && r.sheet_id);
   if (!reg) return { ok: true, skipped: true, reason: 'DT ' + dt + ' tidak terdaftar di Monitoring Daily, data tidak dikirim.' };
@@ -905,8 +904,18 @@ function simpanStok_(body) {
   lock.waitLock(30000);
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const keep = readObjs_(ss, STOK_TAB).filter(o => String(o.dt_kode) !== dt)
-      .map(o => STOK_HEADER.map(k => o[k] instanceof Date ? Utilities.formatDate(o[k], ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : o[k]));
+    const tz = ss.getSpreadsheetTimeZone();
+    const all = readObjs_(ss, STOK_TAB).map(o => STOK_HEADER.map(k => o[k] instanceof Date ? Utilities.formatDate(o[k], tz, 'yyyy-MM-dd') : o[k]));
+    const keep = all.filter(r => String(r[0]) !== dt), prev = all.filter(r => String(r[0]) === dt);
+    if (prev.length) {
+      const prevTgl = String(prev[0][1]);
+      if (tanggal < prevTgl) return { ok: true, skipped: true, reason: 'Laporan tanggal ' + tanggal + ' lebih lama dari yang tersimpan (' + prevTgl + '), data tidak dikirim.' };
+      if (prev.length >= 100 && clean.length < prev.length * 0.5) {
+        return { ok: true, skipped: true, reason: 'Jumlah SKU (' + clean.length + ') kurang dari separuh data tersimpan (' + prev.length + '), data tidak dikirim. Upload manual di tool Monitoring jika memang benar.' };
+      }
+    }
+    const bak = ss.getSheetByName(STOK_BACKUP_TAB) || ss.insertSheet(STOK_BACKUP_TAB);
+    if (all.length) { writeObjs_(ss, STOK_BACKUP_TAB, STOK_HEADER, all); bak.hideSheet(); }
     writeObjs_(ss, STOK_TAB, STOK_HEADER, keep.concat(clean));
   } finally { lock.releaseLock(); }
   return { ok: true, dt: dt, dtNama: reg.nama_dt, rows: clean.length, tanggal: tanggal };
