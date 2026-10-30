@@ -206,3 +206,19 @@ google-apps-script/Code.gs      kode API, tempel ke Apps Script
 google-apps-script/appsscript.json  manifes Apps Script (referensi; tidak perlu diedit manual)
 .nojekyll                      supaya GitHub Pages memuat langsung tanpa proses build
 ```
+
+## Cek Stok & Harga Naik (`cek-stok.html`)
+
+Halaman untuk melihat sisa stok gudang barang yang harganya naik, scan barcode, dan **export Excel**
+untuk komunikasi ke toko. Data di Sheet PUSAT (bukan Sheet DT):
+
+| Tab | Isi | Diisi lewat |
+|---|---|---|
+| `HARGA_PL` | Daftar harga Unilever (harga lama dan baru per karton dan pcs, barcode, tanggal berlaku). Ganti total, semua DT. | Tool upload, kotak "Daftar Harga Unilever" (file SUMMARY PRICE LIST, sheet HARGA BARU + HARGA LAMA) |
+| `STOK_GUDANG` | Stok karton/lusin/pcs per SKU per DT. Hanya baris DT di file yang diganti. | Tool upload, kotak "Stok Gudang DT" (Distributor Stock Report; DT dibaca dari file) |
+
+- Update Apps Script API (`google-apps-script/Code.gs`, endpoint `?view=stok`) lalu deploy ulang di deployment yang sama.
+- Kode DT hanya melihat stok DT-nya. Kode pusat melihat semua DT lewat chip.
+- Harga naik/turun dihitung dari selisih harga baru vs lama per karton. SKU baru yang tidak ada di HARGA LAMA dicocokkan lewat barcode (kemasan sama); kalau tidak ketemu, ditandai BARU.
+- Biaya beli dan MAP dari laporan stok tidak pernah dikirim ke Sheet.
+- Stok total pcs = karton × isi + lusin × 12 + pcs.
