@@ -26,6 +26,11 @@
  *   SS). Baris lama dengan periode yang sama ditimpa (upsert), tab lain
  *   tidak pernah disentuh dari endpoint ini.
  *
+ *   {action:'simpanStok', token, dt, tanggal:'YYYY-MM-DD', rows:[[sku,karton,lusin,pcs,isi],...]}
+ *   Dikirim otomatis oleh SBA Logbook App tiap stock distributor diunggah. Menggantikan HANYA baris DT itu
+ *   di tab STOK_GUDANG. Token harus sama dengan Script property STOK_TOKEN. DT yang tidak ada di DAFTAR_DT
+ *   diabaikan (balasan skipped). Tidak menulis tab lain.
+ *
  * Skrip sendiri tidak menghitung pencapaian/insentif: halaman web yang
  * menghitung, skrip ini hanya membaca data mentah dan menyimpan hasilnya
  * balik ke Sheet supaya bisa dicek manual.
@@ -326,6 +331,7 @@ function doPost(e) {
     try { body = JSON.parse((e.postData && e.postData.contents) || '{}'); }
     catch (err) { return jsonOut({ error: 'bad_request', message: 'Body bukan JSON valid.' }); }
 
+    if (body.action === 'simpanStok') return jsonOut(simpanStok_(body));
     if (body.action !== 'simpanHasil') return jsonOut({ error: 'unknown_action' });
 
     const target = resolveTarget_(String(body.code || '').trim(), String(body.dt || '').trim());
@@ -869,4 +875,39 @@ function monRecap_(hist, asrtRows, bandedSku, cfg) {
   });
   const asrt = asrtRows.map(a => ({ periode: a.periode, dist_kode: a.dist_kode, dist_nama: a.dist_nama, channel: a.channel, outlet_aktif: a.outlet_aktif, lines: a.lines, terdaftar: a.terdaftar, sampai: a.data_sampai, final: a.final }));
   return { fop: out, asrt: asrt };
+}
+
+const STOK_TAB = 'STOK_GUDANG';
+const STOK_HEADER = ['dt_kode', 'tanggal', 'sku', 'karton', 'lusin', 'pcs', 'isi'];
+const STOK_MAX_ROWS = 8000;
+
+/** Terima stock gudang satu DT dari SBA Logbook App. Mengganti baris DT itu saja di STOK_GUDANG. */
+function simpanStok_(body) {
+  const token = PropertiesService.getScriptProperties().getProperty('STOK_TOKEN');
+  if (!token) return { error: 'not_configured', message: 'Script property STOK_TOKEN belum diisi.' };
+  if (String(body.token || '') !== token) return { error: 'invalid_token' };
+  const dt = String(body.dt || '').trim();
+  const reg = readRegistry_().find(r => r.peran === 'dt' && r.dt_kode === dt && r.sheet_id);
+  if (!reg) return { ok: true, skipped: true, reason: 'DT ' + dt + ' tidak terdaftar di Monitoring Daily, data tidak dikirim.' };
+  const tanggal = String(body.tanggal || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) return { error: 'bad_request', message: 'tanggal harus format YYYY-MM-DD.' };
+  const rows = body.rows;
+  if (!Array.isArray(rows) || !rows.length) return { error: 'bad_request', message: 'rows kosong.' };
+  if (rows.length > STOK_MAX_ROWS) return { error: 'bad_request', message: 'rows terlalu banyak (maks ' + STOK_MAX_ROWS + ').' };
+  const clean = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i], sku = String(r[0] || '').trim();
+    if (!/^\d+$/.test(sku)) continue;
+    clean.push([dt, tanggal, sku, +r[1] || 0, +r[2] || 0, +r[3] || 0, +r[4] || 1]);
+  }
+  if (!clean.length) return { error: 'bad_request', message: 'Tidak ada baris SKU yang valid.' };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const keep = readObjs_(ss, STOK_TAB).filter(o => String(o.dt_kode) !== dt)
+      .map(o => STOK_HEADER.map(k => o[k] instanceof Date ? Utilities.formatDate(o[k], ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : o[k]));
+    writeObjs_(ss, STOK_TAB, STOK_HEADER, keep.concat(clean));
+  } finally { lock.releaseLock(); }
+  return { ok: true, dt: dt, dtNama: reg.nama_dt, rows: clean.length, tanggal: tanggal };
 }
