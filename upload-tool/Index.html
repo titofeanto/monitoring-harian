@@ -74,6 +74,8 @@
   .file-chip { margin-top: 6px; padding: 8px 10px; border-radius: 11px; font-size: 12px; border: 1.5px dashed var(--line); color: var(--soft); word-break: break-all; }
   .file-chip.ok { border-style: solid; border-color: transparent; background: var(--green-bg); color: var(--green-ink); }
   .file-chip.warn { border-style: solid; border-color: transparent; background: var(--amber-bg); color: var(--amber-ink); }
+  .sample { margin: 10px 0 2px; padding: 8px 14px; min-height: 38px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--card2); color: var(--blue); font-weight: 700; font-size: 13px; cursor: pointer; }
+  .sample:active { transform: scale(.98); }
   .go { margin-top: 12px; padding: 11px 18px; min-height: 46px; border: 0; border-radius: 11px; background: var(--blue); color: #fff; font-weight: 600; font-size: 14px; width: 100%; }
   .go:disabled { opacity: .45; cursor: not-allowed; }
   .restore { margin-top: 8px; height: 34px; padding: 0 12px; border-radius: 999px; border: 0; background: var(--blue-bg); color: var(--blue); font-size: 12px; font-weight: 600; }
@@ -95,6 +97,7 @@
     <span class="badge" id="hplBadge"><i class="dot"></i>Memuat</span></div>
   <div class="st-text" id="hplText">Mengecek...</div>
   <div class="desc">File SUMMARY PRICE LIST (.xlsx) dengan sheet HARGA BARU dan HARGA LAMA. Berlaku untuk semua DT, ganti total tiap ada daftar harga baru.</div>
+  <button type="button" class="sample" data-sample="HPL" id="smpHPL">Download file contoh</button>
   <label for="hplFile">File (.xlsx)</label>
   <input type="file" id="hplFile" accept=".xlsx">
   <button type="button" class="go" id="hplGo" disabled>Proses &amp; simpan daftar harga</button>
@@ -106,6 +109,7 @@
     <span class="badge" id="stkBadge"><i class="dot"></i>Memuat</span></div>
   <div class="st-text" id="stkText">Mengecek...</div>
   <div class="desc">File Distributor Stock Report (.xlsx). DT dibaca otomatis dari file (baris Selected Parameters), jadi tidak perlu pilih DT di atas. Upload tiap hari.</div>
+  <button type="button" class="sample" data-sample="STK" id="smpSTK">Download file contoh</button>
   <label for="stkFile">File (.xlsx)</label>
   <input type="file" id="stkFile" accept=".xlsx">
   <button type="button" class="go" id="stkGo" disabled>Proses &amp; simpan stok gudang</button>
@@ -120,6 +124,7 @@
   <div class="desc">Untuk analisa stok di halaman Cek Stok. SAT = list item Unilever Alfamart (kolom Barcode). IDM = List Item Aktif Unilever IDM (kolom BARCODE ULI, kolom Pareto SON). Hypermart = matching SKU aktif (kolom UPC, SKU Desc). Kolom barcode dicari otomatis dari judulnya (Barcode, UPC, EAN, GTIN), jadi judul yang sedikit berubah tetap terbaca. Upload satu per satu; daftar channel lain tidak berubah.</div>
   <label for="flgKind">Channel</label>
   <select id="flgKind"><option value="SAT">SAT (Alfamart)</option><option value="IDM">IDM</option><option value="HM">Hypermart (kolom UPC)</option></select>
+  <button type="button" class="sample" data-sample="FLG" id="smpFLG">Download file contoh</button>
   <label for="flgFile">File (.xlsx)</label>
   <input type="file" id="flgFile" accept=".xlsx">
   <button type="button" class="go" id="flgGo" disabled>Proses &amp; simpan daftar SKU</button>
@@ -132,6 +137,7 @@
     <span class="badge" id="julBadge"><i class="dot"></i>Memuat</span></div>
   <div class="st-text" id="julText">Mengecek...</div>
   <div class="desc">File compile Trend Sales (Sheet1 + Sheet2 flagging GT/LMT, kolom Sum of GSV per bulan). Dipakai untuk rata-rata jual per minggu dan pembanding tahun lalu di Cek Stok. File besar: pakai laptop, tunggu sampai satu menit. Ganti total tiap ada compile baru.</div>
+  <button type="button" class="sample" data-sample="JUL" id="smpJUL">Download file contoh</button>
   <label for="julFile">File (.xlsx)</label>
   <input type="file" id="julFile" accept=".xlsx">
   <button type="button" class="go" id="julGo" disabled>Proses &amp; simpan trend penjualan</button>
@@ -756,6 +762,60 @@
     });
     return { rows: out2, mulai: mulai, bulan: n, lain: Object.keys(unk) };
   }
+
+  /* ---- File contoh: dibuat langsung di browser (SheetJS), jadi selalu sama dengan format yang dibaca tool ini ---- */
+  function sampleBooks(key, flgKind) {
+    var brands = ['RINSO', 'SUNSILK', 'PEPSODENT', 'LIFEBUOY', 'ROYCO', 'BANGO'], sk = [], i;
+    for (i = 0; i < 14; i++) sk.push({ sku: String(10001000 + i), bc: '89991' + String(10000 + i) + '0', brand: brands[i % 6], nama: brands[i % 6] + ' CONTOH PRODUK ' + (i + 1), kem: (100 + i * 10) + 'G', isi: i % 2 ? 24 : 12 });
+    var S = function (rows) { return XLSX.utils.aoa_to_sheet(rows); }, wb = XLSX.utils.book_new();
+    if (key === 'HPL') {
+      var hs = function (f) {
+        var rows = [['CONTOH - Daftar harga Unilever'], ['Tanggal 01/11/2026'], [], ['No', 'Brand', 'SKU', 'Barcode', 'Nama Produk', 'Kemasan', 'Jumlah', 'Mulai', 'Harga Toko', '', '', '', '', '']];
+        sk.forEach(function (x, n) { rows.push([n + 1, x.brand, x.sku, x.bc, x.nama, x.kem, x.isi, '01/11/2026', '', '', '', Math.round((100000 + n * 5000) * f), '', Math.round((100000 + n * 5000) * f / x.isi)]); });
+        return S(rows);
+      };
+      XLSX.utils.book_append_sheet(wb, hs(1.05), 'HARGA BARU'); XLSX.utils.book_append_sheet(wb, hs(1), 'HARGA LAMA');
+      return { wb: wb, name: 'contoh-daftar-harga-unilever.xlsx' };
+    }
+    if (key === 'STK') {
+      var st = [['Distributor Stock Report'], [], ['PCODE', 'Nama Produk', 'Isi', 'Satuan', 'Karton', 'Lusin', 'Pcs', 'RPP']];
+      sk.forEach(function (x, n) { st.push([x.sku, x.nama, x.isi, 'PCS', (n * 3) % 20, n % 3, n % 5, 0]); });
+      XLSX.utils.book_append_sheet(wb, S(st), 'Sheet1');
+      XLSX.utils.book_append_sheet(wb, S([['Distributor:', '18078740~PT CONTOH DISTRIBUTOR (ganti dengan kode~nama DT Anda)'], ['Tanggal:', '31/10/2026']]), 'Selected Parameters');
+      return { wb: wb, name: 'contoh-stok-gudang-dt.xlsx' };
+    }
+    if (key === 'FLG') {
+      var rows, nm;
+      if (flgKind === 'IDM') { rows = [['PLU', 'BARCODE ULI', 'Nama', 'Pareto SON']].concat(sk.map(function (x, n) { return ['PLU' + (30000 + n), x.bc, x.nama, n % 3 === 0 ? 'Y' : '']; })); nm = 'IDM'; }
+      else if (flgKind === 'HM') { rows = [['SKU', 'SKU Desc', 'UPC', 'SupplierNo', 'Supplier Name', 'Inner', 'Stock Distributor', 'In Transit', 'SOH + IT']].concat(sk.map(function (x, n) { return [String(35000000 + n), x.nama, x.bc, '2378', 'UNILEVER INDONESIA TBK, PT', x.isi, 0, 0, 0]; })); nm = 'Hypermart'; }
+      else { rows = [['PLU', 'Barcode', 'Nama Barang']].concat(sk.map(function (x, n) { return ['PLU' + (20000 + n), x.bc, x.nama]; })); nm = 'SAT'; }
+      XLSX.utils.book_append_sheet(wb, S(rows), 'Sheet1');
+      return { wb: wb, name: 'contoh-daftar-sku-' + nm + '.xlsx' };
+    }
+    var tr = [['DT Code Name', 'Store Banner', 'Outlet Code & Name', 'Subchannel Mapp', 'Parent SKU Code & Name', 'Year', 'Month', 'Sum of GSV']];
+    [[2026, 8], [2026, 9], [2026, 10]].forEach(function (ym) {
+      sk.forEach(function (x, n) {
+        tr.push(['18078740 - PT CONTOH DISTRIBUTOR', '', '1001 - TOKO A', 'WARUNG', x.sku + ' - ' + x.nama, ym[0], ym[1], 2000000 + n * 150000]);
+        if (n % 2 === 0) tr.push(['18078740 - PT CONTOH DISTRIBUTOR', 'ALFAMART', '2001 - ALFAMART X', 'MINIMARKET', x.sku + ' - ' + x.nama, ym[0], ym[1], 900000 + n * 50000]);
+        if (n % 3 === 0) tr.push(['18078740 - PT CONTOH DISTRIBUTOR', 'INDOMARET', '3001 - DC IDM', 'MINIMARKET', x.sku + ' - ' + x.nama, ym[0], ym[1], 700000 + n * 40000]);
+      });
+    });
+    XLSX.utils.book_append_sheet(wb, S(tr), 'Sheet1');
+    XLSX.utils.book_append_sheet(wb, S([['Flag', 'Keterangan', 'Subchannel'], ['GT', 'Tradisional', 'WARUNG'], ['LMT', 'Modern', 'MINIMARKET'], ['LMT', 'Modern', 'SUPERMARKET']]), 'Sheet2');
+    return { wb: wb, name: 'contoh-trend-sales-compile.xlsx' };
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-sample]');
+    if (!b) return;
+    try {
+      var o = sampleBooks(b.dataset.sample, el('flgKind') ? el('flgKind').value : 'SAT');
+      XLSX.writeFile(o.wb, o.name);
+    } catch (e) { alert('File contoh gagal dibuat: ' + e.message); }
+  });
+  if (el('flgKind')) el('flgKind').addEventListener('change', function () {
+    el('smpFLG').textContent = 'Download file contoh ' + this.options[this.selectedIndex].text.split(' ')[0];
+  });
+
   function loadStk() {
     google.script.run.withSuccessHandler(function (st) {
       el('card-HPL').className = 'card lv-' + st.harga.level;
