@@ -72,7 +72,13 @@
   <main>
     <div class="sec" id="dtSec" hidden><div class="chips" id="dtChips" role="group" aria-label="Pilih DT"></div></div>
 
-    <div class="card">
+    <div class="chips" id="csView" role="group" aria-label="Tampilan" style="margin-bottom:10px">
+      <button type="button" data-v="daftar" aria-pressed="true">Daftar</button>
+      <button type="button" data-v="bedah" aria-pressed="false">Bedah stok</button>
+    </div>
+    <div id="bedah" class="bd" hidden></div>
+
+    <div class="card" id="csCard">
       <div class="chips" id="csMode" role="group" aria-label="Jenis analisa" style="margin-bottom:10px">
         <button type="button" data-m="harga" aria-pressed="true">Harga &amp; stok</button>
         <button type="button" data-m="SAT" aria-pressed="false">SAT (Alfamart)</button>
@@ -121,6 +127,7 @@
 <script src="assets/status-banner.js?v=1"></script>
 <script src="assets/fresh.js?v=202610311300"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="assets/stok.js?v=202610311300"></script>
+<script src="assets/stok.js?v=202610311301"></script>
+<script src="assets/bedah-stok.js?v=1"></script>
 </body>
 </html>

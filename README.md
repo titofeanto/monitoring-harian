@@ -239,6 +239,14 @@ Di halaman Cek Stok, pilih **SAT (Alfamart)** atau **IDM** untuk melihat apakah 
 - Barcode yang sama di dua SKU (mis. kemasan ML ke G) digabung jadi satu baris. Export Excel mengikuti daftar yang tampil. IDM Pareto diberi badge.
 - Batas minggu ada di `CFG` di `assets/stok.js`. Kolom RPP laporan stok tidak dipakai.
 
+### Bedah stok (dashboard)
+
+Di halaman Cek Stok, tombol **Bedah stok** (di atas daftar) membuka tampilan dashboard untuk satu DT (chip DT tetap berlaku).
+Filter: channel (Semua / SAT / IDM), rata-rata jual 13 minggu atau 1 bulan, brand, cari SKU atau barcode, dan hanya yang ada stok.
+Isinya: kartu ringkas (SKU, stok karton, habis+kritis, menipis, aman, kekurangan untuk 2 minggu), grafik status per brand dan sebaran cover,
+lalu tabel rincian **Brand, SKU, atau Status**. Klik baris brand atau status untuk turun ke daftar SKU, klik judul kolom untuk mengurutkan, dan
+**Unduh CSV** mengekspor SKU yang sedang tampil. Aturan status dan cover sama dengan analisa SAT/IDM. Kode: `assets/bedah-stok.js`.
+
 ### Status data di header
 
 Bubble di header tiga halaman memakai aturan yang sama dengan tool upload: tanggal yang seharusnya sudah ada = hari ini

@@ -145,9 +145,9 @@
 
   /* Satu barcode bisa dipakai beberapa SKU di daftar harga (varian kemasan). Per barcode, ambil SKU yang ada di laporan stok DT ini;
      kalau tidak ada satu pun, cukup satu baris supaya tampil sebagai "Tidak ada di laporan". */
-  const pool = () => {
-    const by = {};
-    ITEMS.forEach(i => { if (i.fl[S.mode]) (by[i._bc] = by[i._bc] || []).push(i); });
+  const pool = (chan) => {
+    const by = {}, ch = chan || S.mode;
+    ITEMS.forEach(i => { if (ch === 'all' || i.fl[ch]) (by[i._bc] = by[i._bc] || []).push(i); });
     const out = [];
     Object.keys(by).forEach(k => {
       const ada = by[k].filter(i => i.ada);
@@ -237,7 +237,22 @@
     $('csMore').hidden = r.length <= S.shown;
     $('csExport').disabled = !r.length;
     $('csExport').textContent = 'Export Excel (' + r.length + ')';
+    if (window.MHBedah) window.MHBedah.refresh();
   }
+
+  /* Data untuk tampilan Bedah (assets/bedah-stok.js): semua SKU yang ada di laporan stok DT terpilih, status dihitung seperti daftar. */
+  window.MHStok = {
+    rows(chan, win) {
+      const keep = { mode: S.mode, win: S.win, dem: S.dem, brand: S.brand };
+      S.mode = chan === 'all' ? 'harga' : chan; S.win = win; S.dem = 'total'; S.brand = '';
+      try { return DATA ? pool(chan).filter(i => i.ada) : []; } finally { Object.assign(S, keep); }
+    },
+    meta() {
+      const d = DATA && DATA.dts.find(x => x.kode === DT);
+      return { hasJual: HASJUAL, trendTo: HASJUAL ? ymLabel(JL) : '', dtNama: d ? d.nama : '', tanggal: d ? tgl(d.tanggal) : '', ok: !!DATA };
+    },
+    render: () => render(), ANA, fmt1, esc
+  };
 
   /* ---- Export Excel: daftar yang sedang tampil, untuk dikirim ke toko ---- */
   function loadXlsx() {
