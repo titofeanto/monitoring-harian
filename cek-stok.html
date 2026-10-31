@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#1769C8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Monitoring">
 <title>Cek Stok &amp; Harga Naik</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="assets/style.css?v=202610311301">
@@ -39,6 +45,7 @@
       <button type="submit" class="btn" id="loginBtn" style="width:100%">Masuk</button>
       <div class="err" id="loginErr" role="alert"></div>
     </form>
+    <div data-install hidden></div>
   </div>
 </div>
 
@@ -116,6 +123,7 @@
     <div class="card">
       <h2>Akun</h2>
       <p class="hint">Login dibagi dengan Monitoring Harian. Keluar menghapus kode dan salinan data di HP ini.</p>
+      <div data-install hidden style="margin-bottom:10px"></div>
       <div class="row"><button type="button" class="btn danger" id="logoutBtn">Ganti / Keluar</button></div>
     </div>
     <p class="hint" style="padding:0 4px 24px">Harga toko per karton, sudah termasuk PPN, dari daftar harga Unilever. Stok sesuai laporan gudang pada tanggal di atas. Harga dapat berubah tanpa pemberitahuan.</p>
@@ -125,6 +133,7 @@
 <div class="toast" id="toast" hidden></div>
 
 <script src="assets/config.js?v=202610311300"></script>
+<script src="assets/pwa.js?v=1"></script>
 <script src="assets/status-banner.js?v=2"></script>
 <script src="assets/fresh.js?v=202610311300"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>

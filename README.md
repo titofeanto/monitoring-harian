@@ -239,6 +239,13 @@ Di halaman Cek Stok, pilih **SAT (Alfamart)** atau **IDM** untuk melihat apakah 
 - Barcode yang sama di dua SKU (mis. kemasan ML ke G) digabung jadi satu baris. Export Excel mengikuti daftar yang tampil. IDM Pareto diberi badge.
 - Batas minggu ada di `CFG` di `assets/stok.js`. Kolom RPP laporan stok tidak dipakai.
 
+### Pasang sebagai aplikasi (laptop atau HP)
+
+Monitoring Daily, Great Sales, dan Cek Stok bisa dipasang seperti aplikasi (PWA, `manifest.webmanifest` dan `sw.js`).
+Tombol **Pasang aplikasi di perangkat ini** ada di halaman masuk dan di kartu "Akun dan data". Di Chrome atau Edge laptop dan Android
+tombol itu langsung memasang. Di iPhone dan iPad: tombol Bagikan, lalu Tambahkan ke Layar Utama. Setelah terpasang, tombol hilang.
+Service worker memakai jaringan dulu dan salinan lama hanya saat offline; data Apps Script tidak di-cache oleh service worker.
+
 ### Hypermart
 
 Chip **Hypermart** di halaman Cek Stok menampilkan ketersediaan SKU Hypermart di semua DT (satu kartu per SKU, satu baris per DT).
