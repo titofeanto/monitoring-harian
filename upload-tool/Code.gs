@@ -1524,7 +1524,7 @@ function saveStokGudang(dtKode, tanggal, rows) {
  * rows: [{barcode, plu, ket}]. ket = catatan singkat (mis. "Pareto"), dipakai sebagai badge di halaman Cek Stok.
  */
 function saveSkuFlag(flag, rows) {
-  if (flag !== 'SAT' && flag !== 'IDM') throw new Error('Flag harus SAT atau IDM.');
+  if (flag !== 'SAT' && flag !== 'IDM' && flag !== 'HM') throw new Error('Flag harus SAT, IDM, atau HM (Hypermart).');
   if (!Array.isArray(rows) || rows.length < 10) throw new Error('Daftar SKU ' + flag + ' terlalu sedikit (' + (rows ? rows.length : 0) + ' baris). Upload dibatalkan.');
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -1579,9 +1579,9 @@ function getStokStatus() {
     if (!o) return { kode: x.dt_kode, nama: x.nama_dt, level: 'red', text: 'Belum pernah diupload' };
     return { kode: x.dt_kode, nama: x.nama_dt, level: o.tanggal < expected ? 'amber' : 'green', text: o.n + ' SKU · stok per ' + fmtDateID_(o.tanggal) };
   });
-  const fl = { SAT: 0, IDM: 0 };
+  const fl = { SAT: 0, IDM: 0, HM: 0 };
   readTextTab_(ss, FLAG_TAB, FLAG_HEADER).forEach(r => { if (fl[r[1]] !== undefined) fl[r[1]]++; });
-  const flag = { level: fl.SAT && fl.IDM ? 'green' : 'red', text: 'SAT ' + fl.SAT + ' SKU · IDM ' + fl.IDM + ' SKU' };
+  const flag = { level: fl.SAT && fl.IDM ? 'green' : 'red', text: 'SAT ' + fl.SAT + ' SKU · IDM ' + fl.IDM + ' SKU · Hypermart ' + fl.HM + ' SKU' };
   const jl = readTextTab_(ss, JUAL_TAB, JUAL_HEADER);
   let jualAkhir = '';
   jl.forEach(r => { const n = String(r[4]).split(',').length, m = String(r[3]).split('-'), e = utcToIso_(Date.UTC(+m[0], +m[1] - 1 + n - 1, 1)).slice(0, 7); if (e > jualAkhir) jualAkhir = e; });

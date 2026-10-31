@@ -239,6 +239,14 @@ Di halaman Cek Stok, pilih **SAT (Alfamart)** atau **IDM** untuk melihat apakah 
 - Barcode yang sama di dua SKU (mis. kemasan ML ke G) digabung jadi satu baris. Export Excel mengikuti daftar yang tampil. IDM Pareto diberi badge.
 - Batas minggu ada di `CFG` di `assets/stok.js`. Kolom RPP laporan stok tidak dipakai.
 
+### Hypermart
+
+Chip **Hypermart** di halaman Cek Stok menampilkan ketersediaan SKU Hypermart di semua DT (satu kartu per SKU, satu baris per DT).
+Hanya cek ada atau tidak ada stok: **tanpa rata-rata jual, cover, atau status kritis**, karena kebutuhan Hypermart belum diketahui.
+Status: Ada di semua DT, Ada di sebagian DT, Habis di semua DT, Tidak ada di laporan. Export Excel berisi stok per DT.
+Daftar SKU diupload di tool upload, kotak "Daftar SKU", pilih **Hypermart (kolom UPC)** (file matching SKU aktif Unilever; kolom UPC dan SKU Desc).
+SKU yang tidak ada di daftar harga Unilever dicocokkan lewat barcode saja, jadi stoknya tampil "Tidak ada di laporan" bila barcode tidak dikenal.
+
 ### Bedah stok (dashboard)
 
 Di halaman Cek Stok, tombol **Bedah stok** (di atas daftar) membuka tampilan dashboard untuk satu DT (chip DT tetap berlaku).

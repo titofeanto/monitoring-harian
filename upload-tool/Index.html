@@ -1,3 +1,11 @@
+  function parseFlag(wb, kind) {
+    var rows = aoa(wb, wb.SheetNames[0]), up = function (v) { return xstr(v).toUpperCase(); }, h = -1, cB = -1, cP = -1, cPar = -1, cN = -1;
+    var colName = kind === 'IDM' ? 'BARCODE ULI' : kind === 'HM' ? 'UPC' : 'BARCODE';
+    for (var i = 0; i < Math.min(rows.length, 6) && h < 0; i++) {
+      var hd = rows[i].map(up), b = hd.indexOf(colName);
+      if (b >= 0) { h = i; cB = b; cP = hd.indexOf('PLU'); cN = hd.indexOf('SKU DESC'); cPar = hd.findIndex(function (v) { return v.indexOf('PARETO') === 0; }); }
+    }
+    if (h < 0) throw new Error('Kolom ' + colName + ' tidak ditemukan. Cek pilihan channel dan file.');
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -119,7 +127,7 @@
   <div class="st-text" id="flgText">Mengecek...</div>
   <div class="desc">Untuk analisa stok di halaman Cek Stok. SAT = list item Unilever Alfamart (kolom barcode). IDM = List Item Aktif Unilever IDM (kolom BARCODE ULI, kolom Pareto SON). Upload satu per satu; daftar channel lain tidak berubah.</div>
   <label for="flgKind">Channel</label>
-  <select id="flgKind"><option value="SAT">SAT (Alfamart)</option><option value="IDM">IDM</option></select>
+  <select id="flgKind"><option value="SAT">SAT (Alfamart)</option><option value="IDM">IDM</option><option value="HM">Hypermart (kolom UPC)</option></select>
   <label for="flgFile">File (.xlsx)</label>
   <input type="file" id="flgFile" accept=".xlsx">
   <button type="button" class="go" id="flgGo" disabled>Proses &amp; simpan daftar SKU</button>
@@ -695,7 +703,7 @@
     for (var j = h + 1; j < rows.length; j++) {
       var r = rows[j], bc = xstr(r[cB]).replace(/\D/g, '');
       if (bc.length < 8) continue;
-      out.push({ barcode: bc, plu: cP >= 0 ? xstr(r[cP]) : '', ket: cPar >= 0 && up(r[cPar]) === 'Y' ? 'Pareto' : '' });
+      out.push({ barcode: bc, plu: cP >= 0 ? xstr(r[cP]) : '', ket: kind === 'HM' ? (cN >= 0 ? xstr(r[cN]) : '') : (cPar >= 0 && up(r[cPar]) === 'Y' ? 'Pareto' : '') });
     }
     return out;
   }

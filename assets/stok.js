@@ -164,9 +164,48 @@
     });
     return out.filter(i => !S.brand || i.brand === S.brand);
   };
+  /* ---- Hypermart: cek ketersediaan saja, tanpa rata-rata jual / cover (kebutuhan Hypermart belum diketahui) ---- */
+  const HMA = { sebagian: ['Ada di sebagian DT', 'a', 0], habis: ['Habis di semua DT', 'r', 1], tidakada: ['Tidak ada di laporan', '', 2], lengkap: ['Ada di semua DT', 'g', 3] };
+  function hmAll() {
+    const dts = DATA.dts, by = {}, skuBc = {};
+    (DATA.flags || []).forEach(f => {
+      if (f[1] !== 'HM') return;
+      const k = bcKey(f[0]);
+      by[k] = { bc: f[0], _bc: k, nama: f[3] && f[3] !== 'true' ? f[3] : f[0], brand: '', per: {}, _txt: '' };
+    });
+    DATA.harga.forEach(h => { const k = bcKey(h.bc); skuBc[h.sku] = k; if (by[k]) { by[k].nama = h.nama; by[k].brand = h.brand; by[k].sku = h.sku; } });
+    DATA.stok.forEach(r => {
+      const k = skuBc[r[1]]; if (!k || !by[k]) return;
+      const p = by[k].per[r[0]] = by[k].per[r[0]] || { tot: 0, isi: r[5] || 1 };
+      p.tot += r[2] * r[5] + r[3] * 12 + r[4]; p.isi = r[5] || p.isi;
+    });
+    return Object.keys(by).map(k => {
+      const i = by[k], ada = dts.filter(d => i.per[d.kode] && i.per[d.kode].tot > 0).length, listed = dts.filter(d => i.per[d.kode]).length;
+      i.ana = ada === dts.length ? 'lengkap' : ada > 0 ? 'sebagian' : listed ? 'habis' : 'tidakada';
+      i._txt = (i.nama + ' ' + i.brand + ' ' + i.bc).toLowerCase();
+      i.tot = dts.reduce((t, d) => t + (i.per[d.kode] ? Math.floor(i.per[d.kode].tot / i.per[d.kode].isi) : 0), 0);
+      return i;
+    });
+  }
+  function hmFiltered() {
+    const q = S.q.trim().toLowerCase(), qb = /^\d{6,}$/.test(q) ? bcKey(q) : null;
+    const base = hmAll().filter(i => (!S.brand || i.brand === S.brand) && (!q || (qb ? i._bc === qb : q.split(/\s+/).every(w => i._txt.includes(w)))));
+    CNT = { semua: base.length }; base.forEach(i => { CNT[i.ana] = (CNT[i.ana] || 0) + 1; });
+    return base.filter(i => S.ana === 'semua' || i.ana === S.ana).sort((a, b) => HMA[a.ana][2] - HMA[b.ana][2] || a.brand.localeCompare(b.brand) || a.nama.localeCompare(b.nama));
+  }
+  const hmQty = (p) => { if (!p) return 'Tidak ada di laporan'; if (p.tot <= 0) return 'Stok 0'; const k = Math.floor(p.tot / p.isi), r = p.tot - k * p.isi; return [k && k + ' karton', r && r + ' pcs'].filter(Boolean).join(' '); };
+  function cardHm(i) {
+    const a = HMA[i.ana];
+    const lines = DATA.dts.map(d => { const p = i.per[d.kode], ok = p && p.tot > 0;
+      return '<div class="cs-stok"><b>' + esc(d.nama || d.kode) + '</b><span>' + esc(hmQty(p)) + '</span><span class="tag ' + (ok ? 'g' : p ? 'r' : '') + '">' + (ok ? 'Ada' : p ? 'Habis' : 'Tidak ada') + '</span></div>'; }).join('');
+    return '<article class="cs-item"><h3>' + esc(i.nama) + '</h3><div class="meta">' + esc(i.brand || 'Hypermart') + ' · Barcode ' + esc(i.bc) + '</div>' + lines +
+      '<div class="cs-cov"><span class="tag ' + a[1] + '">' + a[0] + '</span></div></article>';
+  }
+
   function filtered() {
     const q = S.q.trim().toLowerCase();
     const qb = /^\d{6,}$/.test(q) ? bcKey(q) : null;
+    if (S.mode === 'HM') return hmFiltered();
     const hit = i => !q || (qb ? (i._bc === qb || i.sku === q) : q.split(/\s+/).every(w => i._txt.includes(w)));
     if (S.mode !== 'harga') {
       const base = pool().filter(hit);
@@ -216,24 +255,29 @@
   }
 
   function render() {
-    const ana = S.mode !== 'harga';
+    const hm = S.mode === 'HM', ana = S.mode !== 'harga';
     $('csHargaF').hidden = ana; $('csAnaF').hidden = !ana; $('csOnlyW').hidden = ana;
+    $('csWin').hidden = hm; $('csDem').hidden = hm;
     document.querySelectorAll('#csMode [data-m]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === S.mode)));
     const r = filtered();
-    if (ana) {
+    if (hm) {
+      const chips = [['semua', 'Semua']].concat(Object.keys(HMA).map(k => [k, HMA[k][0]])).filter(c => c[0] === 'semua' || CNT[c[0]]);
+      $('csAna').innerHTML = chips.map(c => '<button type="button" data-a="' + c[0] + '" aria-pressed="' + (S.ana === c[0]) + '">' + c[1] + '<span class="n">' + (CNT[c[0]] || 0) + '</span></button>').join('');
+      $('csAnaNote').textContent = CNT.semua ? 'Hypermart: hanya cek ketersediaan stok di tiap DT. Rata-rata jual, cover, dan status kritis tidak dihitung karena kebutuhan Hypermart belum diketahui.' : 'Daftar SKU Hypermart belum diupload (tool upload, kotak Daftar SKU, pilih Hypermart).';
+    } else if (ana) {
       const chips = [['semua', 'Semua']].concat(Object.keys(ANA).map(k => [k, ANA[k][0]])).filter(c => c[0] === 'semua' || CNT[c[0]]);
       $('csAna').innerHTML = chips.map(c => '<button type="button" data-a="' + c[0] + '" aria-pressed="' + (S.ana === c[0]) + '">' + c[1] + '<span class="n">' + (CNT[c[0]] || 0) + '</span></button>').join('');
       $('csAnaNote').textContent = !pool().length && !S.q ? 'Daftar SKU ' + S.mode + ' belum diupload. Upload di tool upload (kotak Daftar SKU SAT & IDM).'
         : !HASJUAL ? 'Trend penjualan DT ini belum diupload (tool upload, kotak Trend Penjualan). Sementara status hanya dari jumlah stok.'
         : 'Cover = stok dibagi rata-rata jual per minggu. Kritis kurang dari ' + CFG.kritisMgg + ' minggu, menipis kurang dari ' + CFG.menipisMgg + '. Trend s.d. ' + ymLabel(JL) + ' (bulan berjalan belum masuk). Qty ditaksir dari GSV dibagi harga karton, jadi bisa meleset beberapa persen. ' + (S.dem === 'total' ? 'Dasar: penjualan semua channel, karena stok dipakai bersama.' : 'Dasar: hanya penjualan ' + S.mode + '.');
     }
-    if (ana) {
+    if (ana && !hm) {
       document.querySelectorAll('#csWin [data-w]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.w === S.win)));
       document.querySelectorAll('#csDem [data-d]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.d === S.dem)));
       $('csDemC').textContent = 'Khusus ' + S.mode;
     }
     $('csCount').textContent = r.length + ' produk' + (S.q ? ' untuk "' + S.q + '"' : '');
-    $('csList').innerHTML = r.length ? r.slice(0, S.shown).map(ana ? cardAna : card).join('') : '<div class="card empty">' + (ana && !S.q && !pool().length ? 'Belum ada daftar SKU ' + S.mode + '.' : 'Produk tidak ditemukan.') + '</div>';
+    $('csList').innerHTML = r.length ? r.slice(0, S.shown).map(hm ? cardHm : ana ? cardAna : card).join('') : '<div class="card empty">' + (ana && !hm && !S.q && !pool().length ? 'Belum ada daftar SKU ' + S.mode + '.' : 'Produk tidak ditemukan.') + '</div>';
     $('csMore').hidden = r.length <= S.shown;
     $('csExport').disabled = !r.length;
     $('csExport').textContent = 'Export Excel (' + r.length + ')';
@@ -271,6 +315,7 @@
     try {
       await loadXlsx();
       const d = DATA.dts.find(x => x.kode === DT) || { nama: '', tanggal: '' };
+      if (S.mode === 'HM') { exportHm(r); return; }
       if (S.mode !== 'harga') { exportAna(r, d); return; }
       const head = ['No', 'Brand', 'Nama Produk', 'Kemasan', 'Barcode', 'Stok', 'Total Pcs', 'Status Stok', 'Harga Lama / Karton', 'Harga Baru / Karton', 'Kenaikan %', 'Harga Baru / Pcs', 'Berlaku Mulai'];
       const rows = r.map((i, n) => [n + 1, i.brand, i.nama, i.kemasan, i.bc, i.tot > 0 ? stokText(i) : '0', i.tot,
@@ -298,6 +343,23 @@
     $('csExport').disabled = false;
   }
   /* Export analisa SAT / IDM: daftar yang sedang tampil, urut prioritas order. */
+  function exportHm(r) {
+    const dts = DATA.dts, tg = dts.map(d => d.tanggal).sort().pop() || '';
+    const head = ['No', 'Brand', 'Nama Produk', 'Barcode'].concat(dts.map(d => 'Stok ' + (d.nama || d.kode) + ' (karton)'), dts.map(d => 'Pcs ' + (d.nama || d.kode)), ['Status']);
+    const rows = r.map((i, n) => [n + 1, i.brand, i.nama, i.bc].concat(
+      dts.map(d => { const p = i.per[d.kode]; return p ? Math.floor(p.tot / p.isi) : 'Tidak ada'; }),
+      dts.map(d => { const p = i.per[d.kode]; return p ? p.tot : ''; }), [HMA[i.ana][0]]));
+    const ws = XLSX.utils.aoa_to_sheet([['Ketersediaan SKU Hypermart'], ['Stok per ' + tgl(tg) + ' · tanpa rata-rata jual, kebutuhan Hypermart belum diketahui'], [], head].concat(rows));
+    ws['!cols'] = [5, 14, 44, 16].concat(dts.map(() => 14), dts.map(() => 12), [22]).map(w => ({ wch: w }));
+    for (let k = 0; k < rows.length; k++) { const bc = ws['D' + (k + 5)]; if (bc) bc.t = 's'; }
+    ws['!autofilter'] = { ref: 'A4:' + String.fromCharCode(64 + head.length) + (rows.length + 4) };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Hypermart');
+    XLSX.writeFile(wb, 'Ketersediaan-Hypermart_' + tg + '.xlsx');
+    toast('Excel diunduh: ' + r.length + ' produk');
+    $('csExport').disabled = false;
+  }
+
   function exportAna(r, d) {
     const head = ['No', 'Brand', 'Nama Produk', 'Barcode', 'SKU', 'Stok', 'Total Pcs', 'Status', 'Jual / Minggu (karton)', 'Jual 13 Mgg', 'Jual 1 Bln', 'Jual ' + S.mode + ' / Mgg', 'Cover (minggu)', 'vs Tahun Lalu %', 'Kurang utk ' + CFG.targetMgg + ' Minggu (karton)', 'Harga Naik %'].concat(S.mode === 'IDM' ? ['Pareto'] : []);
     const rows = r.map((i, n) => [n + 1, i.brand, i.nama, i.bc, i.gab || i.sku, i.tot > 0 ? stokText(i) : '0', i.tot, ANA[i.ana][0],
