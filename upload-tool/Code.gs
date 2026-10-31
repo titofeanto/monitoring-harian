@@ -1519,6 +1519,62 @@ function saveStokGudang(dtKode, tanggal, rows) {
   } finally { lock.releaseLock(); }
 }
 
+// ---- Kehadiran salesman (laporan Sales Person Visit Summary) ----
+// Per DT x salesman x tanggal: jam kunjungan pertama, geo code compliance kunjungan itu, dan jumlah kunjungan.
+// Hijau = kunjungan pertama sebelum 09.00 dan geo code compliance 1. Aturan itu diterapkan di halaman kehadiran.html.
+const HADIR_TAB = 'KEHADIRAN';
+const HADIR_HEADER = ['dt_kode', 'sales_id', 'tanggal', 'jam', 'geo', 'kunjungan'];
+const SALES_TAB = 'SALES_MASTER';
+const SALES_HEADER = ['dt_kode', 'sales_id', 'nama'];
+
+/** rows: [[dt_kode, sales_id, 'yyyy-MM-dd', 'HH:mm', geo(0/1), jumlah_kunjungan]]. Mengganti semua baris DT+tanggal yang ada di file. */
+function saveKehadiran(rows) {
+  if (!Array.isArray(rows) || !rows.length) throw new Error('Tidak ada baris kunjungan yang terbaca. Upload dibatalkan.');
+  const nama = {};
+  readRegistry_().filter(x => x.peran === 'dt' && x.sheet_id).forEach(x => { nama[x.dt_kode] = x.nama_dt; });
+  const ok = rows.filter(r => nama[String(r[0])] && String(r[1]) && /^\d{4}-\d{2}-\d{2}$/.test(String(r[2])) && /^\d{2}:\d{2}$/.test(String(r[3])));
+  if (!ok.length) throw new Error('Tidak ada baris untuk DT yang terdaftar di DAFTAR_DT.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const pair = {}; ok.forEach(r => { pair[String(r[0]) + '|' + String(r[2])] = 1; });
+    const keep = readTextTab_(ss, HADIR_TAB, HADIR_HEADER).filter(r => !pair[String(r[0]) + '|' + String(r[2])]);
+    writeTextTab_(ss, HADIR_TAB, HADIR_HEADER, keep.concat(ok.map(r => [String(r[0]), String(r[1]), String(r[2]), String(r[3]), +r[4] ? 1 : 0, +r[5] || 1])));
+    const master = readTextTab_(ss, SALES_TAB, SALES_HEADER), have = {};
+    master.forEach(r => { have[String(r[0]) + '|' + String(r[1])] = 1; });
+    const baru = [];
+    ok.forEach(r => { const k = String(r[0]) + '|' + String(r[1]); if (!have[k]) { have[k] = 1; baru.push([String(r[0]), String(r[1]), '']); } });
+    if (baru.length) writeTextTab_(ss, SALES_TAB, SALES_HEADER, master.concat(baru));
+    const per = {}, tg = ok.map(r => String(r[2])).sort();
+    ok.forEach(r => { per[r[0]] = (per[r[0]] || 0) + 1; });
+    return { ok: true, rows: ok.length, dropped: rows.length - ok.length, dts: Object.keys(per).map(k => nama[k] + ' ' + per[k]), dari: tg[0], sampai: tg[tg.length - 1], baru: baru.length };
+  } finally { lock.releaseLock(); }
+}
+
+/** Nama salesman untuk satu DT. rows: [[sales_id, nama]]. Menimpa nama id yang sama; id lain tidak berubah. */
+function saveSalesNama(dtKode, rows) {
+  const dt = resolveDt_(dtKode);
+  if (!Array.isArray(rows) || !rows.length) throw new Error('Tidak ada nama yang terbaca.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const master = readTextTab_(ss, SALES_TAB, SALES_HEADER), idx = {};
+    master.forEach((r, i) => { idx[String(r[0]) + '|' + String(r[1])] = i; });
+    let n = 0;
+    rows.forEach(r => {
+      const id = String(r[0] || '').trim(), nm = String(r[1] || '').trim().slice(0, 60);
+      if (!id || !nm) return;
+      const k = dt.dt_kode + '|' + id;
+      if (idx[k] === undefined) { idx[k] = master.length; master.push([dt.dt_kode, id, nm]); } else master[idx[k]][2] = nm;
+      n++;
+    });
+    writeTextTab_(ss, SALES_TAB, SALES_HEADER, master);
+    return { ok: true, dt: dt.nama_dt, rows: n };
+  } finally { lock.releaseLock(); }
+}
+
 /**
  * Daftar SKU per channel (flag SAT / IDM) untuk analisa stok. Mengganti semua baris flag itu saja, flag lain tidak disentuh.
  * rows: [{barcode, plu, ket}]. ket = catatan singkat (mis. "Pareto"), dipakai sebagai badge di halaman Cek Stok.
@@ -1586,5 +1642,11 @@ function getStokStatus() {
   let jualAkhir = '';
   jl.forEach(r => { const n = String(r[4]).split(',').length, m = String(r[3]).split('-'), e = utcToIso_(Date.UTC(+m[0], +m[1] - 1 + n - 1, 1)).slice(0, 7); if (e > jualAkhir) jualAkhir = e; });
   const jual = jl.length ? { level: 'green', text: jl.length + ' baris · data s.d. ' + jualAkhir } : { level: 'red', text: 'Belum pernah diupload' };
-  return { harga: harga, stok: stok, flag: flag, jual: jual };
+  const hl = readTextTab_(ss, HADIR_TAB, HADIR_HEADER), hd = {};
+  hl.forEach(r => { const k = String(r[0]); if (!hd[k] || String(r[2]) > hd[k]) hd[k] = String(r[2]); });
+  const hadirDt = readRegistry_().filter(x => x.peran === 'dt' && x.sheet_id).map(x => ({ kode: x.dt_kode, nama: x.nama_dt, tgl: hd[x.dt_kode] || '' }));
+  const hadirLv = !hl.length ? 'red' : hadirDt.some(d => !d.tgl) ? 'red' : hadirDt.some(d => d.tgl < expected) ? 'amber' : 'green';
+  const hadir = { level: hadirLv, text: hl.length ? hadirDt.map(d => d.nama + ': ' + (d.tgl ? 'data s.d. ' + fmtDateID_(d.tgl) : 'belum ada')).join('\n') : 'Belum pernah diupload',
+    dts: hadirDt.map(d => ({ kode: d.kode, nama: d.nama })) };
+  return { harga: harga, stok: stok, flag: flag, jual: jual, hadir: hadir };
 }

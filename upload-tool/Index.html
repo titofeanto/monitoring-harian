@@ -145,6 +145,26 @@
   <div id="julRes"></div>
 </div>
 
+<h2 style="margin-top:6px">Kehadiran Salesman</h2>
+<div class="group-note">Dari laporan Sales Person Visit Summary. Upload tiap hari (file boleh berisi satu bulan penuh, tanggal yang sama akan diganti). Dibaca di halaman Kehadiran.</div>
+<div class="card" id="card-HDR">
+  <div class="card-head"><div><h3>Kunjungan Pertama Salesman</h3><span class="tab">KEHADIRAN</span></div>
+    <span class="badge" id="hdrBadge"><i class="dot"></i>Memuat</span></div>
+  <div class="st-text" id="hdrText">Mengecek...</div>
+  <div class="desc">File Sales Person Visit Summary Report (.csv atau .xlsx), semua DT dalam satu file. Aturan: kunjungan pertama tiap hari harus <b>sebelum 09.00</b> dan <b>Geo Code Compliance = 1</b> untuk hijau. Kunjungan pertama jam 09.00 atau lebih, geo code 0, atau tidak ada kunjungan di hari kerja: merah.</div>
+  <button type="button" class="sample" data-sample="HDR" id="smpHDR">Download file contoh</button>
+  <label for="hdrFile">File (.csv / .xlsx)</label>
+  <input type="file" id="hdrFile" accept=".csv,.xlsx">
+  <button type="button" class="go" id="hdrGo" disabled>Proses &amp; simpan kehadiran</button>
+  <div class="spin" id="hdrSpin">Memproses...</div>
+  <div id="hdrRes"></div>
+  <label for="hdrNmDt" style="margin-top:16px">Nama salesman (opsional, supaya tampil di halaman Kehadiran)</label>
+  <select id="hdrNmDt"></select>
+  <textarea id="hdrNmTxt" rows="5" placeholder="Satu baris satu salesman, contoh:&#10;021-RESTA&#10;022-AUSTIN DANDURU&#10;023-MUH. RAIZAL FAIDIL ALDY" style="width:100%;margin-top:6px;font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:11px;background:var(--card);color:var(--ink)"></textarea>
+  <button type="button" class="go" id="hdrNmGo">Simpan nama salesman</button>
+  <div id="hdrNmRes"></div>
+</div>
+
 <h2 style="margin-top:6px">KPI Great Sales</h2>
 <div class="group-note">Scorecard AAM nasional, tidak tergantung DT. Upload tiap hari supaya rank dan daftar toko di halaman Great Sales ikut update.</div>
 <div class="card" id="card-GS">
@@ -792,6 +812,17 @@
       XLSX.utils.book_append_sheet(wb, S(rows), 'Sheet1');
       return { wb: wb, name: 'contoh-daftar-sku-' + nm + '.xlsx' };
     }
+    if (key === 'HDR') {
+      var hr = [['Tenant Code', 'Location Code', 'Customer Code', 'Customer Name', 'Transaction Date', 'Journey Date', 'Visit Start Date time', 'Visit End Date time', 'Start Visit Geo Code X', 'Start Visit Geo Code Y', 'End Visit Geo Code X', 'End Visit Geo Code Y', 'Total Visit Time', 'Geo Code Compliance', 'PJP Compliance', 'No sales Reason Code', 'Salesman ID']];
+      [['2026-10-01', '08:10', 1], ['2026-10-01', '09:30', 1], ['2026-10-02', '09:12', 1], ['2026-10-02', '08:20', 0], ['2026-10-03', '07:55', 1]].forEach(function (v, n) {
+        ['021', '022', '023'].forEach(function (id, q) {
+          var hh = v[1]; if (q === 1 && n === 0) hh = '09:05';
+          hr.push(['15168386', '15168386', '03~9412~030~005~0100000' + n, 'TOKO CONTOH ' + (n + 1), v[0] + ' ' + hh + ':30.000000', v[0], v[0] + ' ' + hh + ':00', v[0] + ' ' + hh + ':10', '136.87', '-4.57', '136.87', '-4.57', 10, q === 2 ? 1 : v[2], 1, 'System ended visit.', id]);
+        });
+      });
+      XLSX.utils.book_append_sheet(wb, S(hr), 'Sheet1');
+      return { wb: wb, name: 'contoh-sales-person-visit-summary.xlsx' };
+    }
     var tr = [['DT Code Name', 'Store Banner', 'Outlet Code & Name', 'Subchannel Mapp', 'Parent SKU Code & Name', 'Year', 'Month', 'Sum of GSV']];
     [[2026, 8], [2026, 9], [2026, 10]].forEach(function (ym) {
       sk.forEach(function (x, n) {
@@ -816,6 +847,84 @@
     el('smpFLG').textContent = 'Download file contoh ' + this.options[this.selectedIndex].text.split(' ')[0];
   });
 
+
+  /* ---- Kehadiran salesman: kunjungan pertama per hari (CSV Sales Person Visit Summary) ---- */
+  function parseCsv(text) {
+    var rows = [], row = [], f = '', q = false, i, c;
+    text = text.replace(/^\ufeff/, '');
+    for (i = 0; i < text.length; i++) {
+      c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; }
+      else if (c !== '\r') f += c;
+    }
+    if (f !== '' || row.length) { row.push(f); rows.push(row); }
+    return rows;
+  }
+  function readHadir(file) {
+    if (/\.csv$/i.test(file.name)) return new Promise(function (ok, no) {
+      var r = new FileReader();
+      r.onload = function () { try { ok(parseCsv(String(r.result))); } catch (e) { no(e); } };
+      r.onerror = function () { no(new Error('File tidak bisa dibaca.')); };
+      r.readAsText(file);
+    });
+    return readXlsx(file).then(function (wb) { return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' }); });
+  }
+  /* 'YYYY-MM-DD HH:MM:SS...' atau angka serial Excel -> 'YYYY-MM-DD HH:MM' */
+  function stamp(v) {
+    if (typeof v === 'number') { var d = new Date(Math.round((v - 25569) * 86400000)); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()); }
+    var m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})/.exec(xstr(v));
+    return m ? m[1] + '-' + m[2] + '-' + m[3] + ' ' + pad(+m[4]) + ':' + m[5] : '';
+  }
+  function parseHadir(rows) {
+    var norm = function (v) { return xstr(v).toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim(); }, h = -1, hd;
+    for (var i = 0; i < Math.min(rows.length, 10) && h < 0; i++) { hd = rows[i].map(norm); if (hd.indexOf('SALESMAN ID') >= 0 && hd.indexOf('VISIT START DATE TIME') >= 0) h = i; }
+    if (h < 0) throw new Error('Judul kolom tidak dikenali. Butuh kolom Salesman ID, Visit Start Date time, Geo Code Compliance (file Sales Person Visit Summary Report).');
+    hd = rows[h].map(norm);
+    var cT = hd.indexOf('TENANT CODE') >= 0 ? hd.indexOf('TENANT CODE') : hd.indexOf('LOCATION CODE'), cJ = hd.indexOf('JOURNEY DATE'), cS = hd.indexOf('VISIT START DATE TIME'), cG = hd.indexOf('GEO CODE COMPLIANCE'), cI = hd.indexOf('SALESMAN ID');
+    if (cT < 0 || cG < 0) throw new Error('Kolom Tenant Code atau Geo Code Compliance tidak ada.');
+    var g = {}, n = 0;
+    for (var j = h + 1; j < rows.length; j++) {
+      var r = rows[j], st = stamp(r[cS]), dt = xstr(r[cT]), sid = xstr(r[cI]);
+      if (!st || !dt || !sid) continue;
+      var day = cJ >= 0 && stamp(r[cJ] + (typeof r[cJ] === 'string' && r[cJ].length <= 10 ? ' 00:00' : '')) ? stamp(r[cJ] + (typeof r[cJ] === 'string' && r[cJ].length <= 10 ? ' 00:00' : '')).slice(0, 10) : st.slice(0, 10);
+      var k = dt + '|' + sid + '|' + day, geo = xnum(r[cG]) >= 1 ? 1 : 0, o = g[k]; n++;
+      if (!o) g[k] = { dt: dt, sid: sid, day: day, t: st, geo: geo, n: 1 };
+      else { o.n++; if (st < o.t) { o.t = st; o.geo = geo; } }
+    }
+    var out = Object.keys(g).map(function (k) { var o = g[k]; return [o.dt, o.sid, o.day, o.t.slice(11, 16), o.geo, o.n]; });
+    if (!out.length) throw new Error('Tidak ada baris kunjungan yang terbaca.');
+    var tg = out.map(function (r) { return r[2]; }).sort();
+    return { rows: out, visits: n, dari: tg[0], sampai: tg[tg.length - 1] };
+  }
+  el('hdrFile').addEventListener('change', function () { el('hdrGo').disabled = !this.files[0]; });
+  el('hdrGo').addEventListener('click', function () {
+    var f = el('hdrFile').files[0]; if (!f) return;
+    el('hdrGo').disabled = true; el('hdrSpin').classList.add('show'); el('hdrRes').innerHTML = '';
+    var done = function (lv, html) { el('hdrSpin').classList.remove('show'); el('hdrGo').disabled = false; el('hdrRes').innerHTML = '<div class="result lv-' + lv + '">' + html + '</div>'; };
+    readHadir(f).then(function (rows) {
+      var p = parseHadir(rows);
+      google.script.run.withSuccessHandler(function (res) {
+        done('green', '<b>Tersimpan.</b>\n' + res.rows + ' hari-salesman dari ' + p.visits + ' kunjungan · ' + res.dari + ' s.d. ' + res.sampai + '\n' + esc(res.dts.join(', ')) +
+          (res.dropped ? '\n' + res.dropped + ' baris DT tidak terdaftar dibuang.' : '') + (res.baru ? '\n' + res.baru + ' salesman baru. Isi namanya di bawah kalau mau tampil.' : '')); loadStk();
+      }).withFailureHandler(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); }).saveKehadiran(p.rows);
+    }).catch(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); });
+  });
+  el('hdrNmGo').addEventListener('click', function () {
+    var rows = [];
+    el('hdrNmTxt').value.split(/\r?\n/).forEach(function (ln) {
+      var m = /^\s*([0-9A-Za-z]+)\s*[-–,;:\t ]\s*(.+?)\s*$/.exec(ln);
+      if (m) rows.push([m[1], m[2]]);
+    });
+    var out = el('hdrNmRes'); if (!rows.length) { out.innerHTML = '<div class="result lv-red">Tidak ada baris yang terbaca. Format: 021-RESTA</div>'; return; }
+    el('hdrNmGo').disabled = true; out.innerHTML = '';
+    google.script.run.withSuccessHandler(function (res) {
+      el('hdrNmGo').disabled = false; out.innerHTML = '<div class="result lv-green"><b>Tersimpan.</b>\n' + res.rows + ' nama untuk ' + esc(res.dt) + '</div>';
+    }).withFailureHandler(function (e) { el('hdrNmGo').disabled = false; out.innerHTML = '<div class="result lv-red"><b>Gagal:</b> ' + esc(e.message) + '</div>'; }).saveSalesNama(el('hdrNmDt').value, rows);
+  });
+
   function loadStk() {
     google.script.run.withSuccessHandler(function (st) {
       el('card-HPL').className = 'card lv-' + st.harga.level;
@@ -831,6 +940,10 @@
       el('card-FLG').className = 'card lv-' + st.flag.level;
       el('flgBadge').className = 'badge lv-' + st.flag.level; el('flgBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.flag.level];
       el('flgText').textContent = st.flag.text;
+      el('card-HDR').className = 'card lv-' + st.hadir.level;
+      el('hdrBadge').className = 'badge lv-' + st.hadir.level; el('hdrBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.hadir.level];
+      el('hdrText').textContent = st.hadir.text;
+      if (!el('hdrNmDt').options.length) el('hdrNmDt').innerHTML = st.hadir.dts.map(function (d) { return '<option value="' + esc(d.kode) + '">' + esc(d.nama) + '</option>'; }).join('');
     }).withFailureHandler(function (e) { el('hplText').textContent = 'Gagal mengecek: ' + e.message; }).getStokStatus();
   }
   function stkRun(prefix, work) {

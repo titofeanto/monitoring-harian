@@ -112,6 +112,7 @@ function doGet(e) {
     if (!me) return jsonOut({ error: 'invalid_code' });
     if (p.view === 'gs') return jsonOut(respondGs_(me, reg, String(p.dt || '').trim()));
     if (p.view === 'stok') return jsonOut(respondStok_(me, reg, String(p.dt || '').trim()));
+    if (p.view === 'hadir') return jsonOut(respondHadir_(me, reg, String(p.dt || '').trim()));
 
     if (me.peran === 'pusat') {
       const dts = reg.filter(r => r.peran === 'dt' && r.sheet_id);
@@ -466,6 +467,31 @@ function respondStok_(me, reg, dtWanted) {
       isi: +r.isi || 1, mulai: iso(r.mulai || ''), hNew: r.h_new === '' ? null : +r.h_new, hOld: r.h_old === '' ? null : +r.h_old,
       sNew: r.s_new === '' ? null : +r.s_new, sOld: r.s_old === '' ? null : +r.s_old })),
     hargaTanggal: harga.length ? String(harga[0].tanggal_pl || '') : '',
+  };
+}
+
+/**
+ * Kehadiran salesman: kunjungan pertama per hari (tab KEHADIRAN) dan nama salesman (tab SALES_MASTER) di Sheet pusat.
+ * Kode DT hanya melihat salesman DT-nya; kode pusat melihat semua DT (atau satu DT lewat &dt=).
+ */
+function respondHadir_(me, reg, dtWanted) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let dts = reg.filter(x => x.peran === 'dt' && x.sheet_id);
+  if (me.peran === 'dt') dts = dts.filter(x => x.dt_kode === me.dt_kode);
+  else if (dtWanted) dts = dts.filter(x => x.dt_kode === dtWanted);
+  const ok = {}; dts.forEach(x => { ok[x.dt_kode] = true; });
+  const read = (name, n) => {
+    const sh = ss.getSheetByName(name);
+    if (!sh || sh.getLastRow() < 2) return [];
+    return sh.getRange(2, 1, sh.getLastRow() - 1, n).getValues().filter(r => r.some(c => c !== '') && ok[String(r[0])]);
+  };
+  const rows = read('KEHADIRAN', 6);
+  if (!rows.length) return { error: 'no_data', message: 'Data kehadiran belum diupload untuk DT ini.' };
+  return {
+    mode: 'hadir',
+    dts: dts.map(x => ({ kode: x.dt_kode, nama: x.nama_dt })),
+    sales: read('SALES_MASTER', 3).map(r => [String(r[0]), String(r[1]), String(r[2] || '')]),
+    rows: rows.map(r => [String(r[0]), String(r[1]), String(r[2]), String(r[3]), +r[4] ? 1 : 0, +r[5] || 1]),
   };
 }
 
