@@ -15,6 +15,8 @@ terpisah dari API baca (`../google-apps-script/Code.gs`), terpasang di Sheet PUS
 |---|---|---|---|
 | Extract DMS | kosong, header salah, atau bulan beda dari CONFIG periode | INVDate terakhir < hari kerja terakhir | sudah sampai hari kerja terakhir |
 | Report NGDMS | kosong / header salah | tanggal report terlambat > 2 hari | tanggal report terbaru |
+
+Kartu **Extract DMS** dan **Report NGDMS** punya satu kolom file per DT. Pilih file tiap DT, lalu satu klik pada tombol "Proses semua DT" memprosesnya berurutan dan menampilkan hasil per DT. DT tanpa file dilewati.
 | Target | tidak ada baris periode CONFIG | - | periode CONFIG ada |
 | Norms SKU | kosong | belum diupload bulan ini | diupload bulan ini |
 | Referensi | kosong / header salah | Hari Libur belum diisi tahun ini | terisi |
