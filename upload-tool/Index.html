@@ -117,7 +117,7 @@
   <div class="card-head"><div><h3>Daftar SKU SAT, IDM &amp; Hypermart</h3><span class="tab">SKU_FLAG</span></div>
     <span class="badge" id="flgBadge"><i class="dot"></i>Memuat</span></div>
   <div class="st-text" id="flgText">Mengecek...</div>
-  <div class="desc">Untuk analisa stok di halaman Cek Stok. SAT = list item Unilever Alfamart (kolom barcode). IDM = List Item Aktif Unilever IDM (kolom BARCODE ULI, kolom Pareto SON). Upload satu per satu; daftar channel lain tidak berubah.</div>
+  <div class="desc">Untuk analisa stok di halaman Cek Stok. SAT = list item Unilever Alfamart (kolom Barcode). IDM = List Item Aktif Unilever IDM (kolom BARCODE ULI, kolom Pareto SON). Hypermart = matching SKU aktif (kolom UPC, SKU Desc). Kolom barcode dicari otomatis dari judulnya (Barcode, UPC, EAN, GTIN), jadi judul yang sedikit berubah tetap terbaca. Upload satu per satu; daftar channel lain tidak berubah.</div>
   <label for="flgKind">Channel</label>
   <select id="flgKind"><option value="SAT">SAT (Alfamart)</option><option value="IDM">IDM</option><option value="HM">Hypermart (kolom UPC)</option></select>
   <label for="flgFile">File (.xlsx)</label>
@@ -683,32 +683,45 @@
     if (!tgl) throw new Error('Tanggal laporan tidak terbaca dari sheet Selected Parameters.');
     return { dt: dt, tanggal: tgl, rows: out };
   }
-  /* Daftar SKU channel: SAT (kolom barcode) atau IDM (kolom BARCODE ULI, Pareto SON). Kunci pencocokan = barcode. */
+  /* Daftar SKU channel (SAT, IDM, Hypermart). Kolom barcode dicari dari judul kolom (huruf besar/kecil, spasi, tanda baca diabaikan;
+     nama lain seperti EAN, UPC, GTIN, Bar Code ikut dikenali), di semua sheet dan 15 baris pertama. Kalau tetap tidak ketemu,
+     dipakai kolom yang isinya paling banyak angka 8-14 digit. Kunci pencocokan = barcode. */
   function parseFlag(wb, kind) {
-    var rows = aoa(wb, wb.SheetNames[0]), up = function (v) { return xstr(v).toUpperCase(); }, h = -1, cB = -1, cP = -1, cPar = -1, cN = -1;
-    var colName = kind === 'IDM' ? 'BARCODE ULI' : kind === 'HM' ? 'UPC' : 'BARCODE';
-    for (var i = 0; i < Math.min(rows.length, 6) && h < 0; i++) {
-      var hd = rows[i].map(up), b = hd.indexOf(colName);
-      if (b >= 0) { h = i; cB = b; cP = hd.indexOf('PLU'); cN = hd.indexOf('SKU DESC'); cPar = hd.findIndex(function (v) { return v.indexOf('PARETO') === 0; }); }
+    var PREF = { SAT: ['BARCODE'], IDM: ['BARCODE ULI', 'BARCODE'], HM: ['UPC', 'BARCODE'] };
+    var GEN = ['BARCODE', 'BARCODE ULI', 'BAR CODE', 'EAN13', 'EAN 13', 'EAN', 'UPC', 'GTIN', 'KODE BARCODE'];
+    var NAMEC = ['SKU DESC', 'SKU DESCRIPTION', 'NAMA PRODUK', 'NAMA BARANG', 'NAMA SKU', 'DESKRIPSI', 'DESCRIPTION', 'PRODUCT NAME', 'ITEM NAME', 'NAMA'];
+    var norm = function (v) { return xstr(v).toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim(); };
+    var list = (PREF[kind] || []).concat(GEN), rows = null, h = -1, cB = -1, how = '', seen = [];
+    for (var sn = 0; sn < wb.SheetNames.length && cB < 0; sn++) {
+      var rs = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[sn]], { header: 1, raw: true, defval: null });
+      for (var i = 0; i < Math.min(rs.length, 15) && cB < 0; i++) {
+        var hd = rs[i].map(norm), b = -1;
+        if (i < 3) seen.push(hd.filter(Boolean).slice(0, 8).join(' | '));
+        for (var q = 0; q < list.length && b < 0; q++) b = hd.indexOf(list[q]);
+        if (b < 0) b = hd.findIndex(function (v) { return /(^| )(BARCODE|UPC|EAN|GTIN)( |$)/.test(v); });
+        if (b >= 0) { rows = rs; h = i; cB = b; how = 'judul kolom "' + xstr(rs[i][b]) + '" (sheet ' + wb.SheetNames[sn] + ')'; }
+      }
     }
-    if (h < 0) throw new Error('Kolom ' + colName + ' tidak ditemukan. Cek pilihan channel dan file.');
+    if (cB < 0) { /* tanpa judul yang dikenal: cari kolom yang isinya angka 8-14 digit */
+      rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null }); h = -1;
+      var cnt = {}, lim = Math.min(rows.length, 400);
+      for (var r0 = 0; r0 < lim; r0++) rows[r0].forEach(function (v, k) { if (/^\d{8,14}$/.test(xstr(v).replace(/\D/g, '')) && /^[\d\s.]+$/.test(xstr(v))) cnt[k] = (cnt[k] || 0) + 1; });
+      var best = -1, bn = 4;
+      Object.keys(cnt).forEach(function (k) { if (cnt[k] > bn) { bn = cnt[k]; best = +k; } });
+      if (best < 0) throw new Error('Kolom barcode tidak ditemukan. Judul kolom yang terbaca: ' + (seen.filter(Boolean).join(' / ') || '(kosong)') + '. Pastikan ada kolom Barcode, UPC, atau EAN.');
+      cB = best; how = 'isi kolom ke-' + (best + 1) + ' (tidak ada judul yang dikenal)';
+    }
+    var hdN = h >= 0 ? rows[h].map(norm) : [];
+    var cP = hdN.indexOf('PLU'), cPar = hdN.findIndex(function (v) { return v.indexOf('PARETO') === 0; });
+    var cN = -1; for (var z = 0; z < NAMEC.length && cN < 0; z++) cN = hdN.indexOf(NAMEC[z]);
     var out = [];
     for (var j = h + 1; j < rows.length; j++) {
       var r = rows[j], bc = xstr(r[cB]).replace(/\D/g, '');
-      if (bc.length < 8) continue;
-      out.push({ barcode: bc, plu: cP >= 0 ? xstr(r[cP]) : '', ket: kind === 'HM' ? (cN >= 0 ? xstr(r[cN]) : '') : (cPar >= 0 && up(r[cPar]) === 'Y' ? 'Pareto' : '') });
+      if (bc.length < 8 || bc.length > 14) continue;
+      out.push({ barcode: bc, plu: cP >= 0 ? xstr(r[cP]) : '', ket: kind === 'HM' ? (cN >= 0 ? xstr(r[cN]) : '') : (cPar >= 0 && norm(r[cPar]) === 'Y' ? 'Pareto' : '') });
     }
+    out.how = how;
     return out;
-  }
-  /* Compile Trend Sales: GSV per outlet x SKU x bulan -> per DT x SKU x bucket, deret bulanan (ribuan rupiah).
-     Bucket: SAT (banner ALFAMART), IDM (outlet DC IDM / banner INDOMARET), lalu GT / LMT menurut Sheet2, sisanya LAIN. */
-  function readXlsxBig(file) {
-    return new Promise(function (ok, no) {
-      var r = new FileReader();
-      r.onload = function () { try { ok(XLSX.read(r.result, { type: 'array', dense: true })); } catch (e) { no(e); } };
-      r.onerror = function () { no(new Error('File tidak bisa dibaca.')); };
-      r.readAsArrayBuffer(file);
-    });
   }
   function parseTrend(wb) {
     var ws = wb.Sheets['Sheet1'] || wb.Sheets[wb.SheetNames[0]];
@@ -786,7 +799,7 @@
     stkRun('flg', function (wb, done) {
       var kind = el('flgKind').value, rows = parseFlag(wb, kind);
       google.script.run.withSuccessHandler(function (res) {
-        done('green', '<b>Tersimpan.</b>\n' + res.flag + ' · ' + res.rows + ' SKU'); loadStk();
+        done('green', '<b>Tersimpan.</b>\n' + res.flag + ' · ' + res.rows + ' SKU\nBarcode dibaca dari ' + rows.how); loadStk();
       }).withFailureHandler(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); }).saveSkuFlag(kind, rows);
     });
   });

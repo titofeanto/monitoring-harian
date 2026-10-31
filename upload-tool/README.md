@@ -31,3 +31,9 @@ disimpan ke tab `GS_SCORECARD` di Sheet PUSAT (1 set baris per tanggal, jadi riw
 daftar toko dari Perfect Stores, Weekly FOP, dan Banded ke `GS_OUTLET` (ganti total). Halaman
 `great-sales.html` membaca keduanya lewat API (`?view=gs`); kode DT hanya melihat toko DT-nya.
 Poin per KPI = bobot x min(aktual / target, 1), jumlahnya harus sama dengan SCORE di file.
+
+## File contoh upload (`contoh-upload/`)
+Satu file contoh untuk tiap kotak Cek Stok: 1 Daftar Harga Unilever, 2 Stok Gudang DT, 3a SAT, 3b IDM, 3c Hypermart, 4 Trend Sales.
+Isinya data rekaan dengan judul kolom yang dibaca tool. Daftar SKU (SAT, IDM, Hypermart) mencari kolom barcode dari judulnya
+(Barcode, Bar Code, UPC, EAN, GTIN, Barcode ULI; huruf besar kecil dan tanda baca diabaikan), di semua sheet dan 15 baris pertama.
+Kalau tidak ada judul yang dikenal, dipakai kolom yang isinya paling banyak angka 8-14 digit. Setelah simpan, tool menulis kolom mana yang dipakai.
