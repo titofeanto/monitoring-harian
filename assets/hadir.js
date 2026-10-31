@@ -1,8 +1,8 @@
-/* Kehadiran salesman: kunjungan pertama per hari. Hijau = sebelum 09.00 dan geo code compliance 1. Data dari Apps Script ?view=hadir. */
+/* Kehadiran salesman: kunjungan pertama per hari. Hijau = kunjungan geo code 1 pertama jam 09.00 atau lebih awal. Data dari Apps Script ?view=hadir. */
 (function () {
   const LS_CODE = 'mh_code'; // sama dengan Monitoring Harian, jadi tidak perlu login ulang
   const CACHE_KEY = 'mh_hadir_cache';
-  const BATAS = '09:00'; // kunjungan pertama harus lebih awal dari jam ini
+  const BATAS = '09:00'; // kunjungan geo 1 pertama harus jam ini atau lebih awal (09:00 masih hijau, sama dengan laporan nasional)
   const $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const BLN = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -66,7 +66,7 @@
         if (dy.libur) return { st: 'lib' };
         const r = cell[id + '|' + dy.iso];
         if (!r) { abs++; return { st: 'abs' }; }
-        const late = r[3] >= BATAS, geo0 = !r[4];
+        const late = r[3] > BATAS, geo0 = !r[4];
         if (!late && !geo0) { ok++; return { st: 'ok', jam: r[3], n: r[5] }; }
         bad++; return { st: 'bad', jam: r[3], n: r[5], late, geo0 };
       });
@@ -102,14 +102,14 @@
         const dy = V.days[i];
         if (c.st === 'lib') h += '<td class="lib">·</td>';
         else if (c.st === 'abs') h += '<td class="abs" title="' + esc(dy.iso) + ': tidak ada kunjungan"></td>';
-        else h += '<td class="' + c.st + '" title="' + esc(dy.iso + ' · ' + c.n + ' kunjungan' + (c.geo0 ? ' · geo code 0' : '') + (c.late ? ' · setelah 09.00' : '')) + '">' + c.jam + (c.geo0 ? '<sup>geo</sup>' : '') + '</td>';
+        else h += '<td class="' + c.st + '" title="' + esc(dy.iso + ' · ' + c.n + ' kunjungan' + (c.geo0 ? ' · geo code 0' : '') + (c.late ? ' · lewat 09.00' : '')) + '">' + c.jam + (c.geo0 ? '<sup>geo</sup>' : '') + '</td>';
       });
       h += '</tr>';
     });
     h += '</tbody></table>';
     $('hdWrap').innerHTML = list.length ? h : '<div class="empty">Tidak ada salesman yang cocok.</div>';
     const lib = V.days.filter(x => x.libur).map(x => x.d);
-    $('hdNote').textContent = 'Jam = kunjungan pertama hari itu. "geo" = jam sebelum 09.00 tapi geo code compliance 0 (merah). Kotak kosong merah = tidak ada kunjungan di hari kerja. Minggu tidak dihitung' +
+    $('hdNote').textContent = 'Jam = kunjungan pertama yang geo code 1 hari itu (aturan sama dengan laporan nasional). "geo" = hari itu tidak ada kunjungan geo code 1, jam yang tampil kunjungan paling awal (merah). Kotak kosong merah = tidak ada kunjungan di hari kerja. Minggu tidak dihitung' +
       (lib.length ? '; tanggal ' + lib.join(', ') + ' dianggap libur karena tidak ada kunjungan sama sekali di DT ini' : '') + '. Salesman tanpa nama: isi nama di tool upload (kartu Kehadiran).';
   }
   function renderMonths() {

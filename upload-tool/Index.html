@@ -151,7 +151,7 @@
   <div class="card-head"><div><h3>Kunjungan Pertama Salesman</h3><span class="tab">KEHADIRAN</span></div>
     <span class="badge" id="hdrBadge"><i class="dot"></i>Memuat</span></div>
   <div class="st-text" id="hdrText">Mengecek...</div>
-  <div class="desc">File Sales Person Visit Summary Report (.csv atau .xlsx), semua DT dalam satu file. Aturan: kunjungan pertama tiap hari harus <b>sebelum 09.00</b> dan <b>Geo Code Compliance = 1</b> untuk hijau. Kunjungan pertama jam 09.00 atau lebih, geo code 0, atau tidak ada kunjungan di hari kerja: merah.</div>
+  <div class="desc">File Sales Person Visit Summary Report (.csv atau .xlsx), semua DT dalam satu file. Aturan sama dengan laporan nasional: kunjungan pertama dihitung dari kunjungan yang <b>Geo Code Compliance = 1</b> saja. Hijau kalau jam <b>09.00 atau lebih awal</b>. Merah kalau lewat 09.00, tidak ada kunjungan geo 1, atau tidak ada kunjungan di hari kerja.</div>
   <button type="button" class="sample" data-sample="HDR" id="smpHDR">Download file contoh</button>
   <label for="hdrFile">File (.csv / .xlsx)</label>
   <input type="file" id="hdrFile" accept=".csv,.xlsx">
@@ -891,10 +891,11 @@
       if (!st || !dt || !sid) continue;
       var day = cJ >= 0 && stamp(r[cJ] + (typeof r[cJ] === 'string' && r[cJ].length <= 10 ? ' 00:00' : '')) ? stamp(r[cJ] + (typeof r[cJ] === 'string' && r[cJ].length <= 10 ? ' 00:00' : '')).slice(0, 10) : st.slice(0, 10);
       var k = dt + '|' + sid + '|' + day, geo = xnum(r[cG]) >= 1 ? 1 : 0, o = g[k]; n++;
-      if (!o) g[k] = { dt: dt, sid: sid, day: day, t: st, geo: geo, n: 1 };
-      else { o.n++; if (st < o.t) { o.t = st; o.geo = geo; } }
+      if (!o) o = g[k] = { dt: dt, sid: sid, day: day, t: st, g1: '', n: 0 };
+      o.n++; if (st < o.t) o.t = st;
+      if (geo && (!o.g1 || st < o.g1)) o.g1 = st;
     }
-    var out = Object.keys(g).map(function (k) { var o = g[k]; return [o.dt, o.sid, o.day, o.t.slice(11, 16), o.geo, o.n]; });
+    var out = Object.keys(g).map(function (k) { var o = g[k]; return [o.dt, o.sid, o.day, (o.g1 || o.t).slice(11, 16), o.g1 ? 1 : 0, o.n]; });
     if (!out.length) throw new Error('Tidak ada baris kunjungan yang terbaca.');
     var tg = out.map(function (r) { return r[2]; }).sort();
     return { rows: out, visits: n, dari: tg[0], sampai: tg[tg.length - 1] };

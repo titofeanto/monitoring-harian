@@ -244,8 +244,8 @@ Di halaman Cek Stok, pilih **SAT (Alfamart)** atau **IDM** untuk melihat apakah 
 Matriks kunjungan pertama tiap salesman per hari (seperti rekap kehadiran di Excel), dari laporan **Sales Person Visit Summary**.
 
 - Upload di tool upload, kartu **Kunjungan Pertama Salesman** (file .csv atau .xlsx, semua DT dalam satu file, boleh berisi satu bulan penuh; tanggal yang sama diganti). Data di tab `KEHADIRAN`.
-- Kunjungan pertama = Visit Start paling awal per Salesman ID dan Journey Date. Kode DT = Tenant Code.
-- **Hijau**: kunjungan pertama **sebelum 09.00** dan **Geo Code Compliance = 1** (geo code dilihat dari kunjungan pertama itu). **Merah**: jam 09.00 atau lebih, atau geo code 0. **Merah kosong**: tidak ada kunjungan di hari kerja.
+- Kunjungan pertama = Visit Start paling awal per Salesman ID dan Journey Date, **hanya dari kunjungan dengan Geo Code Compliance = 1** (sama dengan laporan nasional). Kode DT = Tenant Code.
+- **Hijau**: kunjungan geo 1 pertama jam **09.00 atau lebih awal**. **Merah**: lewat 09.00, atau hari itu tidak ada kunjungan geo 1 (jam yang tampil kunjungan paling awal, diberi tanda "geo"). **Merah kosong**: tidak ada kunjungan di hari kerja.
 - Minggu tidak dihitung. Tanggal yang tidak punya satu pun kunjungan di DT itu dianggap libur (abu-abu, tidak dihitung merah).
 - Nama salesman: laporan hanya berisi ID. Isi nama di kartu yang sama ("Nama salesman", format `021-RESTA`); tersimpan di tab `SALES_MASTER`. Salesman tanpa kunjungan sama sekali tetap tampil (merah) selama ada di `SALES_MASTER`.
 - Kode DT hanya melihat DT-nya; kode pusat melihat semua DT. API: `?view=hadir` (perlu deploy ulang `google-apps-script/Code.gs`).
