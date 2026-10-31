@@ -269,6 +269,6 @@ ada sebagai cadangan manual.
 Halaman admin untuk memunculkan pemberitahuan di Monitoring Daily, Cek Stok, dan SBA Logbook App.
 
 - Buka `admin-status.html`, isi kode admin, pilih Normal, Banner (kuning, aplikasi tetap bisa dipakai), atau Tutup aplikasi (layar penuh), isi pesan, Simpan.
-- Status disimpan di Script property `STATUS_JSON` Apps Script dan dibaca publik lewat `?view=status`. Aplikasi mengecek tiap 5 menit dan saat dibuka kembali.
+- Status disimpan di Script property `STATUS_JSON` Apps Script dan dibaca publik lewat `?view=status`. Aplikasi mengecek tiap 1 menit dan saat dibuka kembali.
 - Kode admin tidak ada di repo. Hanya hash-nya di Script property `ADMIN_HASH`. Ganti kode lewat bagian "Ganti kode admin". Lima kode salah menahan semua percobaan 15 menit.
 - Skrip pembaca (`assets/status-banner.js`) berdiri sendiri, jadi tetap jalan kalau skrip utama aplikasi gagal. Kalau Apps Script tidak terjangkau, SBA memakai `status.json` di repo sebagai cadangan.
