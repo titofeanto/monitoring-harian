@@ -13,8 +13,8 @@
   const bcKey = s => String(s).replace(/\D/g, '').replace(/^0+/, '');
   const jam = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0'); };
 
-  let DATA = null, CODE = '', DT = '', ITEMS = [], HASRPP = false, CNT = {};
-  const S = { mode: 'harga', f: 'naik', ana: 'semua', q: '', brand: '', only: true, shown: CFG.page };
+  let DATA = null, CODE = '', DT = '', ITEMS = [], HASJUAL = false, CNT = {}, JREC = {}, JL = -1, JB = 0;
+  const S = { mode: 'harga', f: 'naik', ana: 'semua', win: '13', dem: 'total', q: '', brand: '', only: true, shown: CFG.page };
   const fmt1 = n => (Math.round(n * 10) / 10).toString().replace('.', ',');
   /* urutan = prioritas order: habis dan kritis dulu */
   const ANA = { habis: ['Habis', 'r', 0], kritis: ['Kritis', 'r', 1], menipis: ['Menipis', 'a', 2], tidakada: ['Tidak ada di laporan', '', 3], slow: ['Tanpa penjualan', 'b', 4], aman: ['Aman', 'g', 5] };
@@ -65,7 +65,7 @@
       let status = 'tetap';
       if (h.hNew != null && h.hOld == null) status = 'baru';
       else if (h.hNew != null && h.hOld != null) status = h.hNew - h.hOld > 0.5 ? 'naik' : h.hOld - h.hNew > 0.5 ? 'turun' : 'tetap';
-      const it = Object.assign({}, h, { isi, k, l, p, rpp: st ? (st[6] || 0) : 0, tot: k * isi + l * 12 + p, ada: !!st, status, pct: h.hNew != null && h.hOld ? (h.hNew - h.hOld) / h.hOld : 0 });
+      const it = Object.assign({}, h, { isi, k, l, p, tot: k * isi + l * 12 + p, ada: !!st, status, pct: h.hNew != null && h.hOld ? (h.hNew - h.hOld) / h.hOld : 0 });
       it._bc = bcKey(h.bc);
       it.ke = it.tot / (it.isi || 1);
       it._txt = (h.nama + ' ' + h.brand + ' ' + h.sku + ' ' + h.bc).toLowerCase();
@@ -74,8 +74,8 @@
     /* Flag channel (SAT/IDM) dicocokkan lewat barcode. Status stok dihitung dari cover = stok (karton) / rata-rata jual per minggu. */
     const fl = {};
     (DATA.flags || []).forEach(f => { const k = bcKey(f[0]); (fl[k] = fl[k] || {})[f[1]] = f[3] || true; });
-    HASRPP = DATA.stok.some(r => r[0] === DT && r[6] > 0);
-    ITEMS.forEach(it => { it.fl = fl[it._bc] || {}; classify(it); });
+    loadJual();
+    ITEMS.forEach(it => { it.fl = fl[it._bc] || {}; it.m = monthly(it); });
     const brands = Array.from(new Set(ITEMS.map(i => i.brand))).sort();
     $('csBrand').innerHTML = '<option value="">Semua brand</option>' + brands.map(b => '<option>' + esc(b) + '</option>').join('');
     if (S.brand && brands.includes(S.brand)) $('csBrand').value = S.brand; else S.brand = '';
@@ -85,14 +85,56 @@
     window.MHFresh.set({ info: d ? window.MHFresh.status(d.tanggal, { label: 'Stok gudang', stale: 2 }) : null });
   }
 
+  /* ---- Penjualan bulanan dari compile Trend Sales (GSV per bulan, per bucket SAT/IDM/GT/LMT/LAIN) ---- */
+  const monthDays = idx => new Date(Math.floor(idx / 12), idx % 12 + 1, 0).getDate();
+  const ymLabel = idx => BULAN[idx % 12 + 1] + ' ' + Math.floor(idx / 12);
+  function loadJual() {
+    JREC = {}; JL = -1;
+    (DATA.jual || []).forEach(r => {
+      if (r[0] !== DT) return;
+      const p = r[3].split('-'), i0 = +p[0] * 12 + (+p[1]) - 1, v = r[4].split(',').map(Number);
+      (JREC[r[1]] = JREC[r[1]] || {})[r[2]] = { i0, v };
+      JL = Math.max(JL, i0 + v.length - 1);
+    });
+    HASJUAL = JL >= 0; JB = JL - 23; // jendela 24 bulan terakhir
+  }
+  /* Qty ditaksir dari GSV: GSV / harga karton tanpa PPN (harga yang berlaku sekarang). */
+  function monthly(it) {
+    const rec = JREC[it.sku];
+    const hp = (it.mulai && it.mulai > todayIso()) ? (it.hOld || it.hNew) : (it.hNew || it.hOld);
+    if (!rec || !hp) return {};
+    const price = hp / 1.11, out = {};
+    Object.keys(rec).forEach(b => {
+      const arr = new Array(24).fill(0);
+      rec[b].v.forEach((g, k) => { const pos = rec[b].i0 + k - JB; if (pos >= 0 && pos < 24) arr[pos] = g * 1000 / price; });
+      out[b] = arr;
+    });
+    return out;
+  }
+  function metrics(it, bkts) {
+    const mv = (idx, bk) => { let t = 0; for (const b in it.m) if (!bk || bk.indexOf(b) >= 0) t += it.m[b][idx - JB] || 0; return t; };
+    const rng = (a, z, bk) => { let t = 0; for (let i = a; i <= z; i++) t += mv(i, bk); return t; };
+    const days = (a, z) => { let d = 0; for (let i = a; i <= z; i++) d += monthDays(i); return d; };
+    const rate = (bk) => S.win === '5' ? mv(JL, bk) / (monthDays(JL) / 7) : rng(JL - 2, JL, bk) / (days(JL - 2, JL) / 7);
+    const cur = rng(JL - 2, JL, bkts), py = rng(JL - 14, JL - 12, bkts);
+    const nxt = (mv(JL - 11, bkts) + mv(JL - 10, bkts)) / 2, base = py / 3;
+    const ch = S.mode !== 'harga' ? [S.mode] : null;
+    return {
+      rpp: rate(bkts), rTot: rate(null), rCh: ch ? rate(ch) : 0,
+      r13: rng(JL - 2, JL, bkts) / (days(JL - 2, JL) / 7), r5: mv(JL, bkts) / (monthDays(JL) / 7),
+      yoy: py > 0 ? cur / py - 1 : null, musim: base > 0 ? Math.min(2, Math.max(0.5, nxt / base)) : null
+    };
+  }
   function classify(it) {
+    const bk = S.mode !== 'harga' && S.dem === 'chan' ? [S.mode] : null;
+    Object.assign(it, HASJUAL ? metrics(it, bk) : { rpp: 0, rTot: 0, rCh: 0, r13: 0, r5: 0, yoy: null, musim: null });
     it.cover = null;
     if (!it.ada) it.ana = 'tidakada';
     else if (it.tot <= 0) it.ana = 'habis';
-    else if (!HASRPP) it.ana = it.tot <= it.isi * CFG.batasMenipisKarton ? 'menipis' : 'aman';
-    else if (it.rpp <= 0) it.ana = 'slow';
+    else if (!HASJUAL) it.ana = it.tot <= it.isi * CFG.batasMenipisKarton ? 'menipis' : 'aman';
+    else if (it.rpp <= 0.005) it.ana = 'slow';
     else { it.cover = it.ke / it.rpp; it.ana = it.cover < CFG.kritisMgg ? 'kritis' : it.cover < CFG.menipisMgg ? 'menipis' : 'aman'; }
-    it.butuh = it.rpp > 0 ? Math.max(0, Math.ceil(CFG.targetMgg * it.rpp - it.ke)) : 0;
+    it.butuh = it.rpp > 0 ? Math.max(0, Math.ceil(CFG.targetMgg * it.rpp * Math.max(1, it.musim || 1) - it.ke)) : 0;
   }
   const stokText = i => [i.k && i.k + ' karton', i.l && i.l + ' lusin', i.p && i.p + ' pcs'].filter(Boolean).join(' ') || '0';
   function stokTag(i) {
@@ -109,13 +151,13 @@
     const out = [];
     Object.keys(by).forEach(k => {
       const ada = by[k].filter(i => i.ada);
-      if (!ada.length) { out.push(by[k][0]); return; }
-      if (ada.length === 1) { out.push(ada[0]); return; }
+      if (!ada.length) { classify(by[k][0]); out.push(by[k][0]); return; }
+      if (ada.length === 1) { classify(ada[0]); out.push(ada[0]); return; }
       /* Barcode sama di dua SKU (mis. kemasan ML ke G): stok dan jual digabung jadi satu baris. */
-      const m = Object.assign({}, ada.slice().sort((a, b) => b.rpp - a.rpp || b.tot - a.tot)[0]);
+      const m = Object.assign({}, ada.slice().sort((a, b) => b.tot - a.tot)[0]);
       m.tot = ada.reduce((t, i) => t + i.tot, 0);
-      const wk = ada.reduce((t, i) => t + i.rpp * i.isi, 0);
-      m.ke = m.tot / m.isi; m.rpp = wk / m.isi;
+      m.m = {}; ada.forEach(i => Object.keys(i.m).forEach(b => { const o = m.m[b] = m.m[b] || new Array(24).fill(0); i.m[b].forEach((x, q) => { o[q] += x; }); }));
+      m.ke = m.tot / m.isi;
       m.k = Math.floor(m.tot / m.isi); const rem = m.tot - m.k * m.isi; m.l = Math.floor(rem / 12); m.p = rem - m.l * 12;
       m.gab = ada.map(i => i.sku).join(' + ');
       classify(m); out.push(m);
@@ -146,9 +188,12 @@
     const a = ANA[i.ana];
     const badge = (i.status === 'naik' ? '<span class="tag r">HARGA NAIK ' + pct(i.pct) + '</span> ' : '') + (i.fl.IDM === 'Pareto' && S.mode === 'IDM' ? '<span class="tag b">Pareto</span> ' : '');
     let cov = '';
-    if (HASRPP && i.ada) {
-      cov = '<div class="cs-cov">Jual <b>' + (i.rpp > 0 ? fmt1(i.rpp) + ' karton</b>/minggu' : '0</b> (13 minggu)') + (i.cover != null ? ' · cover <b>' + fmt1(i.cover) + ' minggu</b>' : '') + '</div>' +
-        (i.butuh > 0 ? '<div class="cs-need">Untuk ' + CFG.targetMgg + ' minggu kurang sekitar <b>' + i.butuh + ' karton</b></div>' : '');
+    if (HASJUAL && i.ada) {
+      const wl = S.win === '5' ? '1 bulan terakhir' : '13 minggu', sg = n => (n >= 0 ? '+' : '-') + Math.round(Math.abs(n) * 100) + '%';
+      cov = '<div class="cs-cov">Jual <b>' + (i.rpp > 0 ? fmt1(i.rpp) + ' karton</b>/minggu' : '0</b>') + ' (' + wl + (S.dem === 'chan' ? ', hanya ' + S.mode : '') + ')' + (i.cover != null ? ' · cover <b>' + fmt1(i.cover) + ' minggu</b>' : '') + '</div>' +
+        (S.dem === 'total' && i.rCh > 0 && i.rTot > 0 ? '<div class="cs-cov">' + S.mode + ': <b>' + fmt1(i.rCh) + '</b> karton/minggu (' + Math.round(i.rCh / i.rTot * 100) + '% dari total)</div>' : '') +
+        (i.yoy != null ? '<div class="cs-cov">3 bulan terakhir ' + sg(i.yoy) + ' dari tahun lalu' + (i.musim != null ? ' · ' + ymLabel(JL + 1).slice(0, 3) + '-' + ymLabel(JL + 2).slice(0, 3) + ' tahun lalu ' + sg(i.musim - 1) + ' dari rata-rata 3 bulan itu' : '') + '</div>' : '') +
+        (i.butuh > 0 ? '<div class="cs-need">Untuk ' + CFG.targetMgg + ' minggu' + (i.musim > 1 ? ' (sudah memperhitungkan musim)' : '') + ' kurang sekitar <b>' + i.butuh + ' karton</b></div>' : '');
     }
     return '<article class="cs-item"><h3>' + badge + esc(i.nama) + '</h3><div class="meta">' + esc(i.brand) + ' · Barcode ' + esc(i.bc) + ' · SKU ' + esc(i.gab || i.sku) + '</div>' +
       '<div class="cs-stok"><b>' + (i.tot > 0 ? esc(stokText(i)) : 'Stok 0') + '</b><span class="tag ' + a[1] + '">' + a[0] + '</span>' + (i.tot > 0 ? '<small>= ' + i.tot.toLocaleString('id-ID') + ' pcs</small>' : '') + '</div>' + cov + '</article>';
@@ -179,8 +224,13 @@
       const chips = [['semua', 'Semua']].concat(Object.keys(ANA).map(k => [k, ANA[k][0]])).filter(c => c[0] === 'semua' || CNT[c[0]]);
       $('csAna').innerHTML = chips.map(c => '<button type="button" data-a="' + c[0] + '" aria-pressed="' + (S.ana === c[0]) + '">' + c[1] + '<span class="n">' + (CNT[c[0]] || 0) + '</span></button>').join('');
       $('csAnaNote').textContent = !pool().length && !S.q ? 'Daftar SKU ' + S.mode + ' belum diupload. Upload di tool upload (kotak Daftar SKU SAT & IDM).'
-        : !HASRPP ? 'Data rata-rata jual belum ada di stok ini. Upload ulang laporan stok supaya cover per minggu terhitung. Sementara status hanya dari jumlah stok.'
-        : 'Cover = stok dibagi rata-rata jual DT per minggu (13 minggu). Kritis kurang dari ' + CFG.kritisMgg + ' minggu, menipis kurang dari ' + CFG.menipisMgg + ' minggu. Dihitung dari penjualan seluruh DT, bukan khusus order ' + S.mode + '.';
+        : !HASJUAL ? 'Trend penjualan DT ini belum diupload (tool upload, kotak Trend Penjualan). Sementara status hanya dari jumlah stok.'
+        : 'Cover = stok dibagi rata-rata jual per minggu. Kritis kurang dari ' + CFG.kritisMgg + ' minggu, menipis kurang dari ' + CFG.menipisMgg + '. Trend s.d. ' + ymLabel(JL) + ' (bulan berjalan belum masuk). Qty ditaksir dari GSV dibagi harga karton, jadi bisa meleset beberapa persen. ' + (S.dem === 'total' ? 'Dasar: penjualan semua channel, karena stok dipakai bersama.' : 'Dasar: hanya penjualan ' + S.mode + '.');
+    }
+    if (ana) {
+      document.querySelectorAll('#csWin [data-w]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.w === S.win)));
+      document.querySelectorAll('#csDem [data-d]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.d === S.dem)));
+      $('csDemC').textContent = 'Khusus ' + S.mode;
     }
     $('csCount').textContent = r.length + ' produk' + (S.q ? ' untuk "' + S.q + '"' : '');
     $('csList').innerHTML = r.length ? r.slice(0, S.shown).map(ana ? cardAna : card).join('') : '<div class="card empty">' + (ana && !S.q && !pool().length ? 'Belum ada daftar SKU ' + S.mode + '.' : 'Produk tidak ditemukan.') + '</div>';
@@ -234,16 +284,17 @@
   }
   /* Export analisa SAT / IDM: daftar yang sedang tampil, urut prioritas order. */
   function exportAna(r, d) {
-    const head = ['No', 'Brand', 'Nama Produk', 'Barcode', 'SKU', 'Stok', 'Total Pcs', 'Status', 'Jual / Minggu (karton)', 'Cover (minggu)', 'Kurang utk ' + CFG.targetMgg + ' Minggu (karton)', 'Harga Naik %'].concat(S.mode === 'IDM' ? ['Pareto'] : []);
+    const head = ['No', 'Brand', 'Nama Produk', 'Barcode', 'SKU', 'Stok', 'Total Pcs', 'Status', 'Jual / Minggu (karton)', 'Jual 13 Mgg', 'Jual 1 Bln', 'Jual ' + S.mode + ' / Mgg', 'Cover (minggu)', 'vs Tahun Lalu %', 'Kurang utk ' + CFG.targetMgg + ' Minggu (karton)', 'Harga Naik %'].concat(S.mode === 'IDM' ? ['Pareto'] : []);
     const rows = r.map((i, n) => [n + 1, i.brand, i.nama, i.bc, i.gab || i.sku, i.tot > 0 ? stokText(i) : '0', i.tot, ANA[i.ana][0],
-      HASRPP && i.ada ? Math.round(i.rpp * 10) / 10 : '', i.cover != null ? Math.round(i.cover * 10) / 10 : '', i.butuh || '',
+      HASJUAL && i.ada ? Math.round(i.rpp * 10) / 10 : '', HASJUAL && i.ada ? Math.round(i.r13 * 10) / 10 : '', HASJUAL && i.ada ? Math.round(i.r5 * 10) / 10 : '', HASJUAL && i.ada ? Math.round(i.rCh * 10) / 10 : '',
+      i.cover != null ? Math.round(i.cover * 10) / 10 : '', i.yoy != null ? Math.round(i.yoy * 1000) / 1000 : '', i.butuh || '',
       i.status === 'naik' ? Math.round(i.pct * 1000) / 1000 : ''].concat(S.mode === 'IDM' ? [i.fl.IDM === 'Pareto' ? 'Y' : ''] : []));
-    const aoa = [['Analisa stok ' + S.mode + ' - ' + d.nama], ['Stok per ' + tgl(d.tanggal) + ' · cover = stok / rata-rata jual DT per minggu (13 minggu)'], [], head].concat(rows);
+    const aoa = [['Analisa stok ' + S.mode + ' - ' + d.nama], ['Stok per ' + tgl(d.tanggal) + ' · cover = stok / rata-rata jual per minggu (' + (S.win === '5' ? '1 bulan terakhir' : '13 minggu') + (S.dem === 'chan' ? ', hanya ' + S.mode : ', semua channel') + '). Qty ditaksir dari GSV / harga karton.'], [], head].concat(rows);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [5, 14, 44, 16, 11, 22, 10, 18, 12, 10, 14, 10, 8].map(w => ({ wch: w }));
+    ws['!cols'] = [5, 14, 44, 16, 11, 22, 10, 18, 12, 10, 10, 12, 10, 12, 14, 10, 8].map(w => ({ wch: w }));
     for (let k = 0; k < rows.length; k++) {
       const bc = ws['D' + (k + 5)]; if (bc) bc.t = 's';
-      const pc = ws['L' + (k + 5)]; if (pc && pc.t === 'n') pc.z = '0.0%';
+      ['N', 'P'].forEach(c => { const pc = ws[c + (k + 5)]; if (pc && pc.t === 'n') pc.z = '0.0%'; });
     }
     ws['!autofilter'] = { ref: 'A4:' + String.fromCharCode(64 + head.length) + (rows.length + 4) };
     const wb = XLSX.utils.book_new();
@@ -310,6 +361,8 @@
     const b = e.target.closest('[data-m]'); if (!b) return;
     S.mode = b.dataset.m; S.ana = 'semua'; S.shown = CFG.page; render();
   });
+  $('csWin').addEventListener('click', e => { const b = e.target.closest('[data-w]'); if (b) { S.win = b.dataset.w; S.shown = CFG.page; render(); } });
+  $('csDem').addEventListener('click', e => { const b = e.target.closest('[data-d]'); if (b) { S.dem = b.dataset.d; S.shown = CFG.page; render(); } });
   $('csAna').addEventListener('click', e => {
     const b = e.target.closest('[data-a]'); if (!b) return;
     S.ana = b.dataset.a; S.shown = CFG.page; render();

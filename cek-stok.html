@@ -7,8 +7,8 @@
 <meta name="theme-color" content="#1769C8">
 <title>Cek Stok &amp; Harga Naik</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=202610311000">
-<script src="assets/boot.js?v=202610311000"></script>
+<link rel="stylesheet" href="assets/style.css?v=202610311300">
+<script src="assets/boot.js?v=202610311300"></script>
 </head>
 <body>
 
@@ -92,6 +92,8 @@
       </div>
       <div id="csAnaF" hidden>
         <div class="chips" id="csAna" role="group" aria-label="Filter status stok" style="margin-top:10px"></div>
+        <div class="chips" id="csWin" role="group" aria-label="Rentang rata-rata jual" style="margin-top:8px"><button type="button" data-w="13" aria-pressed="true">13 minggu</button><button type="button" data-w="5" aria-pressed="false">5 minggu (1 bulan)</button></div>
+        <div class="chips" id="csDem" role="group" aria-label="Dasar penjualan" style="margin-top:8px"><button type="button" data-d="total" aria-pressed="true">Semua channel</button><button type="button" id="csDemC" data-d="chan" aria-pressed="false">Khusus SAT</button></div>
         <p class="hint" id="csAnaNote" style="margin:10px 0 0"></p>
       </div>
       <div class="cs-filters">
@@ -115,9 +117,9 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/config.js?v=202610311000"></script>
-<script src="assets/fresh.js?v=202610311000"></script>
+<script src="assets/config.js?v=202610311300"></script>
+<script src="assets/fresh.js?v=202610311300"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="assets/stok.js?v=202610311000"></script>
+<script src="assets/stok.js?v=202610311300"></script>
 </body>
 </html>

@@ -215,7 +215,8 @@ untuk komunikasi ke toko. Data di Sheet PUSAT (bukan Sheet DT):
 | Tab | Isi | Diisi lewat |
 |---|---|---|
 | `HARGA_PL` | Daftar harga Unilever (harga lama dan baru per karton dan pcs, barcode, tanggal berlaku). Ganti total, semua DT. | Tool upload, kotak "Daftar Harga Unilever" (file SUMMARY PRICE LIST, sheet HARGA BARU + HARGA LAMA) |
-| `STOK_GUDANG` | Stok karton/lusin/pcs per SKU per DT, plus `rpp` (rata-rata jual per minggu dalam karton, 13 minggu, dari kolom RPP laporan). Hanya baris DT di file yang diganti. | Tool upload, kotak "Stok Gudang DT" (Distributor Stock Report; DT dibaca dari file) |
+| `STOK_GUDANG` | Stok karton/lusin/pcs per SKU per DT, Hanya baris DT di file yang diganti. | Tool upload, kotak "Stok Gudang DT" (Distributor Stock Report; DT dibaca dari file) |
+| `JUAL_SKU` | Penjualan bulanan (GSV ribuan rupiah) per DT x SKU x bucket, dari compile Trend Sales. Ganti total. | Tool upload, kotak "Trend Penjualan (compile)" |
 | `SKU_FLAG` | Daftar SKU per channel: `SAT` (Alfamart) dan `IDM`, dikunci dengan barcode. Upload satu channel tidak mengubah channel lain. | Tool upload, kotak "Daftar SKU SAT & IDM" |
 
 - Update Apps Script API (`google-apps-script/Code.gs`, endpoint `?view=stok`) lalu deploy ulang di deployment yang sama.
@@ -228,12 +229,15 @@ untuk komunikasi ke toko. Data di Sheet PUSAT (bukan Sheet DT):
 
 Di halaman Cek Stok, pilih **SAT (Alfamart)** atau **IDM** untuk melihat apakah stok DT masih cukup untuk SKU di daftar itu.
 
-- Cover (minggu) = stok dalam karton ÷ rata-rata jual per minggu (kolom RPP laporan stok).
-- Status: Habis, Kritis (cover kurang dari 1 minggu), Menipis (kurang dari 2 minggu), Aman, Tanpa penjualan (ada stok, tidak ada jual 13 minggu), Tidak ada di laporan (SKU belum ada di laporan stok DT).
-- Daftar diurut dari yang paling mendesak. Kolom "kurang untuk 2 minggu" menghitung karton yang perlu dipesan. Batas minggu ada di `CFG` di `assets/stok.js`.
-- RPP adalah penjualan seluruh DT, bukan khusus order SAT atau IDM.
-- Barcode yang sama di dua SKU (mis. kemasan ML ke G) digabung jadi satu baris. Tombol Export Excel mengikuti daftar yang tampil. IDM Pareto diberi badge.
-- Stok yang diunggah sebelum kolom `rpp` ada tidak punya data jual. Upload ulang laporan stok supaya cover terhitung.
+- Sumber penjualan: compile Trend Sales (tab `JUAL_SKU`, upload di kotak "Trend Penjualan (compile)"). Isinya GSV per bulan per DT x SKU x bucket. Bucket: SAT (Store Banner ALFAMART), IDM (outlet DC IDM atau banner INDOMARET), lalu GT atau LMT menurut Sheet2 compile, sisanya LAIN.
+- Qty ditaksir = GSV ÷ harga karton tanpa PPN (harga yang berlaku sekarang). Bisa meleset beberapa persen karena harga bulan lalu dan promo.
+- Rata-rata jual per minggu: **13 minggu** = 3 bulan terakhir, **5 minggu** = 1 bulan terakhir. Dasar bisa **semua channel** (stok dipakai bersama) atau **khusus SAT/IDM**.
+- Cover (minggu) = stok dalam karton ÷ rata-rata jual per minggu.
+- Status: Habis, Kritis (cover kurang dari 1 minggu), Menipis (kurang dari 2 minggu), Aman, Tanpa penjualan (ada stok, tidak ada jual di rentang itu), Tidak ada di laporan (SKU belum ada di laporan stok DT).
+- Pembanding tahun lalu: 3 bulan terakhir vs 3 bulan yang sama tahun lalu, dan pola 2 bulan ke depan tahun lalu. Kalau pola itu naik, kolom "kurang untuk 2 minggu" sudah memperhitungkannya.
+- Data trend hanya sampai bulan compile terakhir. Bulan berjalan belum masuk; ganti compile tiap awal bulan.
+- Barcode yang sama di dua SKU (mis. kemasan ML ke G) digabung jadi satu baris. Export Excel mengikuti daftar yang tampil. IDM Pareto diberi badge.
+- Batas minggu ada di `CFG` di `assets/stok.js`. Kolom RPP laporan stok tidak dipakai.
 
 ### Status data di header
 

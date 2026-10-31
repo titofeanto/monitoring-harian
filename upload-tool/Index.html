@@ -127,6 +127,18 @@
   <div id="flgRes"></div>
 </div>
 
+<div class="card" id="card-JUL">
+  <div class="card-head"><div><h3>Trend Penjualan (compile)</h3><span class="tab">JUAL_SKU</span></div>
+    <span class="badge" id="julBadge"><i class="dot"></i>Memuat</span></div>
+  <div class="st-text" id="julText">Mengecek...</div>
+  <div class="desc">File compile Trend Sales (Sheet1 + Sheet2 flagging GT/LMT, kolom Sum of GSV per bulan). Dipakai untuk rata-rata jual per minggu dan pembanding tahun lalu di Cek Stok. File besar: pakai laptop, tunggu sampai satu menit. Ganti total tiap ada compile baru.</div>
+  <label for="julFile">File (.xlsx)</label>
+  <input type="file" id="julFile" accept=".xlsx">
+  <button type="button" class="go" id="julGo" disabled>Proses &amp; simpan trend penjualan</button>
+  <div class="spin" id="julSpin">Memproses file besar, mohon tunggu...</div>
+  <div id="julRes"></div>
+</div>
+
 <h2 style="margin-top:6px">KPI Great Sales</h2>
 <div class="group-note">Scorecard AAM nasional, tidak tergantung DT. Upload tiap hari supaya rank dan daftar toko di halaman Great Sales ikut update.</div>
 <div class="card" id="card-GS">
@@ -687,6 +699,49 @@
     }
     return out;
   }
+  /* Compile Trend Sales: GSV per outlet x SKU x bulan -> per DT x SKU x bucket, deret bulanan (ribuan rupiah).
+     Bucket: SAT (banner ALFAMART), IDM (outlet DC IDM / banner INDOMARET), lalu GT / LMT menurut Sheet2, sisanya LAIN. */
+  function readXlsxBig(file) {
+    return new Promise(function (ok, no) {
+      var r = new FileReader();
+      r.onload = function () { try { ok(XLSX.read(r.result, { type: 'array', dense: true })); } catch (e) { no(e); } };
+      r.onerror = function () { no(new Error('File tidak bisa dibaca.')); };
+      r.readAsArrayBuffer(file);
+    });
+  }
+  function parseTrend(wb) {
+    var ws = wb.Sheets['Sheet1'] || wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+    var h = -1;
+    for (var i = 0; i < Math.min(rows.length, 10); i++) if (xstr(rows[i][0]).toUpperCase() === 'DT CODE NAME') { h = i; break; }
+    if (h < 0) throw new Error('Header "DT CODE NAME" tidak ditemukan. Ini bukan file Trend Sales.');
+    var hd = rows[h].map(function (v) { return xstr(v).toUpperCase(); });
+    var cDt = hd.indexOf('DT CODE NAME'), cBan = hd.indexOf('STORE BANNER'), cOut = hd.indexOf('OUTLET CODE & NAME'), cSub = hd.indexOf('SUBCHANNEL MAPP'),
+        cSku = hd.indexOf('PARENT SKU CODE & NAME'), cY = hd.indexOf('YEAR'), cM = hd.indexOf('MONTH'), cV = hd.indexOf('SUM OF GSV');
+    if ([cDt, cOut, cSub, cSku, cY, cM, cV].some(function (x) { return x < 0; })) throw new Error('Kolom compile berubah (DT CODE NAME, Outlet, Subchannel, Parent SKU, Year, Month, Sum of GSV).');
+    var map = {};
+    if (wb.Sheets['Sheet2']) aoa(wb, 'Sheet2').slice(1).forEach(function (r) { if (r[0] && r[2]) map[xstr(r[2]).toUpperCase()] = xstr(r[0]).toUpperCase(); });
+    if (!Object.keys(map).length) throw new Error('Sheet2 (flagging GT/LMT per subchannel) tidak ada atau kosong.');
+    var minI = 1e9, maxI = -1, agg = {}, unk = {};
+    for (var j = h + 1; j < rows.length; j++) {
+      var r = rows[j], dt = xstr(r[cDt]).split(' - ')[0].trim(), y = xnum(r[cY]), m = xnum(r[cM]), v = xnum(r[cV]);
+      if (!dt || !y || !m || !v) continue;
+      var sku = xstr(r[cSku]).split(' - ')[0].trim(); if (!/^\d+$/.test(sku)) continue;
+      var ban = cBan >= 0 ? xstr(r[cBan]).toUpperCase() : '', out = xstr(r[cOut]).toUpperCase(), sub = xstr(r[cSub]).toUpperCase();
+      var b = ban === 'ALFAMART' ? 'SAT' : (out.indexOf('DC IDM') >= 0 || ban === 'INDOMARET') ? 'IDM' : (map[sub] || 'LAIN');
+      if (b === 'LAIN') unk[sub] = 1;
+      var idx = y * 12 + m - 1; if (idx < minI) minI = idx; if (idx > maxI) maxI = idx;
+      var k = dt + '|' + sku + '|' + b; (agg[k] = agg[k] || {})[idx] = (agg[k][idx] || 0) + v;
+    }
+    if (maxI < 0) throw new Error('Tidak ada baris penjualan yang terbaca.');
+    var mulai = Math.floor(minI / 12) + '-' + ('0' + (minI % 12 + 1)).slice(-2), n = maxI - minI + 1;
+    var out2 = Object.keys(agg).map(function (k) {
+      var p = k.split('|'), a = agg[k], vals = [];
+      for (var q = 0; q < n; q++) vals.push(Math.round((a[minI + q] || 0) / 1000));
+      return [p[0], p[1], p[2], mulai, vals.join(',')];
+    });
+    return { rows: out2, mulai: mulai, bulan: n, lain: Object.keys(unk) };
+  }
   function loadStk() {
     google.script.run.withSuccessHandler(function (st) {
       el('card-HPL').className = 'card lv-' + st.harga.level;
@@ -696,6 +751,9 @@
       el('card-STK').className = 'card lv-' + worst;
       el('stkBadge').className = 'badge lv-' + worst; el('stkBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[worst];
       el('stkText').textContent = st.stok.map(function (d) { return d.nama + ': ' + d.text; }).join('\n');
+      el('card-JUL').className = 'card lv-' + st.jual.level;
+      el('julBadge').className = 'badge lv-' + st.jual.level; el('julBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.jual.level];
+      el('julText').textContent = st.jual.text;
       el('card-FLG').className = 'card lv-' + st.flag.level;
       el('flgBadge').className = 'badge lv-' + st.flag.level; el('flgBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.flag.level];
       el('flgText').textContent = st.flag.text;
@@ -708,10 +766,20 @@
       el(prefix + 'Spin').classList.remove('show'); el(prefix + 'Go').disabled = false;
       el(prefix + 'Res').innerHTML = '<div class="result lv-' + lv + '">' + html + '</div>';
     };
-    readXlsx(f).then(function (wb) { return work(wb, done); }).catch(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); });
+    (prefix === 'jul' ? readXlsxBig : readXlsx)(f).then(function (wb) { return work(wb, done); }).catch(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); });
   }
   el('hplFile').addEventListener('change', function () { el('hplGo').disabled = !this.files[0]; });
   el('stkFile').addEventListener('change', function () { el('stkGo').disabled = !this.files[0]; });
+  el('julFile').addEventListener('change', function () { el('julGo').disabled = !this.files[0]; });
+  el('julGo').addEventListener('click', function () {
+    stkRun('jul', function (wb, done) {
+      var p = parseTrend(wb);
+      google.script.run.withSuccessHandler(function (res) {
+        var dts = Object.keys(res.dts).map(function (k) { return k + ' ' + res.dts[k]; }).join(', ');
+        done('green', '<b>Tersimpan.</b>\n' + res.rows + ' baris · ' + p.bulan + ' bulan mulai ' + p.mulai + '\n' + esc(dts) + (res.dropped ? '\n' + res.dropped + ' baris DT tidak terdaftar dibuang.' : '') + (p.lain.length ? '\nSubchannel tanpa flag GT/LMT (masuk LAIN): ' + esc(p.lain.join(', ')) : '')); loadStk();
+      }).withFailureHandler(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); }).saveJualSku(p.rows);
+    });
+  });
   el('flgFile').addEventListener('change', function () { el('flgGo').disabled = !this.files[0]; });
   el('flgGo').addEventListener('click', function () {
     stkRun('flg', function (wb, done) {

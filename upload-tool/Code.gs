@@ -1469,6 +1469,8 @@ const HARGA_TAB = 'HARGA_PL';
 const HARGA_HEADER = ['sku', 'barcode', 'brand', 'nama', 'kemasan', 'isi', 'mulai', 'h_new', 'h_old', 's_new', 's_old', 'tanggal_pl'];
 const STOK_TAB = 'STOK_GUDANG';
 const STOK_HEADER = ['dt_kode', 'tanggal', 'sku', 'karton', 'lusin', 'pcs', 'isi', 'rpp'];
+const JUAL_TAB = 'JUAL_SKU';
+const JUAL_HEADER = ['dt_kode', 'sku', 'bkt', 'mulai', 'v'];
 const FLAG_TAB = 'SKU_FLAG';
 const FLAG_HEADER = ['barcode', 'flag', 'plu', 'ket'];
 
@@ -1540,6 +1542,25 @@ function saveSkuFlag(flag, rows) {
   } finally { lock.releaseLock(); }
 }
 
+/**
+ * Riwayat penjualan bulanan (GSV, ribuan rupiah) per DT x SKU x bucket (SAT, IDM, GT, LMT, LAIN), dari compile Trend Sales.
+ * rows: [[dt_kode, sku, bkt, mulai 'YYYY-MM', 'v1,v2,...' satu angka per bulan berurutan]]. Ganti total; DT yang tidak terdaftar dibuang.
+ */
+function saveJualSku(rows) {
+  if (!Array.isArray(rows) || rows.length < 50) throw new Error('Data penjualan terlalu sedikit (' + (rows ? rows.length : 0) + ' baris). Upload dibatalkan.');
+  const reg = {}; readRegistry_().filter(x => x.peran === 'dt' && x.sheet_id).forEach(x => { reg[String(x.dt_kode)] = x.nama_dt; });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const out = rows.filter(r => reg[String(r[0])]);
+    if (!out.length) throw new Error('Tidak ada DT di file yang terdaftar di Monitoring Daily.');
+    const dts = {}; out.forEach(r => { dts[reg[String(r[0])]] = (dts[reg[String(r[0])]] || 0) + 1; });
+    writeTextTab_(ss, JUAL_TAB, JUAL_HEADER, out);
+    return { ok: true, rows: out.length, dropped: rows.length - out.length, dts: dts };
+  } finally { lock.releaseLock(); }
+}
+
 /** Status dua kotak di halaman upload. */
 function getStokStatus() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1561,5 +1582,9 @@ function getStokStatus() {
   const fl = { SAT: 0, IDM: 0 };
   readTextTab_(ss, FLAG_TAB, FLAG_HEADER).forEach(r => { if (fl[r[1]] !== undefined) fl[r[1]]++; });
   const flag = { level: fl.SAT && fl.IDM ? 'green' : 'red', text: 'SAT ' + fl.SAT + ' SKU · IDM ' + fl.IDM + ' SKU' };
-  return { harga: harga, stok: stok, flag: flag };
+  const jl = readTextTab_(ss, JUAL_TAB, JUAL_HEADER);
+  let jualAkhir = '';
+  jl.forEach(r => { const n = String(r[4]).split(',').length, m = String(r[3]).split('-'), e = utcToIso_(Date.UTC(+m[0], +m[1] - 1 + n - 1, 1)).slice(0, 7); if (e > jualAkhir) jualAkhir = e; });
+  const jual = jl.length ? { level: 'green', text: jl.length + ' baris · data s.d. ' + jualAkhir } : { level: 'red', text: 'Belum pernah diupload' };
+  return { harga: harga, stok: stok, flag: flag, jual: jual };
 }

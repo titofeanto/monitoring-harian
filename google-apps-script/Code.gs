@@ -455,6 +455,7 @@ function respondStok_(me, reg, dtWanted) {
     mode: 'stok',
     dts: dts.filter(x => tanggal[x.dt_kode]).map(x => ({ kode: x.dt_kode, nama: x.nama_dt, tanggal: tanggal[x.dt_kode] })),
     stok: stok.map(r => [String(r.dt_kode), String(r.sku), +r.karton || 0, +r.lusin || 0, +r.pcs || 0, +r.isi || 1, +r.rpp || 0]),
+    jual: readObjs_(ss, 'JUAL_SKU').filter(r => ok[String(r.dt_kode)]).map(r => [String(r.dt_kode), String(r.sku), String(r.bkt), String(r.mulai), String(r.v)]),
     flags: readObjs_(ss, 'SKU_FLAG').map(r => [String(r.barcode), String(r.flag), String(r.plu || ''), String(r.ket || '')]),
     harga: harga.map(r => ({ sku: String(r.sku), bc: String(r.barcode), brand: String(r.brand), nama: String(r.nama), kemasan: String(r.kemasan),
       isi: +r.isi || 1, mulai: iso(r.mulai || ''), hNew: r.h_new === '' ? null : +r.h_new, hOld: r.h_old === '' ? null : +r.h_old,
