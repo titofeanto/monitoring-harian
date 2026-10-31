@@ -38,13 +38,12 @@
   let cacheAt = 0;
   const jam = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0'); };
   /* Status data di header (titik hijau/kuning/merah); banner hanya untuk gagal memperbarui. */
-  function setSync(state, text) { const el = $('sync'); el.className = 'sync ' + state; el.innerHTML = '<i></i><span>' + esc(text) + '</span>'; }
   function refreshNote(txt) {
     const b = $('gsBanner'); b.hidden = true;
-    if (!txt) { setSync('ok', 'Terbaru'); return; }
-    if (/^Memperbarui/.test(txt)) { setSync('wait', 'Memperbarui…'); return; }
-    if (/^Data diperbarui/.test(txt)) { setSync('ok', txt.replace('Data diperbarui pukul ', 'Terbaru ')); return; }
-    setSync('off', 'Gagal memperbarui'); b.hidden = false; b.textContent = txt;
+    if (!txt) { window.MHFresh.set({ fetch: 'ok' }); return; }
+    if (/^Memperbarui/.test(txt)) { window.MHFresh.set({ fetch: 'wait', text: 'Memperbarui…' }); return; }
+    if (/^Data diperbarui/.test(txt)) { window.MHFresh.set({ fetch: 'ok', at: Date.now() }); return; }
+    window.MHFresh.set({ fetch: 'off' }); b.hidden = false; b.textContent = txt;
   }
   let toastT;
   function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2200); }
@@ -264,6 +263,7 @@
     const fw = cur.rows.FOP_WEEK;
     $('gsSub').textContent = 'AAM' + (DATA.scope ? ' · ' + DATA.scope.nama : ' · semua DT') + (monLive() ? ' · FOP s.d. mg ' + monSummary().week : fw && fw.aktual !== '' ? ' · FOP s.d. mg ' + fw.aktual : '');
     $('gsUpdated').textContent = 'Data ' + tgl(cur.tanggal);
+    window.MHFresh.set({ info: window.MHFresh.status(cur.tanggal, { label: 'Scorecard' }) });
     const big = $('greetBig'); big.textContent = rank == null ? 'Rank –' : 'Rank ' + rank; big.dataset.len = '';
 
     if (DATA.dts && DATA.dts.length) {
@@ -545,13 +545,15 @@
     const r = e.target.closest('[data-reset]'); if (r) { const id = r.dataset.reset; LST[id].q = ''; LST[id].f = LISTS[id].defaultF; $('tb-' + id).querySelector('input').value = ''; fillList(id); return; }
     $('syncPop').hidden = true;
   });
-  $('syncInfo').addEventListener('click', e => { e.stopPropagation(); const p = $('syncPop'); p.hidden = !p.hidden; });
+  window.MHFresh.bind();
   $('refreshBtn').addEventListener('click', () => {
     const b = $('refreshBtn'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
     refreshNote('Memperbarui data…');
     login(CODE, true, true).then(ok => { if (ok) toast('Data diperbarui'); });
   });
-  try { setTab(localStorage.getItem('mh_gs_tab') || 'skor'); } catch (e) { setTab('skor'); }
+  /* #fop dst dari halaman Cek Stok membuka tab itu; tanpa hash, tab terakhir dibuka. */
+  const hashTab = (location.hash || '').replace('#', '');
+  try { setTab(TABS.includes(hashTab) ? hashTab : (localStorage.getItem('mh_gs_tab') || 'skor')); } catch (e) { setTab(TABS.includes(hashTab) ? hashTab : 'skor'); }
 
   let saved = null; try { saved = localStorage.getItem(LS_CODE); } catch (e) { /* mode privat */ }
   if (saved) { $('codeInput').value = saved; login(saved, true); }

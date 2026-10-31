@@ -91,10 +91,12 @@ html.has-code .boot{display:grid}
 .sync.ok i::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--st);animation:ping 1.8s ease-out infinite}
 .sync.wait{--st:#FBBF24}.sync.wait i{animation:blink 1s ease-in-out infinite}
 .sync.off{--st:#F87171}
+.sync.late{--st:#FBBF24}
 .sync-info{width:20px;height:20px;border-radius:50%;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-size:12px;font-weight:700;cursor:pointer;padding:0;flex:none}
 .sync-pop{position:absolute;right:0;top:calc(100% + 8px);z-index:40;width:min(290px,calc(100vw - 32px));background:var(--surface);color:var(--ink);border-radius:var(--r-s);box-shadow:var(--shadow);padding:10px 12px;display:grid;gap:8px;font-size:12px;text-align:left;line-height:1.35}
 .sync-pop div{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start}
 .sync-pop i{width:9px;height:9px;border-radius:50%;margin-top:4px}
+.sync-pop .late i{background:#D99A00}.sync-pop .det{padding-bottom:8px;margin-bottom:2px;border-bottom:1px solid var(--line,#E3EAF4)}
 .sync-pop .ok i{background:var(--ok)}.sync-pop .wait i{background:#D99A00}.sync-pop .off i{background:var(--minus)}
 @keyframes ping{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.8);opacity:0}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
@@ -402,3 +404,7 @@ td.muted{white-space:normal}
 .cs-pr s{color:var(--ink-2)}
 .cs-up{color:var(--minus);font-weight:700}.cs-dn{color:var(--ok);font-weight:700}
 .cs-note{margin-top:8px;font-size:12px;padding:6px 10px;border-radius:var(--r-s);background:var(--warn-bg);color:var(--warn-ink)}
+.cs-cov{margin-top:8px;font-size:13px;color:var(--ink-2)}
+.cs-cov b{color:var(--ink)}
+.cs-need{margin-top:6px;font-size:12px;padding:6px 10px;border-radius:var(--r-s);background:var(--surface-2);color:var(--ink)}
+.chips button .n{font-weight:800;margin-left:4px}

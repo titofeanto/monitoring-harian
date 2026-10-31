@@ -215,13 +215,32 @@ untuk komunikasi ke toko. Data di Sheet PUSAT (bukan Sheet DT):
 | Tab | Isi | Diisi lewat |
 |---|---|---|
 | `HARGA_PL` | Daftar harga Unilever (harga lama dan baru per karton dan pcs, barcode, tanggal berlaku). Ganti total, semua DT. | Tool upload, kotak "Daftar Harga Unilever" (file SUMMARY PRICE LIST, sheet HARGA BARU + HARGA LAMA) |
-| `STOK_GUDANG` | Stok karton/lusin/pcs per SKU per DT. Hanya baris DT di file yang diganti. | Tool upload, kotak "Stok Gudang DT" (Distributor Stock Report; DT dibaca dari file) |
+| `STOK_GUDANG` | Stok karton/lusin/pcs per SKU per DT, plus `rpp` (rata-rata jual per minggu dalam karton, 13 minggu, dari kolom RPP laporan). Hanya baris DT di file yang diganti. | Tool upload, kotak "Stok Gudang DT" (Distributor Stock Report; DT dibaca dari file) |
+| `SKU_FLAG` | Daftar SKU per channel: `SAT` (Alfamart) dan `IDM`, dikunci dengan barcode. Upload satu channel tidak mengubah channel lain. | Tool upload, kotak "Daftar SKU SAT & IDM" |
 
 - Update Apps Script API (`google-apps-script/Code.gs`, endpoint `?view=stok`) lalu deploy ulang di deployment yang sama.
 - Kode DT hanya melihat stok DT-nya. Kode pusat melihat semua DT lewat chip.
 - Harga naik/turun dihitung dari selisih harga baru vs lama per karton. SKU baru yang tidak ada di HARGA LAMA dicocokkan lewat barcode (kemasan sama); kalau tidak ketemu, ditandai BARU.
 - Biaya beli dan MAP dari laporan stok tidak pernah dikirim ke Sheet.
 - Stok total pcs = karton × isi + lusin × 12 + pcs.
+
+### Analisa stok SAT dan IDM
+
+Di halaman Cek Stok, pilih **SAT (Alfamart)** atau **IDM** untuk melihat apakah stok DT masih cukup untuk SKU di daftar itu.
+
+- Cover (minggu) = stok dalam karton ÷ rata-rata jual per minggu (kolom RPP laporan stok).
+- Status: Habis, Kritis (cover kurang dari 1 minggu), Menipis (kurang dari 2 minggu), Aman, Tanpa penjualan (ada stok, tidak ada jual 13 minggu), Tidak ada di laporan (SKU belum ada di laporan stok DT).
+- Daftar diurut dari yang paling mendesak. Kolom "kurang untuk 2 minggu" menghitung karton yang perlu dipesan. Batas minggu ada di `CFG` di `assets/stok.js`.
+- RPP adalah penjualan seluruh DT, bukan khusus order SAT atau IDM.
+- Barcode yang sama di dua SKU (mis. kemasan ML ke G) digabung jadi satu baris. Tombol Export Excel mengikuti daftar yang tampil. IDM Pareto diberi badge.
+- Stok yang diunggah sebelum kolom `rpp` ada tidak punya data jual. Upload ulang laporan stok supaya cover terhitung.
+
+### Status data di header
+
+Bubble di header tiga halaman memakai aturan yang sama dengan tool upload: tanggal yang seharusnya sudah ada = hari ini
+kalau hari kerja, kalau Minggu atau libur mundur ke hari kerja terakhir. Hijau "Sudah update", kuning "Telat N hari".
+Stok dianggap telat kalau lebih dari 2 hari. Ketuk tombol i untuk melihat tanggal data dan pukul pengambilan.
+Libur hanya dikenali di halaman Monitoring Harian (tab `HARI_LIBUR`); halaman lain hanya mengecualikan Minggu.
 
 ### Stock otomatis dari SBA Logbook App
 

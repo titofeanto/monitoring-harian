@@ -7,8 +7,8 @@
 <meta name="theme-color" content="#1769C8">
 <title>Cek Stok &amp; Harga Naik</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=202610301700">
-<script src="assets/boot.js?v=202610301700"></script>
+<link rel="stylesheet" href="assets/style.css?v=202610311000">
+<script src="assets/boot.js?v=202610311000"></script>
 </head>
 <body>
 
@@ -55,27 +55,48 @@
       <div class="greet-hi" id="csUpdated"></div>
       <a class="pill-link" href="./"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><span>Monitoring Harian</span></a>
       <div class="greet-big" id="csBig">Stok harga naik</div>
+      <div class="sync-wrap"><span class="sync ok" id="sync"><i></i><span>Terbaru</span></span><button class="sync-info" id="syncInfo" type="button" aria-label="Arti warna status data">i</button></div>
+      <div class="sync-pop" id="syncPop" hidden></div>
     </div>
   </header>
   <div class="banner" id="csBanner" hidden style="margin:12px 16px 0"></div>
+
+  <nav class="tabs" id="tabsNav" aria-label="Bagian">
+    <a href="great-sales.html#skor"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/></svg><span class="lbl-l">Skor</span><span class="lbl-s">Skor</span></a>
+    <a href="great-sales.html#fop"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span class="lbl-l">Weekly FOP</span><span class="lbl-s">FOP</span></a>
+    <a href="great-sales.html#asrt"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span class="lbl-l">Assortment</span><span class="lbl-s">Asrt</span></a>
+    <a href="great-sales.html#ps"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6"/></svg><span class="lbl-l">Perfect Store</span><span class="lbl-s">PS</span></a>
+    <a href="cek-stok.html" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span class="lbl-l">Cek Stok</span><span class="lbl-s">Stok</span></a>
+  </nav>
 
   <main>
     <div class="sec" id="dtSec" hidden><div class="chips" id="dtChips" role="group" aria-label="Pilih DT"></div></div>
 
     <div class="card">
+      <div class="chips" id="csMode" role="group" aria-label="Jenis analisa" style="margin-bottom:10px">
+        <button type="button" data-m="harga" aria-pressed="true">Harga &amp; stok</button>
+        <button type="button" data-m="SAT" aria-pressed="false">SAT (Alfamart)</button>
+        <button type="button" data-m="IDM" aria-pressed="false">IDM</button>
+      </div>
       <div class="cs-search">
         <div class="sbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="csQ" type="search" inputmode="search" autocomplete="off" placeholder="Scan / ketik barcode, nama, atau SKU"></div>
         <button class="btn" id="csScan" type="button">Scan</button>
       </div>
       <div class="cs-reader" id="csReader" hidden><div id="csReaderView"></div><button class="btn plain" id="csScanStop" type="button" style="width:100%;margin-top:8px">Tutup kamera</button></div>
+      <div id="csHargaF">
       <div class="chips" id="csChips" role="group" aria-label="Filter harga" style="margin-top:10px">
         <button type="button" data-f="naik" aria-pressed="true">Harga naik</button>
         <button type="button" data-f="turun" aria-pressed="false">Harga turun</button>
         <button type="button" data-f="semua" aria-pressed="false">Semua</button>
       </div>
+      </div>
+      <div id="csAnaF" hidden>
+        <div class="chips" id="csAna" role="group" aria-label="Filter status stok" style="margin-top:10px"></div>
+        <p class="hint" id="csAnaNote" style="margin:10px 0 0"></p>
+      </div>
       <div class="cs-filters">
         <select id="csBrand" aria-label="Filter brand"><option value="">Semua brand</option></select>
-        <label class="chk"><input id="csOnly" type="checkbox" checked> Hanya yang ada stok</label>
+        <label class="chk" id="csOnlyW"><input id="csOnly" type="checkbox" checked> Hanya yang ada stok</label>
       </div>
       <div class="cs-bar"><span id="csCount" class="muted"></span><button class="btn ic" id="csExport" type="button">Export Excel</button></div>
     </div>
@@ -94,8 +115,9 @@
 
 <div class="toast" id="toast" hidden></div>
 
-<script src="assets/config.js?v=202610301700"></script>
+<script src="assets/config.js?v=202610311000"></script>
+<script src="assets/fresh.js?v=202610311000"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="assets/stok.js?v=202610301700"></script>
+<script src="assets/stok.js?v=202610311000"></script>
 </body>
 </html>

@@ -1468,7 +1468,9 @@ function readRekapStatus_(ss) {
 const HARGA_TAB = 'HARGA_PL';
 const HARGA_HEADER = ['sku', 'barcode', 'brand', 'nama', 'kemasan', 'isi', 'mulai', 'h_new', 'h_old', 's_new', 's_old', 'tanggal_pl'];
 const STOK_TAB = 'STOK_GUDANG';
-const STOK_HEADER = ['dt_kode', 'tanggal', 'sku', 'karton', 'lusin', 'pcs', 'isi'];
+const STOK_HEADER = ['dt_kode', 'tanggal', 'sku', 'karton', 'lusin', 'pcs', 'isi', 'rpp'];
+const FLAG_TAB = 'SKU_FLAG';
+const FLAG_HEADER = ['barcode', 'flag', 'plu', 'ket'];
 
 function writeTextTab_(ss, name, header, rows) {
   const sh = ss.getSheetByName(name) || ss.insertSheet(name);
@@ -1499,7 +1501,7 @@ function saveHargaPL(rows, tanggalPl) {
   } finally { lock.releaseLock(); }
 }
 
-/** rows: [[sku, karton, lusin, pcs, isi]] untuk satu DT. */
+/** rows: [[sku, karton, lusin, pcs, isi, rpp]] untuk satu DT. rpp = rata-rata jual per minggu (karton), 13 minggu. */
 function saveStokGudang(dtKode, tanggal, rows) {
   const dt = resolveDt_(dtKode);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(tanggal))) throw new Error('Tanggal laporan stok tidak terbaca.');
@@ -1509,9 +1511,32 @@ function saveStokGudang(dtKode, tanggal, rows) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const keep = readTextTab_(ss, STOK_TAB, STOK_HEADER).filter(r => String(r[0]) !== dt.dt_kode);
-    const mine = rows.map(r => [dt.dt_kode, tanggal, r[0], r[1], r[2], r[3], r[4]]);
+    const mine = rows.map(r => [dt.dt_kode, tanggal, r[0], r[1], r[2], r[3], r[4], r[5] || 0]);
     writeTextTab_(ss, STOK_TAB, STOK_HEADER, keep.concat(mine));
     return { ok: true, dt: dt.nama_dt, rows: mine.length };
+  } finally { lock.releaseLock(); }
+}
+
+/**
+ * Daftar SKU per channel (flag SAT / IDM) untuk analisa stok. Mengganti semua baris flag itu saja, flag lain tidak disentuh.
+ * rows: [{barcode, plu, ket}]. ket = catatan singkat (mis. "Pareto"), dipakai sebagai badge di halaman Cek Stok.
+ */
+function saveSkuFlag(flag, rows) {
+  if (flag !== 'SAT' && flag !== 'IDM') throw new Error('Flag harus SAT atau IDM.');
+  if (!Array.isArray(rows) || rows.length < 10) throw new Error('Daftar SKU ' + flag + ' terlalu sedikit (' + (rows ? rows.length : 0) + ' baris). Upload dibatalkan.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const keep = readTextTab_(ss, FLAG_TAB, FLAG_HEADER).filter(r => String(r[1]) !== flag);
+    const seen = {}, mine = [];
+    rows.forEach(r => {
+      const bc = String(r.barcode || '').replace(/\D/g, '').replace(/^0+/, '');
+      if (!bc || seen[bc]) return;
+      seen[bc] = true; mine.push([bc, flag, String(r.plu || ''), String(r.ket || '')]);
+    });
+    writeTextTab_(ss, FLAG_TAB, FLAG_HEADER, keep.concat(mine));
+    return { ok: true, flag: flag, rows: mine.length };
   } finally { lock.releaseLock(); }
 }
 
@@ -1533,5 +1558,8 @@ function getStokStatus() {
     if (!o) return { kode: x.dt_kode, nama: x.nama_dt, level: 'red', text: 'Belum pernah diupload' };
     return { kode: x.dt_kode, nama: x.nama_dt, level: o.tanggal < expected ? 'amber' : 'green', text: o.n + ' SKU · stok per ' + fmtDateID_(o.tanggal) };
   });
-  return { harga: harga, stok: stok };
+  const fl = { SAT: 0, IDM: 0 };
+  readTextTab_(ss, FLAG_TAB, FLAG_HEADER).forEach(r => { if (fl[r[1]] !== undefined) fl[r[1]]++; });
+  const flag = { level: fl.SAT && fl.IDM ? 'green' : 'red', text: 'SAT ' + fl.SAT + ' SKU · IDM ' + fl.IDM + ' SKU' };
+  return { harga: harga, stok: stok, flag: flag };
 }

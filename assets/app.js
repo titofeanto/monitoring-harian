@@ -381,7 +381,7 @@ function buildModel(payload) {
     rules, hkTotal, hkRun, hkLeft: Math.max(0, hkTotal - hkRun),
     dt: { nama: str(cfg.dt_nama), kode: dtKode, ket: str(cfg.dt_ket) },
     periode, bulan: bulanOf(periode), tanggalData: str(cfg.tanggal_data), ngdmsTanggal: str(cfg.ngdms_tanggal_data),
-    lastDay, lastUploadDate,
+    lastDay, lastUploadDate, libur: Array.from(libur),
     builtAt: payload.builtAt || '',
     counts: { extract: tE.rows.length, norms: tN.rows.length, fokus: tF.rows.length, outlet: tO.rows.length, produk: tP.rows.length },
     warn, note, dsrList,
@@ -568,14 +568,14 @@ if (typeof module !== 'undefined') {
   let touched = false, pendingRaw = null, cacheAt = 0;
   const jam = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0'); };
   /* Status data di header (titik hijau/kuning/merah). Banner hanya muncul untuk gagal atau data baru yang menunggu. */
-  function setSync(state, text) { const el = $('sync'); el.className = 'sync ' + state; el.innerHTML = '<i></i><span>' + M.esc(text) + '</span>'; }
+  /* Bubble status di header: kesegaran data (sudah update / telat) memakai aturan tool upload; saat mengambil data tampil Memperbarui. */
   function refreshNote(txt, done, btn) {
     const banner = $('appRefresh');
     banner.hidden = true; $('appRefreshBtn').hidden = true;
-    if (!txt) { setSync('ok', 'Terbaru'); return; }
-    if (/^Memperbarui/.test(txt)) { setSync('wait', 'Memperbarui…'); return; }
-    if (/^Data diperbarui/.test(txt)) { setSync('ok', txt.replace('Data diperbarui pukul ', 'Terbaru ')); return; }
-    setSync(btn ? 'wait' : 'off', btn ? 'Data baru siap' : 'Gagal memperbarui');
+    if (!txt) { window.MHFresh.set({ fetch: 'ok' }); return; }
+    if (/^Memperbarui/.test(txt)) { window.MHFresh.set({ fetch: 'wait', text: 'Memperbarui…' }); return; }
+    if (/^Data diperbarui/.test(txt)) { window.MHFresh.set({ fetch: 'ok', at: Date.now() }); return; }
+    window.MHFresh.set({ fetch: btn ? 'wait' : 'off', text: btn ? 'Data baru siap' : '' });
     banner.hidden = false; $('appRefreshTxt').textContent = txt; $('appRefreshBtn').hidden = !btn;
   }
   let toastT;
@@ -752,6 +752,8 @@ if (typeof module !== 'undefined') {
     $('dtSub').textContent = [PUSAT.length + ' DT', bulan].filter(Boolean).join(' · ');
     const tgl = PUSAT.filter(d => d.model).map(d => d.model.lastUploadDate || d.model.tanggalData).filter(Boolean).sort();
     $('dtUpdated').textContent = tgl.length ? 'Data extract paling lama per ' + tgl[0] : '';
+    const m0 = PUSAT.find(d => d.model);
+    window.MHFresh.set({ info: window.MHFresh.status(tgl[0], { label: 'Extract DMS paling lama', libur: m0 && m0.model.libur }) });
     setBig(bulan || 'Semua DT');
   }
 
@@ -868,6 +870,7 @@ if (typeof module !== 'undefined') {
     const tgl = MODEL.lastUploadDate || MODEL.tanggalData;
     const upd = tgl ? ('Data extract per ' + tgl) : '';
     $('dtUpdated').textContent = [upd, MODEL.hkRun + '/' + MODEL.hkTotal + ' HK'].filter(Boolean).join(' · ');
+    window.MHFresh.set({ info: window.MHFresh.status(tgl, { label: 'Extract DMS', libur: MODEL.libur }) });
     setBig(MODEL.bulan || 'Monitoring Harian');
   }
   function initialsOf(name) {
@@ -1080,8 +1083,7 @@ if (typeof module !== 'undefined') {
     refreshNote('Memperbarui data…');
     tryLogin(AUTH_CODE, true, true).then(ok => { if (ok) toast('Data diperbarui'); });
   });
-  $('syncInfo').addEventListener('click', e => { e.stopPropagation(); const p = $('syncPop'); p.hidden = !p.hidden; });
-  document.addEventListener('click', () => { $('syncPop').hidden = true; });
+  window.MHFresh.bind();
 
   /* login otomatis kalau kode tersimpan dari sesi sebelumnya */
   let saved = null; try { saved = localStorage.getItem(LS_CODE); } catch {}

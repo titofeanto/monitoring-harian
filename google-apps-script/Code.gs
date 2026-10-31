@@ -454,7 +454,8 @@ function respondStok_(me, reg, dtWanted) {
   return {
     mode: 'stok',
     dts: dts.filter(x => tanggal[x.dt_kode]).map(x => ({ kode: x.dt_kode, nama: x.nama_dt, tanggal: tanggal[x.dt_kode] })),
-    stok: stok.map(r => [String(r.dt_kode), String(r.sku), +r.karton || 0, +r.lusin || 0, +r.pcs || 0, +r.isi || 1]),
+    stok: stok.map(r => [String(r.dt_kode), String(r.sku), +r.karton || 0, +r.lusin || 0, +r.pcs || 0, +r.isi || 1, +r.rpp || 0]),
+    flags: readObjs_(ss, 'SKU_FLAG').map(r => [String(r.barcode), String(r.flag), String(r.plu || ''), String(r.ket || '')]),
     harga: harga.map(r => ({ sku: String(r.sku), bc: String(r.barcode), brand: String(r.brand), nama: String(r.nama), kemasan: String(r.kemasan),
       isi: +r.isi || 1, mulai: iso(r.mulai || ''), hNew: r.h_new === '' ? null : +r.h_new, hOld: r.h_old === '' ? null : +r.h_old,
       sNew: r.s_new === '' ? null : +r.s_new, sOld: r.s_old === '' ? null : +r.s_old })),
@@ -879,7 +880,7 @@ function monRecap_(hist, asrtRows, bandedSku, cfg) {
 }
 
 const STOK_TAB = 'STOK_GUDANG';
-const STOK_HEADER = ['dt_kode', 'tanggal', 'sku', 'karton', 'lusin', 'pcs', 'isi'];
+const STOK_HEADER = ['dt_kode', 'tanggal', 'sku', 'karton', 'lusin', 'pcs', 'isi', 'rpp'];
 const STOK_MAX_ROWS = 8000;
 const STOK_BACKUP_TAB = '(Backup) STOK_GUDANG';
 
@@ -897,7 +898,7 @@ function simpanStok_(body) {
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i], sku = String(r[0] || '').trim();
     if (!/^\d+$/.test(sku)) continue;
-    clean.push([dt, tanggal, sku, +r[1] || 0, +r[2] || 0, +r[3] || 0, +r[4] || 1]);
+    clean.push([dt, tanggal, sku, +r[1] || 0, +r[2] || 0, +r[3] || 0, +r[4] || 1, Math.max(0, +r[5] || 0)]);
   }
   if (!clean.length) return { error: 'bad_request', message: 'Tidak ada baris SKU yang valid.' };
   const lock = LockService.getScriptLock();

@@ -67,7 +67,7 @@
   .desc { font-size: 13px; color: var(--soft); margin: 8px 0; }
   .warnnote { font-size: 12px; color: var(--amber-ink); background: var(--amber-bg); border-radius: 11px; padding: 8px 10px; margin: 6px 0; }
   label { display: block; font-size: 13px; font-weight: 600; color: var(--soft); margin: 10px 0 6px; }
-  input[type=file], input[type=date], input[type=number] { width: 100%; font: inherit; font-size: 14px; color: var(--ink); }
+  input[type=file], input[type=date], input[type=number], select { width: 100%; font: inherit; font-size: 14px; color: var(--ink); }
   input[type=date], input[type=number] { padding: 10px 12px; min-height: 44px; border: 1.5px solid var(--line); border-radius: 11px; background: var(--card2); }
   input[type=file]::file-selector-button { border: 0; border-radius: 999px; background: var(--blue-bg); color: var(--blue); font: 600 12px 'Inter', sans-serif; padding: 8px 14px; margin-right: 10px; cursor: pointer; }
   input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-bg); }
@@ -111,6 +111,20 @@
   <button type="button" class="go" id="stkGo" disabled>Proses &amp; simpan stok gudang</button>
   <div class="spin" id="stkSpin">Memproses...</div>
   <div id="stkRes"></div>
+</div>
+
+<div class="card" id="card-FLG">
+  <div class="card-head"><div><h3>Daftar SKU SAT &amp; IDM</h3><span class="tab">SKU_FLAG</span></div>
+    <span class="badge" id="flgBadge"><i class="dot"></i>Memuat</span></div>
+  <div class="st-text" id="flgText">Mengecek...</div>
+  <div class="desc">Untuk analisa stok di halaman Cek Stok. SAT = list item Unilever Alfamart (kolom barcode). IDM = List Item Aktif Unilever IDM (kolom BARCODE ULI, kolom Pareto SON). Upload satu per satu; daftar channel lain tidak berubah.</div>
+  <label for="flgKind">Channel</label>
+  <select id="flgKind"><option value="SAT">SAT (Alfamart)</option><option value="IDM">IDM</option></select>
+  <label for="flgFile">File (.xlsx)</label>
+  <input type="file" id="flgFile" accept=".xlsx">
+  <button type="button" class="go" id="flgGo" disabled>Proses &amp; simpan daftar SKU</button>
+  <div class="spin" id="flgSpin">Memproses...</div>
+  <div id="flgRes"></div>
 </div>
 
 <h2 style="margin-top:6px">KPI Great Sales</h2>
@@ -636,11 +650,12 @@
     var rows = aoa(wb, wb.Sheets['Sheet1'] ? 'Sheet1' : wb.SheetNames[0]), h = -1;
     for (var i = 0; i < rows.length; i++) if (xstr(rows[i][0]) === 'PCODE') { h = i; break; }
     if (h < 0) throw new Error('Kolom PCODE tidak ditemukan. Ini bukan Distributor Stock Report.');
+    var cRpp = rows[h].map(function (v) { return xstr(v).toUpperCase(); }).findIndex(function (v) { return v.indexOf('RPP') === 0; });
     var out = [];
     for (var j = h + 1; j < rows.length; j++) {
       var r = rows[j], sku = xstr(r[0]);
       if (!/^\d+$/.test(sku)) continue;
-      out.push([sku, xnum(r[4]) || 0, xnum(r[5]) || 0, xnum(r[6]) || 0, xnum(r[2]) || 1]);
+      out.push([sku, xnum(r[4]) || 0, xnum(r[5]) || 0, xnum(r[6]) || 0, xnum(r[2]) || 1, cRpp >= 0 ? xnum(r[cRpp]) || 0 : 0]);
     }
     var dt = '', tgl = '';
     if (wb.Sheets['Selected Parameters']) {
@@ -656,6 +671,22 @@
     if (!tgl) throw new Error('Tanggal laporan tidak terbaca dari sheet Selected Parameters.');
     return { dt: dt, tanggal: tgl, rows: out };
   }
+  /* Daftar SKU channel: SAT (kolom barcode) atau IDM (kolom BARCODE ULI, Pareto SON). Kunci pencocokan = barcode. */
+  function parseFlag(wb, kind) {
+    var rows = aoa(wb, wb.SheetNames[0]), up = function (v) { return xstr(v).toUpperCase(); }, h = -1, cB = -1, cP = -1, cPar = -1;
+    for (var i = 0; i < Math.min(rows.length, 6) && h < 0; i++) {
+      var hd = rows[i].map(up), b = hd.indexOf(kind === 'IDM' ? 'BARCODE ULI' : 'BARCODE');
+      if (b >= 0) { h = i; cB = b; cP = hd.indexOf('PLU'); cPar = hd.findIndex(function (v) { return v.indexOf('PARETO') === 0; }); }
+    }
+    if (h < 0) throw new Error('Kolom ' + (kind === 'IDM' ? 'BARCODE ULI' : 'barcode') + ' tidak ditemukan. Cek pilihan channel dan file.');
+    var out = [];
+    for (var j = h + 1; j < rows.length; j++) {
+      var r = rows[j], bc = xstr(r[cB]).replace(/\D/g, '');
+      if (bc.length < 8) continue;
+      out.push({ barcode: bc, plu: cP >= 0 ? xstr(r[cP]) : '', ket: cPar >= 0 && up(r[cPar]) === 'Y' ? 'Pareto' : '' });
+    }
+    return out;
+  }
   function loadStk() {
     google.script.run.withSuccessHandler(function (st) {
       el('card-HPL').className = 'card lv-' + st.harga.level;
@@ -665,6 +696,9 @@
       el('card-STK').className = 'card lv-' + worst;
       el('stkBadge').className = 'badge lv-' + worst; el('stkBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[worst];
       el('stkText').textContent = st.stok.map(function (d) { return d.nama + ': ' + d.text; }).join('\n');
+      el('card-FLG').className = 'card lv-' + st.flag.level;
+      el('flgBadge').className = 'badge lv-' + st.flag.level; el('flgBadge').innerHTML = '<i class="dot"></i>' + LV_LABEL[st.flag.level];
+      el('flgText').textContent = st.flag.text;
     }).withFailureHandler(function (e) { el('hplText').textContent = 'Gagal mengecek: ' + e.message; }).getStokStatus();
   }
   function stkRun(prefix, work) {
@@ -678,6 +712,15 @@
   }
   el('hplFile').addEventListener('change', function () { el('hplGo').disabled = !this.files[0]; });
   el('stkFile').addEventListener('change', function () { el('stkGo').disabled = !this.files[0]; });
+  el('flgFile').addEventListener('change', function () { el('flgGo').disabled = !this.files[0]; });
+  el('flgGo').addEventListener('click', function () {
+    stkRun('flg', function (wb, done) {
+      var kind = el('flgKind').value, rows = parseFlag(wb, kind);
+      google.script.run.withSuccessHandler(function (res) {
+        done('green', '<b>Tersimpan.</b>\n' + res.flag + ' · ' + res.rows + ' SKU'); loadStk();
+      }).withFailureHandler(function (e) { done('red', '<b>Gagal:</b> ' + esc(e.message)); }).saveSkuFlag(kind, rows);
+    });
+  });
   el('hplGo').addEventListener('click', function () {
     stkRun('hpl', function (wb, done) {
       var p = parseHarga(wb);
