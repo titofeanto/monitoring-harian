@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1769C8">
+<meta name="robots" content="noindex">
+<title>Status Aplikasi</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="assets/style.css?v=202610311300">
+</head>
+<body>
+<header class="top"><div class="top-row"><div class="brand"><span class="mark" aria-hidden="true">ST</span><div><div class="brand-t">Status Aplikasi</div><div class="brand-s">Spanduk maintenance untuk semua aplikasi</div></div></div></div></header>
+<main style="margin-top:12px">
+  <div class="card">
+    <h2>Status sekarang</h2>
+    <p class="hint" id="now">Memuat…</p>
+  </div>
+  <div class="card">
+    <h2>Ubah status</h2>
+    <p class="hint">Berlaku di Monitoring Daily, Cek Stok, dan SBA Logbook. Pembaca melihatnya dalam sekitar 5 menit.</p>
+    <form id="f" autocomplete="off">
+      <div class="field"><label for="kode">Kode admin</label><input type="password" id="kode" autocomplete="off" required></div>
+      <div class="field"><label>Tampilan</label>
+        <div class="chips" id="modeChips" role="group">
+          <button type="button" data-m="mati" aria-pressed="true">Normal</button>
+          <button type="button" data-m="banner" aria-pressed="false">Banner</button>
+          <button type="button" data-m="blokir" aria-pressed="false">Tutup aplikasi</button>
+        </div>
+        <p class="hint" id="modeHint" style="margin-top:6px">Tidak ada pemberitahuan.</p>
+      </div>
+      <div id="txt" hidden>
+        <div class="chips" id="tpl" style="margin-bottom:10px">
+          <button type="button" data-t="1">Perbaikan singkat</button>
+          <button type="button" data-t="2">Maintenance terjadwal</button>
+          <button type="button" data-t="3">Gangguan data</button>
+        </div>
+        <div class="field"><label for="judul">Judul</label><input type="text" id="judul" maxlength="60"></div>
+        <div class="field"><label for="pesan">Pesan</label><textarea id="pesan" rows="4" maxlength="300" style="width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface);color:var(--ink)"></textarea></div>
+      </div>
+      <button type="submit" class="btn" id="go" style="width:100%">Simpan</button>
+      <div class="err" id="err" role="alert"></div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Ganti kode admin</h2>
+    <p class="hint">Isi kode admin di atas (kode lama), lalu kode baru minimal 8 karakter.</p>
+    <div class="field"><label for="baru">Kode baru</label><input type="password" id="baru" autocomplete="off"></div>
+    <button type="button" class="btn plain" id="ganti" style="width:100%">Ganti kode</button>
+    <div class="err" id="err2" role="alert"></div>
+  </div>
+</main>
+<script src="assets/config.js?v=202610311300"></script>
+<script src="assets/status-banner.js?v=1"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var URL_ = window.APP_CONFIG.APPS_SCRIPT_URL, mode = 'mati';
+  var HINT = { mati: 'Tidak ada pemberitahuan.', banner: 'Spanduk kuning di atas layar. Aplikasi tetap bisa dipakai.', blokir: 'Layar penuh. Aplikasi tidak bisa dipakai sampai dimatikan.' };
+  var TPL = { 1: ['Perbaikan', 'Aplikasi sedang diperbaiki. Fitur tertentu mungkin belum bisa dipakai. Data Anda aman.'],
+    2: ['Maintenance', 'Maintenance terjadwal sampai jam __.__ WIT. Mohon tidak input data selama itu.'],
+    3: ['Data belum update', 'Data sedang diperbarui. Angka di layar mungkin belum yang terbaru.'] };
+  function setMode(m) {
+    mode = m; $('txt').hidden = m === 'mati'; $('modeHint').textContent = HINT[m];
+    document.querySelectorAll('#modeChips [data-m]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === m)); });
+  }
+  function show() {
+    fetch(URL_ + '?view=status&t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+      $('now').textContent = !j.aktif ? 'Normal. Tidak ada pemberitahuan.' : (j.blokir ? 'APLIKASI DITUTUP: ' : 'Banner aktif: ') + j.judul + ' - ' + j.pesan;
+      if (j.aktif && !$('pesan').value) { setMode(j.blokir ? 'blokir' : 'banner'); $('judul').value = j.judul; $('pesan').value = j.pesan; }
+    }).catch(function () { $('now').textContent = 'Gagal membaca status.'; });
+  }
+  function post(body, errEl, okMsg) {
+    errEl.textContent = 'Menghubungkan…';
+    return fetch(URL_, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); }).then(function (j) {
+        if (j.error) { errEl.textContent = j.message || j.error; return null; }
+        errEl.textContent = okMsg; return j;
+      }).catch(function (e) { errEl.textContent = 'Tidak bisa terhubung (' + e.message + ').'; return null; });
+  }
+  $('modeChips').addEventListener('click', function (e) { var b = e.target.closest('[data-m]'); if (b) setMode(b.dataset.m); });
+  $('tpl').addEventListener('click', function (e) { var b = e.target.closest('[data-t]'); if (b) { $('judul').value = TPL[b.dataset.t][0]; $('pesan').value = TPL[b.dataset.t][1]; } });
+  $('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (mode === 'blokir' && !confirm('Aplikasi akan ditutup untuk semua pengguna. Lanjut?')) return;
+    post({ action: 'setStatus', kode: $('kode').value, mode: mode, judul: $('judul').value, pesan: $('pesan').value }, $('err'), 'Tersimpan.').then(function (j) { if (j) show(); });
+  });
+  $('ganti').addEventListener('click', function () {
+    post({ action: 'gantiKodeAdmin', kode: $('kode').value, kodeBaru: $('baru').value }, $('err2'), 'Kode diganti. Pakai kode baru mulai sekarang.').then(function (j) { if (j) { $('kode').value = ''; $('baru').value = ''; } });
+  });
+  setMode('mati'); show();
+})();
+</script>
+</body>
+</html>

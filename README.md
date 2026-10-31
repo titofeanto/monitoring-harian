@@ -255,3 +255,12 @@ Tanpa token, karena repo SBA publik. Server menolak (balasan `skipped`) DT yang 
 lama dari yang tersimpan, dan laporan dengan jumlah SKU kurang dari 50% data tersimpan. Isi tab sebelum ditimpa
 disalin ke tab tersembunyi `(Backup) STOK_GUDANG` (satu generasi). Kotak "Stok Gudang DT" di tool upload tetap
 ada sebagai cadangan manual.
+
+## Banner maintenance (`admin-status.html`)
+
+Halaman admin untuk memunculkan pemberitahuan di Monitoring Daily, Cek Stok, dan SBA Logbook App.
+
+- Buka `admin-status.html`, isi kode admin, pilih Normal, Banner (kuning, aplikasi tetap bisa dipakai), atau Tutup aplikasi (layar penuh), isi pesan, Simpan.
+- Status disimpan di Script property `STATUS_JSON` Apps Script dan dibaca publik lewat `?view=status`. Aplikasi mengecek tiap 5 menit dan saat dibuka kembali.
+- Kode admin tidak ada di repo. Hanya hash-nya di Script property `ADMIN_HASH`. Ganti kode lewat bagian "Ganti kode admin". Lima kode salah menahan semua percobaan 15 menit.
+- Skrip pembaca (`assets/status-banner.js`) berdiri sendiri, jadi tetap jalan kalau skrip utama aplikasi gagal. Kalau Apps Script tidak terjangkau, SBA memakai `status.json` di repo sebagai cadangan.

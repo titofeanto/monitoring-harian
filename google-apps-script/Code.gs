@@ -102,6 +102,7 @@ function doGet(e) {
         return jsonOut({ ok: true, saved: outS });
       } finally { lockS.releaseLock(); }
     }
+    if (((e.parameter || {}).view) === 'status') return jsonOut(readStatus_()); // publik: dibaca semua aplikasi untuk spanduk maintenance
     const p = e.parameter || {};
     const code = String(p.code || '').trim();
     if (!code) return jsonOut({ error: 'missing_code' });
@@ -333,6 +334,9 @@ function doPost(e) {
     catch (err) { return jsonOut({ error: 'bad_request', message: 'Body bukan JSON valid.' }); }
 
     if (body.action === 'simpanStok') return jsonOut(simpanStok_(body));
+    if (body.action === 'setStatus') return jsonOut(setStatus_(body));
+    if (body.action === 'gantiKodeAdmin') return jsonOut(gantiKodeAdmin_(body));
+    if (body.action === 'klaimKodeAdmin') return jsonOut(klaimKodeAdmin_(body));
     if (body.action !== 'simpanHasil') return jsonOut({ error: 'unknown_action' });
 
     const target = resolveTarget_(String(body.code || '').trim(), String(body.dt || '').trim());
@@ -921,4 +925,67 @@ function simpanStok_(body) {
     writeObjs_(ss, STOK_TAB, STOK_HEADER, keep.concat(clean));
   } finally { lock.releaseLock(); }
   return { ok: true, dt: dt, dtNama: reg.nama_dt, rows: clean.length, tanggal: tanggal };
+}
+
+
+// ---- Status aplikasi (spanduk maintenance) ----
+// Dibaca publik lewat ?view=status oleh Monitoring Daily, Cek Stok, dan SBA Logbook. Diubah lewat admin-status.html
+// dengan kode admin. Kode TIDAK disimpan di repo: hanya hash-nya di Script property ADMIN_HASH.
+const STATUS_PROP = 'STATUS_JSON';
+const ADMIN_PROP = 'ADMIN_HASH';
+const ADMIN_SALT = 'mh-admin-v1:';
+
+function adminHash_(kode) {
+  return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, ADMIN_SALT + String(kode)));
+}
+
+function readStatus_() {
+  let s = {};
+  try { s = JSON.parse(PropertiesService.getScriptProperties().getProperty(STATUS_PROP) || '{}'); } catch (err) { s = {}; }
+  return { mode: 'status', aktif: !!s.aktif, blokir: !!s.blokir, judul: String(s.judul || ''), pesan: String(s.pesan || ''), ts: s.ts || '' };
+}
+
+/** null kalau kode benar; kalau salah, objek error. 5 kali salah menahan semua percobaan 15 menit. */
+function adminAuth_(kode) {
+  const cache = CacheService.getScriptCache(), props = PropertiesService.getScriptProperties();
+  const fails = +(cache.get('adm_fail') || 0);
+  if (fails >= 5) return { error: 'terkunci', message: 'Terlalu banyak kode salah. Coba lagi 15 menit lagi.' };
+  const h = props.getProperty(ADMIN_PROP);
+  if (!h) return { error: 'belum_diatur', message: 'Kode admin belum diatur.' };
+  if (adminHash_(kode) !== h) { cache.put('adm_fail', String(fails + 1), 900); return { error: 'invalid_code', message: 'Kode admin salah.' }; }
+  cache.remove('adm_fail');
+  return null;
+}
+
+function setStatus_(body) {
+  const bad = adminAuth_(String(body.kode || ''));
+  if (bad) return bad;
+  const mode = String(body.mode || '');
+  if (['mati', 'banner', 'blokir'].indexOf(mode) < 0) return { error: 'bad_request', message: 'mode harus mati, banner, atau blokir.' };
+  const st = { aktif: mode !== 'mati', blokir: mode === 'blokir', judul: String(body.judul || '').slice(0, 60), pesan: String(body.pesan || '').slice(0, 300), ts: new Date().toISOString() };
+  if (st.aktif && !st.pesan.trim()) return { error: 'bad_request', message: 'Pesan wajib diisi.' };
+  PropertiesService.getScriptProperties().setProperty(STATUS_PROP, JSON.stringify(st));
+  return readStatus_();
+}
+
+function gantiKodeAdmin_(body) {
+  const bad = adminAuth_(String(body.kode || ''));
+  if (bad) return bad;
+  const baru = String(body.kodeBaru || '');
+  if (baru.length < 8) return { error: 'bad_request', message: 'Kode baru minimal 8 karakter.' };
+  PropertiesService.getScriptProperties().setProperty(ADMIN_PROP, adminHash_(baru));
+  return { ok: true };
+}
+
+/** Pengaturan kode admin pertama kali. Hanya jalan selama ADMIN_HASH belum ada; sesudahnya ditolak (pakai gantiKodeAdmin). */
+function klaimKodeAdmin_(body) {
+  const props = PropertiesService.getScriptProperties(), lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    if (props.getProperty(ADMIN_PROP)) return { error: 'sudah_diatur', message: 'Kode admin sudah diatur. Pakai Ganti kode.' };
+    const baru = String(body.kodeBaru || '');
+    if (baru.length < 8) return { error: 'bad_request', message: 'Kode minimal 8 karakter.' };
+    props.setProperty(ADMIN_PROP, adminHash_(baru));
+    return { ok: true };
+  } finally { lock.releaseLock(); }
 }
