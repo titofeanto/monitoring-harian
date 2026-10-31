@@ -334,6 +334,7 @@ function doPost(e) {
     catch (err) { return jsonOut({ error: 'bad_request', message: 'Body bukan JSON valid.' }); }
 
     if (body.action === 'simpanStok') return jsonOut(simpanStok_(body));
+    if (body.action === 'cekKodeAdmin') return jsonOut(adminAuth_(String(body.kode || '')) || { ok: true });
     if (body.action === 'setStatus') return jsonOut(setStatus_(body));
     if (body.action === 'gantiKodeAdmin') return jsonOut(gantiKodeAdmin_(body));
     if (body.action === 'klaimKodeAdmin') return jsonOut(klaimKodeAdmin_(body));
