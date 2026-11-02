@@ -72,9 +72,31 @@
       stop();
       $('bootProg').hidden = true;
       $('bootActions').hidden = false;
+      if ($('bootBox')) $('bootBox').classList.add('is-fail');
     },
   };
+  /* Bungkus kotak status dengan kerangka halaman (header + kartu), supaya bentuk aplikasi langsung terlihat. */
+  function skeleton() {
+    const box = $('bootBox'), inner = box && box.firstElementChild;
+    if (!inner || box.querySelector('.boot-top')) return;
+    const row = w => '<div class="boot-li"><i class="skel skel-dot"></i><div><i class="skel" style="width:' + w + '%"></i><i class="skel" style="width:' + (w - 25) + '%"></i></div></div>';
+    const top = document.createElement('div');
+    top.className = 'boot-top'; top.setAttribute('aria-hidden', 'true');
+    top.innerHTML = '<div><div class="boot-row"><i class="skel skel-on skel-dot"></i><div style="flex:1;display:grid;gap:7px"><i class="skel skel-on" style="width:46%"></i><i class="skel skel-on" style="width:28%"></i></div></div>' +
+      '<i class="skel skel-on skel-lg" style="width:58%;margin-top:8px"></i><i class="skel skel-on" style="width:34%"></i></div>';
+    const main = document.createElement('div');
+    main.className = 'boot-main';
+    inner.className = 'card boot-status';
+    main.appendChild(inner);
+    const more = document.createElement('div');
+    more.setAttribute('aria-hidden', 'true'); more.style.cssText = 'display:grid;gap:12px';
+    more.innerHTML = '<div class="boot-kpis"><i class="skel skel-tile"></i><i class="skel skel-tile"></i><i class="skel skel-tile"></i><i class="skel skel-tile"></i></div>' +
+      '<div class="card">' + row(70) + row(85) + row(60) + row(78) + '</div>';
+    main.appendChild(more);
+    box.appendChild(top); box.appendChild(main);
+  }
   document.addEventListener('DOMContentLoaded', () => {
+    skeleton();
     if (saved) { t0 = Date.now(); tick(); timer = setInterval(tick, 250); }
     if ($('bootRetry')) $('bootRetry').addEventListener('click', () => location.reload());
     if ($('bootOther')) $('bootOther').addEventListener('click', () => document.documentElement.classList.remove('has-code'));

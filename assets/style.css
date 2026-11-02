@@ -56,12 +56,32 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .err{color:var(--minus);font-size:14px;min-height:1.2em}
 .req{color:var(--minus);font-weight:700;margin-left:2px}
 
-/* layar "Memuat" saat kode tersimpan (assets/boot.js) */
-.boot{display:none;min-height:60vh;place-items:center;text-align:center;color:var(--ink-2);font-size:14px;padding:24px 16px}
-.boot>div{max-width:320px}
-.boot .bar{margin-top:14px}
+/* layar "Memuat" saat kode tersimpan (assets/boot.js): kerangka halaman (skeleton) + kartu status di atasnya */
+.boot{display:none;color:var(--ink-2);font-size:14px}
 html.has-code #loginScreen{display:none}
-html.has-code .boot{display:grid}
+html.has-code .boot{display:block}
+.boot .bar{margin-top:14px}
+.boot-top{background:linear-gradient(165deg,var(--brand-2) 0%,var(--brand) 45%,var(--brand-deep) 100%);
+  padding:calc(12px + env(safe-area-inset-top,0px)) 16px 50px;border-radius:0 0 24px 24px}
+.boot-top>div{max-width:1048px;margin:0 auto;display:grid;gap:10px}
+.boot-row{display:flex;align-items:center;gap:12px}
+.boot-main{position:relative;z-index:6;max-width:1080px;margin:-34px auto 0;padding:0 16px 32px;display:grid;gap:12px}
+.boot-main .card{display:grid;gap:12px}
+.boot-status{text-align:center}
+.boot-status #bootMsg{color:var(--ink);font-weight:600}
+.boot-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.boot-li{display:flex;align-items:center;gap:12px}
+.boot-li>div{flex:1;display:grid;gap:7px}
+
+/* skeleton: blok abu-abu berkilau seukuran konten yang akan muncul */
+.skel{display:block;height:12px;border-radius:7px;background:linear-gradient(90deg,var(--surface-2) 30%,var(--line) 50%,var(--surface-2) 70%);
+  background-size:300% 100%;animation:skel 1.3s ease-in-out infinite}
+.skel-on{background:linear-gradient(90deg,rgba(255,255,255,.14) 30%,rgba(255,255,255,.3) 50%,rgba(255,255,255,.14) 70%);background-size:300% 100%}
+.skel-dot{width:40px;height:40px;border-radius:12px;flex:none}
+.skel-lg{height:22px}
+.skel-tile{height:64px;border-radius:var(--r-s)}
+@keyframes skel{from{background-position:100% 0}to{background-position:0 0}}
+.boot.is-fail .skel{animation:none}
 
 /* ---------- header gradien ---------- */
 .top{position:relative;background:linear-gradient(165deg,var(--brand-2) 0%,var(--brand) 45%,var(--brand-deep) 100%);color:#fff;

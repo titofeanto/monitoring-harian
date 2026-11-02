@@ -83,6 +83,10 @@
   .result { margin-top: 10px; padding: 12px 14px; border-radius: 11px; font-size: 13px; white-space: pre-wrap; }
   .result.lv-red { background: var(--red-bg); color: var(--red-ink); } .result.lv-amber { background: var(--amber-bg); color: var(--amber-ink); } .result.lv-green { background: var(--green-bg); color: var(--green-ink); }
   .loading { color: var(--soft); font-size: 13px; padding: 14px 0; }
+  /* skeleton: blok berkilau seukuran konten yang sedang dimuat */
+  .skel { display: block; height: 12px; border-radius: 7px; background: linear-gradient(90deg, var(--card2) 30%, var(--line) 50%, var(--card2) 70%); background-size: 300% 100%; animation: skel 1.3s ease-in-out infinite; }
+  @keyframes skel { from { background-position: 100% 0; } to { background-position: 0 0; } }
+  @media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
   table { border-collapse: collapse; }
 </style>
 </head>
@@ -95,7 +99,7 @@
 <div class="card" id="card-HPL">
   <div class="card-head"><div><h3>Daftar Harga Unilever</h3><span class="tab">HARGA_PL</span></div>
     <span class="badge" id="hplBadge"><i class="dot"></i>Memuat</span></div>
-  <div class="st-text" id="hplText">Mengecek...</div>
+  <div class="st-text" id="hplText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <div class="desc">File SUMMARY PRICE LIST (.xlsx) dengan sheet HARGA BARU dan HARGA LAMA. Berlaku untuk semua DT, ganti total tiap ada daftar harga baru.</div>
   <button type="button" class="sample" data-sample="HPL" id="smpHPL">Download file contoh</button>
   <label for="hplFile">File (.xlsx)</label>
@@ -107,7 +111,7 @@
 <div class="card" id="card-STK">
   <div class="card-head"><div><h3>Stok Gudang DT</h3><span class="tab">STOK_GUDANG</span></div>
     <span class="badge" id="stkBadge"><i class="dot"></i>Memuat</span></div>
-  <div class="st-text" id="stkText">Mengecek...</div>
+  <div class="st-text" id="stkText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <div class="desc">File Distributor Stock Report (.xlsx). DT dibaca otomatis dari file (baris Selected Parameters), jadi tidak perlu pilih DT di atas. Upload tiap hari.</div>
   <button type="button" class="sample" data-sample="STK" id="smpSTK">Download file contoh</button>
   <label for="stkFile">File (.xlsx)</label>
@@ -120,7 +124,7 @@
 <div class="card" id="card-FLG">
   <div class="card-head"><div><h3>Daftar SKU SAT, IDM &amp; Hypermart</h3><span class="tab">SKU_FLAG</span></div>
     <span class="badge" id="flgBadge"><i class="dot"></i>Memuat</span></div>
-  <div class="st-text" id="flgText">Mengecek...</div>
+  <div class="st-text" id="flgText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <div class="desc">Untuk analisa stok di halaman Cek Stok. SAT = list item Unilever Alfamart (kolom Barcode). IDM = List Item Aktif Unilever IDM (kolom BARCODE ULI, kolom Pareto SON). Hypermart = matching SKU aktif (kolom UPC, SKU Desc). Kolom barcode dicari otomatis dari judulnya (Barcode, UPC, EAN, GTIN), jadi judul yang sedikit berubah tetap terbaca. Upload satu per satu; daftar channel lain tidak berubah.</div>
   <label for="flgKind">Channel</label>
   <select id="flgKind"><option value="SAT">SAT (Alfamart)</option><option value="IDM">IDM</option><option value="HM">Hypermart (kolom UPC)</option></select>
@@ -135,7 +139,7 @@
 <div class="card" id="card-JUL">
   <div class="card-head"><div><h3>Trend Penjualan (compile)</h3><span class="tab">JUAL_SKU</span></div>
     <span class="badge" id="julBadge"><i class="dot"></i>Memuat</span></div>
-  <div class="st-text" id="julText">Mengecek...</div>
+  <div class="st-text" id="julText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <div class="desc">File compile Trend Sales (Sheet1 + Sheet2 flagging GT/LMT, kolom Sum of GSV per bulan). Dipakai untuk rata-rata jual per minggu dan pembanding tahun lalu di Cek Stok. File besar: pakai laptop, tunggu sampai satu menit. Ganti total tiap ada compile baru.</div>
   <button type="button" class="sample" data-sample="JUL" id="smpJUL">Download file contoh</button>
   <label for="julFile">File (.xlsx)</label>
@@ -150,7 +154,7 @@
 <div class="card" id="card-HDR">
   <div class="card-head"><div><h3>Kunjungan Pertama Salesman</h3><span class="tab">KEHADIRAN</span></div>
     <span class="badge" id="hdrBadge"><i class="dot"></i>Memuat</span></div>
-  <div class="st-text" id="hdrText">Mengecek...</div>
+  <div class="st-text" id="hdrText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <div class="desc">File Sales Person Visit Summary Report (.csv atau .xlsx), semua DT dalam satu file. Aturan sama dengan laporan nasional: kunjungan pertama dihitung dari kunjungan yang <b>Geo Code Compliance = 1</b> saja. Hijau kalau jam <b>09.00 atau lebih awal</b>. Merah kalau lewat 09.00, tidak ada kunjungan geo 1, atau tidak ada kunjungan di hari kerja.</div>
   <button type="button" class="sample" data-sample="HDR" id="smpHDR">Download file contoh</button>
   <label for="hdrFile">File (.csv / .xlsx)</label>
@@ -170,7 +174,7 @@
 <div class="card" id="card-GS">
   <div class="card-head"><div><h3>Monitoring DAILY KPI GREAT SALES</h3><span class="tab">GS_SCORECARD · GS_OUTLET</span></div>
     <span class="badge" id="gsBadge"><i class="dot"></i>Memuat</span></div>
-  <div class="st-text" id="gsText">Mengecek...</div>
+  <div class="st-text" id="gsText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <div class="desc">File .xlsx berisi sheet Summary ScoreCard, Perfect Stores, Weekly FOP, dan Banded.</div>
   <label for="gsFile">File (.xlsx)</label>
   <input type="file" id="gsFile" accept=".xlsx">
@@ -182,7 +186,7 @@
 <div class="card" id="card-PS">
   <div class="card-head"><div><h3>Perfect Stores (mingguan)</h3><span class="tab">GS_PS · GS_PS_HIST · GS_TARGET</span></div>
     <span class="badge" id="psBadge"><i class="dot"></i>Memuat</span></div>
-  <div class="st-text" id="psText">Mengecek...</div>
+  <div class="st-text" id="psText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <div class="desc">Sheet Perfect Stores apa adanya (satu baris per toko). Upload seminggu sekali. Hasil Full, Lite, dan toko yang kurang langsung masuk scorecard.</div>
   <label for="psFile">File (.xlsx)</label>
   <input type="file" id="psFile" accept=".xlsx">
@@ -190,7 +194,7 @@
   <div class="spin" id="psSpin">Memproses...</div>
   <div id="psRes"></div>
   <label style="margin-top:14px">Target toko perfect per DT (angka HO)</label>
-  <div id="psTargets" class="desc">Memuat...</div>
+  <div id="psTargets" class="desc"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <button type="button" class="go" id="psSave" style="display:none">Simpan target</button>
   <div id="psSaveRes"></div>
 </div>
@@ -198,7 +202,7 @@
 <div class="card" id="card-REF">
   <div class="card-head"><div><h3>Daftar toko monitoring &amp; SKU banded</h3><span class="tab">GS_TOKO · GS_BANDED_SKU · GS_CONFIG</span></div>
     <span class="badge" id="refBadge"><i class="dot"></i>Memuat</span></div>
-  <div class="st-text" id="refText">Mengecek...</div>
+  <div class="st-text" id="refText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <div class="desc">Weekly FOP dan Banded dihitung otomatis dari Extract DMS. Daftar ini menentukan toko dan SKU-nya, jadi cukup diupload saat daftar berubah. Pakai file yang sama dengan Monitoring DAILY KPI GREAT SALES (sheet Weekly FOP atau LIST OUTLET MONITORING BANDED untuk toko, Banded SPM dan Banded Local Minis untuk SKU). Toko dihitung hanya kalau REMARK-nya ada di aturan di bawah.</div>
   <label for="refFile">File (.xlsx)</label>
   <input type="file" id="refFile" accept=".xlsx">
@@ -206,12 +210,12 @@
   <div class="spin" id="refSpin">Memproses...</div>
   <div id="refRes"></div>
   <label style="margin-top:14px">Rekap bulanan</label>
-  <div class="desc" id="rekapText">Memuat...</div>
+  <div class="desc" id="rekapText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <button type="button" class="go" id="rekapGo">Simpan rekap sekarang</button>
   <div class="spin" id="rekapSpin">Menyimpan...</div>
   <div id="rekapRes"></div>
   <label style="margin-top:14px">Aturan hitung</label>
-  <div id="cfgRows" class="desc">Memuat...</div>
+  <div id="cfgRows" class="desc"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <button type="button" class="go" id="cfgSave" style="display:none">Simpan aturan</button>
   <div id="cfgRes"></div>
 </div>
@@ -219,7 +223,7 @@
 <div class="card" id="card-MAN">
   <div class="card-head"><div><h3>Rank &amp; %DR (update mingguan)</h3><span class="tab">GS_MANUAL</span></div>
     <span class="badge" id="manBadge"><i class="dot"></i>Memuat</span></div>
-  <div class="st-text" id="manText">Mengecek...</div>
+  <div class="st-text" id="manText"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <div class="desc">Dua angka dari HO yang tidak bisa dihitung dari DMS. Isi seminggu sekali. Nilai terakhir dipakai di scorecard dan ditandai "update mingguan".</div>
   <label for="manRank">Rank nasional</label>
   <input type="number" id="manRank" min="1" step="1" inputmode="numeric" placeholder="contoh 52">
@@ -232,7 +236,7 @@
 <div class="card" id="card-AT">
   <div class="card-head"><div><h3>Target Assortment per DT</h3><span class="tab">GS_ASRT_TARGET</span></div></div>
   <div class="desc">Total lines (toko x base pack) per channel, dari rata-rata kuartal 4 2025. Realisasinya dihitung otomatis dari Extract DMS dan Outlet Master tiap DT, tidak perlu upload tersendiri.</div>
-  <div id="atRows" class="desc">Memuat...</div>
+  <div id="atRows" class="desc"><i class="skel" style="width:62%"></i><i class="skel" style="width:38%;margin-top:7px"></i></div>
   <button type="button" class="go" id="atSave" style="display:none">Simpan target</button>
   <div id="atRes"></div>
 </div>
@@ -253,7 +257,7 @@
   </div>
 </div>
 
-<div id="cards"><div class="loading" id="loading">Memuat daftar DT...</div></div>
+<div id="cards"><div id="loading" role="status" aria-label="Memuat daftar DT"><div class="card" aria-hidden="true"><i class="skel" style="width:44%;height:16px"></i><i class="skel" style="width:80%;margin-top:12px"></i><i class="skel" style="width:56%;margin-top:7px"></i><i class="skel" style="height:40px;border-radius:11px;margin-top:14px"></i></div><div class="card" aria-hidden="true"><i class="skel" style="width:44%;height:16px"></i><i class="skel" style="width:80%;margin-top:12px"></i><i class="skel" style="width:56%;margin-top:7px"></i><i class="skel" style="height:40px;border-radius:11px;margin-top:14px"></i></div><div class="card" aria-hidden="true"><i class="skel" style="width:44%;height:16px"></i><i class="skel" style="width:80%;margin-top:12px"></i><i class="skel" style="width:56%;margin-top:7px"></i><i class="skel" style="height:40px;border-radius:11px;margin-top:14px"></i></div></div></div>
 
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -308,7 +312,7 @@
   function loadStatus() {
     var dt = current;
     el('summary').hidden = false;
-    el('statusChips').innerHTML = '<span class="loading">Mengecek status data...</span>';
+    el('statusChips').innerHTML = '<span class="skel" style="display:inline-block;width:110px;height:34px;border-radius:999px"></span> <span class="skel" style="display:inline-block;width:90px;height:34px;border-radius:999px"></span>';
     el('globals').innerHTML = '';
     google.script.run.withSuccessHandler(function (st) {
       if (dt !== current) return;
