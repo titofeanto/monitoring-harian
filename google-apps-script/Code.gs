@@ -1042,14 +1042,19 @@ function readStatus_() {
   return { mode: 'status', aktif: !!s.aktif, blokir: !!s.blokir, judul: String(s.judul || ''), pesan: String(s.pesan || ''), ts: s.ts || '' };
 }
 
-/** null kalau kode benar; kalau salah, objek error. 5 kali salah menahan semua percobaan 15 menit. */
+/** null kalau kode benar; kalau salah, objek error. Salah >= 5: tebakan diperlambat; >= 25 dalam 15 menit: semua ditolak. Kode benar tetap diterima di bawah batas keras. */
+const ADM_SOFT_LOCK = 5, ADM_HARD_LOCK = 25;   // tebakan salah per 15 menit
 function adminAuth_(kode) {
   const cache = CacheService.getScriptCache(), props = PropertiesService.getScriptProperties();
   const fails = +(cache.get('adm_fail') || 0);
-  if (fails >= 5) return { error: 'terkunci', message: 'Terlalu banyak kode salah. Coba lagi 15 menit lagi.' };
+  if (fails >= ADM_HARD_LOCK) return { error: 'terkunci', message: 'Terlalu banyak kode salah. Coba lagi 15 menit lagi.' };
   const h = props.getProperty(ADMIN_PROP);
   if (!h) return { error: 'belum_diatur', message: 'Kode admin belum diatur.' };
-  if (adminHash_(kode) !== h) { cache.put('adm_fail', String(fails + 1), 900); return { error: 'invalid_code', message: 'Kode admin salah.' }; }
+  if (adminHash_(kode) !== h) {
+    cache.put('adm_fail', String(fails + 1), 900);
+    if (fails + 1 >= ADM_SOFT_LOCK) Utilities.sleep(2000);   // perlambat tebakan, tanpa menolak kode benar
+    return { error: 'invalid_code', message: 'Kode admin salah.' };
+  }
   cache.remove('adm_fail');
   return null;
 }
