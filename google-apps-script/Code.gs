@@ -72,7 +72,7 @@ function doGet(e) {
     if (e.parameter && e.parameter.admin === 'clearCache') {
       const regC = readRegistry_();
       const meC = regC.find(x => x.kode_akses === String(e.parameter.code || '').trim());
-      if (!meC || meC.peran !== 'pusat') return jsonOut({ error: 'invalid_code' });
+      if (!meC || meC.peran !== 'pusat') { noteBadCode_(); return jsonOut({ error: 'invalid_code' }); }
       const targets = regC.filter(x => x.peran === 'dt' && x.sheet_id && (!e.parameter.dt || x.dt_kode === e.parameter.dt));
       targets.forEach(x => cacheClearKey_(CACHE_KEY + '_' + x.sheet_id));
       return jsonOut({ ok: true, cleared: targets.map(x => x.dt_kode) });
@@ -81,7 +81,7 @@ function doGet(e) {
     if (e.parameter && e.parameter.admin === 'snapshot') {
       const regS = readRegistry_();
       const meS = regS.find(x => x.kode_akses === String(e.parameter.code || '').trim());
-      if (!meS || meS.peran !== 'pusat') return jsonOut({ error: 'invalid_code' });
+      if (!meS || meS.peran !== 'pusat') { noteBadCode_(); return jsonOut({ error: 'invalid_code' }); }
       const lockS = LockService.getScriptLock();
       lockS.waitLock(30000);
       try {
@@ -99,7 +99,7 @@ function doGet(e) {
 
     const reg = readRegistry_();
     const me = reg.find(r => r.kode_akses === code);
-    if (!me) return jsonOut({ error: 'invalid_code' });
+    if (!me) { noteBadCode_(); return jsonOut({ error: 'invalid_code' }); }
     if (p.view === 'gs') return jsonOut(respondGs_(me, reg, String(p.dt || '').trim()));
     if (p.view === 'stok') return jsonOut(respondStok_(me, reg, String(p.dt || '').trim()));
     if (p.view === 'hadir') return jsonOut(respondHadir_(me, reg, String(p.dt || '').trim()));
@@ -151,6 +151,33 @@ function respond_(r, p) {
 function jsonOut(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Kode akses salah: hitung per 10 menit. Mulai ambang tarpit, balasan ditahan 2 detik (hanya jalur kode salah,
+// pengguna dengan kode benar tidak terkena). Mulai ambang waspada, tulis peringatan ke log eksekusi sekali per jam.
+const BAD_WINDOW_SEC = 600, BAD_TARPIT_AT = 20, BAD_ALERT_AT = 50;
+function noteBadCode_() {
+  const cache = CacheService.getScriptCache();
+  const n = (+cache.get('bad_code') || 0) + 1;   // tidak atomik, cukup untuk hitungan kasar
+  cache.put('bad_code', String(n), BAD_WINDOW_SEC);
+  if (n >= BAD_ALERT_AT && !cache.get('bad_code_alert')) {
+    cache.put('bad_code_alert', '1', 3600);
+    console.warn('Kode akses salah: ' + n + ' percobaan dalam 10 menit terakhir.');
+  }
+  if (n >= BAD_TARPIT_AT) Utilities.sleep(2000);
+}
+
+/** Jalankan manual dari editor: cek kekuatan kode akses. Tidak pernah mencetak nilai kode. */
+function auditKodeAkses() {
+  const reg = readRegistry_(), seen = {};
+  reg.forEach(r => { seen[r.kode_akses] = (seen[r.kode_akses] || 0) + 1; });
+  reg.forEach(r => {
+    const k = r.kode_akses, flags = [];
+    if (k.length < 10) flags.push('pendek (' + k.length + ' karakter)');
+    if (/^\d+$/.test(k)) flags.push('hanya angka');
+    if (seen[k] > 1) flags.push('dipakai ' + seen[k] + ' baris');
+    Logger.log((r.peran === 'pusat' ? 'pusat' : 'dt ' + r.dt_kode) + ': ' + (flags.length ? flags.join(', ') : 'ok (' + k.length + ' karakter)'));
+  });
 }
 
 function getPayload_(sheetId) {
@@ -323,7 +350,7 @@ function resolveTarget_(code, dtWanted) {
   if (!code) return { error: 'missing_code' };
   const reg = readRegistry_();
   const me = reg.find(r => r.kode_akses === code);
-  if (!me) return { error: 'invalid_code' };
+  if (!me) { noteBadCode_(); return { error: 'invalid_code' }; }
   if (me.peran === 'pusat') {
     if (!dtWanted) return { error: 'bad_request', message: 'Kode pusat wajib menyertakan dt.' };
     const r = reg.find(x => x.peran === 'dt' && x.dt_kode === dtWanted && x.sheet_id);
