@@ -1,0 +1,930 @@
+{
+ "mode": "gs",
+ "peran": "pusat",
+ "scope": null,
+ "dts": [
+  {
+   "kode": "DTA",
+   "nama": "DT Contoh A"
+  },
+  {
+   "kode": "DTB",
+   "nama": "DT Contoh B"
+  }
+ ],
+ "scorecard": [
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "SCORE",
+   "label": "SCORE",
+   "target": "",
+   "aktual": 61,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "RANK",
+   "label": "RANK",
+   "target": "",
+   "aktual": 12,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "FOP_WEEK",
+   "label": "FOP_WEEK",
+   "target": "",
+   "aktual": 47,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "PS",
+   "label": "Perfect Store",
+   "target": 0.9,
+   "aktual": 0.5,
+   "bobot": 10,
+   "poin": 5.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "ASRT_SPM",
+   "label": "Assortment SPM",
+   "target": 0.9,
+   "aktual": 0.4,
+   "bobot": 8,
+   "poin": 3.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "ASRT_MINIS",
+   "label": "Assortment Minis",
+   "target": 0.9,
+   "aktual": 0.4,
+   "bobot": 8,
+   "poin": 3.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "FOP_SPM",
+   "label": "Weekly FOP SPM",
+   "target": 0.8,
+   "aktual": 0.2,
+   "bobot": 8,
+   "poin": 2,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "FOP_MINIS",
+   "label": "Weekly FOP Minis",
+   "target": 0.8,
+   "aktual": 0.2,
+   "bobot": 8,
+   "poin": 2,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "BANDED_SPM",
+   "label": "Banded SPM",
+   "target": 0.8,
+   "aktual": 0.2,
+   "bobot": 6,
+   "poin": 1.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "BANDED_MINIS",
+   "label": "Banded Minis",
+   "target": 0.7,
+   "aktual": 0.2,
+   "bobot": 6,
+   "poin": 1.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "DR",
+   "label": "%DR",
+   "target": 0.95,
+   "aktual": 0.9,
+   "bobot": 10,
+   "poin": 9.4,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-19",
+   "kpi": "R2G",
+   "label": "R2G",
+   "target": 1,
+   "aktual": 0.9,
+   "bobot": 12,
+   "poin": 10.8,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "SCORE",
+   "label": "SCORE",
+   "target": "",
+   "aktual": 64,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "RANK",
+   "label": "RANK",
+   "target": "",
+   "aktual": 11,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "FOP_WEEK",
+   "label": "FOP_WEEK",
+   "target": "",
+   "aktual": 48,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "PS",
+   "label": "Perfect Store",
+   "target": 0.9,
+   "aktual": 0.5,
+   "bobot": 10,
+   "poin": 5.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "ASRT_SPM",
+   "label": "Assortment SPM",
+   "target": 0.9,
+   "aktual": 0.4,
+   "bobot": 8,
+   "poin": 3.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "ASRT_MINIS",
+   "label": "Assortment Minis",
+   "target": 0.9,
+   "aktual": 0.4,
+   "bobot": 8,
+   "poin": 3.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "FOP_SPM",
+   "label": "Weekly FOP SPM",
+   "target": 0.8,
+   "aktual": 0.2,
+   "bobot": 8,
+   "poin": 2,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "FOP_MINIS",
+   "label": "Weekly FOP Minis",
+   "target": 0.8,
+   "aktual": 0.2,
+   "bobot": 8,
+   "poin": 2,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "BANDED_SPM",
+   "label": "Banded SPM",
+   "target": 0.8,
+   "aktual": 0.2,
+   "bobot": 6,
+   "poin": 1.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "BANDED_MINIS",
+   "label": "Banded Minis",
+   "target": 0.7,
+   "aktual": 0.2,
+   "bobot": 6,
+   "poin": 1.5,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "DR",
+   "label": "%DR",
+   "target": 0.95,
+   "aktual": 0.9,
+   "bobot": 10,
+   "poin": 9.4,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-26",
+   "kpi": "R2G",
+   "label": "R2G",
+   "target": 1,
+   "aktual": 0.9,
+   "bobot": 12,
+   "poin": 10.8,
+   "catatan": ""
+  }
+ ],
+ "outlets": [],
+ "ps": {
+  "stores": [],
+  "targets": [],
+  "hist": []
+ },
+ "asrt": {
+  "moq": 3,
+  "perDt": [],
+  "targets": []
+ },
+ "mon": {
+  "cfg": {
+   "remark_spm": "LOCAL SPM",
+   "remark_minis": "TOP 1000 LOCAL MINIS, LOCAL MINIS",
+   "banded_spm": 0.8,
+   "banded_minis": 0.7,
+   "fop_weekly": 3,
+   "fop_biweekly": 2
+  },
+  "hasList": true,
+  "bandedSku": [
+   {
+    "channel": "SPM",
+    "sku_kode": "BS1",
+    "sku_nama": "Produk Contoh SPM 1"
+   },
+   {
+    "channel": "MINIS",
+    "sku_kode": "BM1",
+    "sku_nama": "Produk Contoh Minis 1"
+   },
+   {
+    "channel": "SPM",
+    "sku_kode": "BS2",
+    "sku_nama": "Produk Contoh SPM 2"
+   },
+   {
+    "channel": "MINIS",
+    "sku_kode": "BM2",
+    "sku_nama": "Produk Contoh Minis 2"
+   },
+   {
+    "channel": "SPM",
+    "sku_kode": "BS3",
+    "sku_nama": "Produk Contoh SPM 3"
+   },
+   {
+    "channel": "MINIS",
+    "sku_kode": "BM3",
+    "sku_nama": "Produk Contoh Minis 3"
+   },
+   {
+    "channel": "SPM",
+    "sku_kode": "BS4",
+    "sku_nama": "Produk Contoh SPM 4"
+   },
+   {
+    "channel": "MINIS",
+    "sku_kode": "BM4",
+    "sku_nama": "Produk Contoh Minis 4"
+   },
+   {
+    "channel": "SPM",
+    "sku_kode": "BS5",
+    "sku_nama": "Produk Contoh SPM 5"
+   },
+   {
+    "channel": "MINIS",
+    "sku_kode": "BM5",
+    "sku_nama": "Produk Contoh Minis 5"
+   },
+   {
+    "channel": "SPM",
+    "sku_kode": "BS6",
+    "sku_nama": "Produk Contoh SPM 6"
+   },
+   {
+    "channel": "MINIS",
+    "sku_kode": "BM6",
+    "sku_nama": "Produk Contoh Minis 6"
+   }
+  ],
+  "perDt": [
+   {
+    "bulan": "2026-11",
+    "tanggalData": "2026-11-26",
+    "week": 48,
+    "qLabel": "Q4 2026",
+    "qMonths": [
+     "2026-11"
+    ],
+    "groups": {
+     "SPM": [
+      {
+       "outlet_kode": "X-S01",
+       "outlet_nama": "Toko Contoh SPM 01",
+       "remark": "LOCAL SPM",
+       "weeks": 3,
+       "status": "WEEKLY",
+       "weekNow": 0,
+       "lastWeek": 47,
+       "bTotal": 6,
+       "bBought": 6,
+       "bMonth": 6,
+       "bSkus": [
+        "BS1",
+        "BS2",
+        "BS3",
+        "BS4",
+        "BS5",
+        "BS6"
+       ],
+       "bShare": 1,
+       "bHit": 1,
+       "bMiss": []
+      },
+      {
+       "outlet_kode": "X-S02",
+       "outlet_nama": "Toko Contoh SPM 02",
+       "remark": "LOCAL SPM",
+       "weeks": 2,
+       "status": "BIWEEKLY",
+       "weekNow": 0,
+       "lastWeek": 46,
+       "bTotal": 6,
+       "bBought": 5,
+       "bMonth": 5,
+       "bSkus": [
+        "BS1",
+        "BS2",
+        "BS3",
+        "BS4",
+        "BS5"
+       ],
+       "bShare": 0.8333333333333334,
+       "bHit": 1,
+       "bMiss": [
+        "BS6"
+       ]
+      },
+      {
+       "outlet_kode": "X-S03",
+       "outlet_nama": "Toko Contoh SPM 03",
+       "remark": "LOCAL SPM",
+       "weeks": 1,
+       "status": "MONTHLY",
+       "weekNow": 0,
+       "lastWeek": 45,
+       "bTotal": 6,
+       "bBought": 4,
+       "bMonth": 4,
+       "bSkus": [
+        "BS1",
+        "BS2",
+        "BS3",
+        "BS4"
+       ],
+       "bShare": 0.6666666666666666,
+       "bHit": 0,
+       "bMiss": [
+        "BS5",
+        "BS6"
+       ]
+      },
+      {
+       "outlet_kode": "X-S04",
+       "outlet_nama": "Toko Contoh SPM 04",
+       "remark": "LOCAL SPM",
+       "weeks": 2,
+       "status": "BIWEEKLY",
+       "weekNow": 1,
+       "lastWeek": 48,
+       "bTotal": 6,
+       "bBought": 3,
+       "bMonth": 3,
+       "bSkus": [
+        "BS1",
+        "BS2",
+        "BS3"
+       ],
+       "bShare": 0.5,
+       "bHit": 0,
+       "bMiss": [
+        "BS4",
+        "BS5",
+        "BS6"
+       ]
+      }
+     ],
+     "MINIS": [
+      {
+       "outlet_kode": "X-M01",
+       "outlet_nama": "Toko Contoh Minis 01",
+       "remark": "LOCAL MINIS",
+       "weeks": 3,
+       "status": "WEEKLY",
+       "weekNow": 0,
+       "lastWeek": 47,
+       "bTotal": 6,
+       "bBought": 6,
+       "bMonth": 6,
+       "bSkus": [
+        "BM1",
+        "BM2",
+        "BM3",
+        "BM4",
+        "BM5",
+        "BM6"
+       ],
+       "bShare": 1,
+       "bHit": 1,
+       "bMiss": []
+      },
+      {
+       "outlet_kode": "X-M02",
+       "outlet_nama": "Toko Contoh Minis 02",
+       "remark": "LOCAL MINIS",
+       "weeks": 2,
+       "status": "BIWEEKLY",
+       "weekNow": 0,
+       "lastWeek": 46,
+       "bTotal": 6,
+       "bBought": 5,
+       "bMonth": 5,
+       "bSkus": [
+        "BM1",
+        "BM2",
+        "BM3",
+        "BM4",
+        "BM5"
+       ],
+       "bShare": 0.8333333333333334,
+       "bHit": 1,
+       "bMiss": [
+        "BM6"
+       ]
+      },
+      {
+       "outlet_kode": "X-M03",
+       "outlet_nama": "Toko Contoh Minis 03",
+       "remark": "LOCAL MINIS",
+       "weeks": 1,
+       "status": "MONTHLY",
+       "weekNow": 0,
+       "lastWeek": 46,
+       "bTotal": 6,
+       "bBought": 3,
+       "bMonth": 3,
+       "bSkus": [
+        "BM1",
+        "BM2",
+        "BM3"
+       ],
+       "bShare": 0.5,
+       "bHit": 0,
+       "bMiss": [
+        "BM4",
+        "BM5",
+        "BM6"
+       ]
+      },
+      {
+       "outlet_kode": "X-M04",
+       "outlet_nama": "Toko Contoh Minis 04",
+       "remark": "LOCAL MINIS",
+       "weeks": 0,
+       "status": "BELUM ORDER",
+       "weekNow": 0,
+       "lastWeek": "",
+       "bTotal": 6,
+       "bBought": 0,
+       "bMonth": 0,
+       "bSkus": [],
+       "bShare": 0,
+       "bHit": 0,
+       "bMiss": [
+        "BM1",
+        "BM2",
+        "BM3",
+        "BM4",
+        "BM5",
+        "BM6"
+       ]
+      }
+     ]
+    },
+    "excluded": 0,
+    "inactive": 0,
+    "rows": 47,
+    "dist_kode": "DTA",
+    "dist_nama": "DT Contoh A",
+    "stores": 8
+   },
+   {
+    "bulan": "2026-11",
+    "tanggalData": "2026-11-26",
+    "week": 48,
+    "qLabel": "Q4 2026",
+    "qMonths": [
+     "2026-11"
+    ],
+    "groups": {
+     "SPM": [
+      {
+       "outlet_kode": "X-S05",
+       "outlet_nama": "Toko Contoh SPM 05",
+       "remark": "LOCAL SPM",
+       "weeks": 0,
+       "status": "BELUM ORDER",
+       "weekNow": 0,
+       "lastWeek": "",
+       "bTotal": 6,
+       "bBought": 0,
+       "bMonth": 0,
+       "bSkus": [],
+       "bShare": 0,
+       "bHit": 0,
+       "bMiss": [
+        "BS1",
+        "BS2",
+        "BS3",
+        "BS4",
+        "BS5",
+        "BS6"
+       ]
+      },
+      {
+       "outlet_kode": "X-S06",
+       "outlet_nama": "Toko Contoh SPM 06",
+       "remark": "LOCAL SPM",
+       "weeks": 1,
+       "status": "MONTHLY",
+       "weekNow": 1,
+       "lastWeek": 48,
+       "bTotal": 6,
+       "bBought": 2,
+       "bMonth": 2,
+       "bSkus": [
+        "BS1",
+        "BS2"
+       ],
+       "bShare": 0.3333333333333333,
+       "bHit": 0,
+       "bMiss": [
+        "BS3",
+        "BS4",
+        "BS5",
+        "BS6"
+       ]
+      },
+      {
+       "outlet_kode": "X-S07",
+       "outlet_nama": "Toko Contoh SPM 07",
+       "remark": "LOCAL SPM",
+       "weeks": 3,
+       "status": "WEEKLY",
+       "weekNow": 1,
+       "lastWeek": 48,
+       "bTotal": 6,
+       "bBought": 6,
+       "bMonth": 6,
+       "bSkus": [
+        "BS1",
+        "BS2",
+        "BS3",
+        "BS4",
+        "BS5",
+        "BS6"
+       ],
+       "bShare": 1,
+       "bHit": 1,
+       "bMiss": []
+      },
+      {
+       "outlet_kode": "X-S08",
+       "outlet_nama": "Toko Contoh SPM 08",
+       "remark": "LOCAL SPM",
+       "weeks": 1,
+       "status": "MONTHLY",
+       "weekNow": 0,
+       "lastWeek": 46,
+       "bTotal": 6,
+       "bBought": 1,
+       "bMonth": 1,
+       "bSkus": [
+        "BS1"
+       ],
+       "bShare": 0.16666666666666666,
+       "bHit": 0,
+       "bMiss": [
+        "BS2",
+        "BS3",
+        "BS4",
+        "BS5",
+        "BS6"
+       ]
+      }
+     ],
+     "MINIS": [
+      {
+       "outlet_kode": "X-M05",
+       "outlet_nama": "Toko Contoh Minis 05",
+       "remark": "LOCAL MINIS",
+       "weeks": 2,
+       "status": "BIWEEKLY",
+       "weekNow": 1,
+       "lastWeek": 48,
+       "bTotal": 6,
+       "bBought": 4,
+       "bMonth": 4,
+       "bSkus": [
+        "BM1",
+        "BM2",
+        "BM3",
+        "BM4"
+       ],
+       "bShare": 0.6666666666666666,
+       "bHit": 0,
+       "bMiss": [
+        "BM5",
+        "BM6"
+       ]
+      },
+      {
+       "outlet_kode": "X-M06",
+       "outlet_nama": "Toko Contoh Minis 06",
+       "remark": "LOCAL MINIS",
+       "weeks": 2,
+       "status": "BIWEEKLY",
+       "weekNow": 0,
+       "lastWeek": 47,
+       "bTotal": 6,
+       "bBought": 2,
+       "bMonth": 2,
+       "bSkus": [
+        "BM1",
+        "BM2"
+       ],
+       "bShare": 0.3333333333333333,
+       "bHit": 0,
+       "bMiss": [
+        "BM3",
+        "BM4",
+        "BM5",
+        "BM6"
+       ]
+      },
+      {
+       "outlet_kode": "X-M07",
+       "outlet_nama": "Toko Contoh Minis 07",
+       "remark": "LOCAL MINIS",
+       "weeks": 1,
+       "status": "MONTHLY",
+       "weekNow": 1,
+       "lastWeek": 48,
+       "bTotal": 6,
+       "bBought": 1,
+       "bMonth": 1,
+       "bSkus": [
+        "BM1"
+       ],
+       "bShare": 0.16666666666666666,
+       "bHit": 0,
+       "bMiss": [
+        "BM2",
+        "BM3",
+        "BM4",
+        "BM5",
+        "BM6"
+       ]
+      },
+      {
+       "outlet_kode": "X-M08",
+       "outlet_nama": "Toko Contoh Minis 08",
+       "remark": "LOCAL MINIS",
+       "weeks": 4,
+       "status": "WEEKLY",
+       "weekNow": 1,
+       "lastWeek": 48,
+       "bTotal": 6,
+       "bBought": 6,
+       "bMonth": 6,
+       "bSkus": [
+        "BM1",
+        "BM2",
+        "BM3",
+        "BM4",
+        "BM5",
+        "BM6"
+       ],
+       "bShare": 1,
+       "bHit": 1,
+       "bMiss": []
+      }
+     ]
+    },
+    "excluded": 0,
+    "inactive": 0,
+    "rows": 37,
+    "dist_kode": "DTB",
+    "dist_nama": "DT Contoh B",
+    "stores": 8
+   }
+  ],
+  "noDt": [],
+  "manual": [],
+  "recap": {
+   "fop": [],
+   "asrt": []
+  }
+ },
+ "live": {
+  "tanggal": "2026-11-26",
+  "kpis": [
+   {
+    "kpi": "FOP_SPM",
+    "label": "Weekly FOP SPM",
+    "target": 0.8,
+    "aktual": 0.25,
+    "bobot": 8,
+    "poin": 2.5,
+    "hilang": 5.5,
+    "catatan": "Dihitung dari Extract DMS 26 Nov 2026: 2 dari 8 toko monitoring WEEKLY",
+    "level": "red"
+   },
+   {
+    "kpi": "FOP_MINIS",
+    "label": "Weekly FOP Minis",
+    "target": 0.8,
+    "aktual": 0.25,
+    "bobot": 8,
+    "poin": 2.5,
+    "hilang": 5.5,
+    "catatan": "Dihitung dari Extract DMS 26 Nov 2026: 2 dari 8 toko monitoring WEEKLY",
+    "level": "red"
+   },
+   {
+    "kpi": "PS",
+    "label": "Perfect Store",
+    "target": 0.9,
+    "aktual": 0.5,
+    "bobot": 10,
+    "poin": 5.5,
+    "hilang": 4.5,
+    "catatan": "",
+    "level": "red"
+   },
+   {
+    "kpi": "ASRT_SPM",
+    "label": "Assortment SPM",
+    "target": 0.9,
+    "aktual": 0.4,
+    "bobot": 8,
+    "poin": 3.5,
+    "hilang": 4.5,
+    "catatan": "",
+    "level": "red"
+   },
+   {
+    "kpi": "ASRT_MINIS",
+    "label": "Assortment Minis",
+    "target": 0.9,
+    "aktual": 0.4,
+    "bobot": 8,
+    "poin": 3.5,
+    "hilang": 4.5,
+    "catatan": "",
+    "level": "red"
+   },
+   {
+    "kpi": "BANDED_SPM",
+    "label": "Banded SPM",
+    "target": 0.8,
+    "aktual": 0.375,
+    "bobot": 6,
+    "poin": 2.8125,
+    "hilang": 3.1875,
+    "catatan": "EVB Q4 2026 dari Extract DMS 26 Nov 2026: 3 dari 8 toko tercapai",
+    "level": "red"
+   },
+   {
+    "kpi": "BANDED_MINIS",
+    "label": "Banded Minis",
+    "target": 0.7,
+    "aktual": 0.375,
+    "bobot": 6,
+    "poin": 3.2142857142857144,
+    "hilang": 2.7857142857142856,
+    "catatan": "EVB Q4 2026 dari Extract DMS 26 Nov 2026: 3 dari 8 toko tercapai",
+    "level": "red"
+   },
+   {
+    "kpi": "R2G",
+    "label": "R2G",
+    "target": 1,
+    "aktual": 0.9,
+    "bobot": 12,
+    "poin": 10.8,
+    "hilang": 1.1999999999999993,
+    "catatan": "",
+    "level": "amber"
+   },
+   {
+    "kpi": "DR",
+    "label": "%DR",
+    "target": 0.95,
+    "aktual": 0.9,
+    "bobot": 10,
+    "poin": 9.4,
+    "hilang": 0.5999999999999996,
+    "catatan": "belum diisi di tool upload, memakai angka file",
+    "weekly": true,
+    "level": "amber"
+   }
+  ],
+  "score": 43.72678571428572,
+  "scoreShown": 43.72678571428572,
+  "recalculated": true,
+  "rank": 11,
+  "prevRank": 12,
+  "fopWeek": 48,
+  "history": [
+   {
+    "tanggal": "2026-11-19",
+    "rank": 12,
+    "score": 61
+   },
+   {
+    "tanggal": "2026-11-26",
+    "rank": 11,
+    "score": 64
+   }
+  ],
+  "summary": {
+   "ps": null,
+   "asrt": null,
+   "mon": {
+    "bulan": "2026-11",
+    "tanggal": "2026-11-26",
+    "week": 48,
+    "qLabel": "Q4 2026",
+    "qMonths": [
+     "2026-11"
+    ],
+    "fop": {
+     "SPM": {
+      "n": 8,
+      "weekly": 2,
+      "pct": 0.25
+     },
+     "MINIS": {
+      "n": 8,
+      "weekly": 2,
+      "pct": 0.25
+     }
+    },
+    "banded": {
+     "SPM": {
+      "n": 8,
+      "hit": 3,
+      "pct": 0.375
+     },
+     "MINIS": {
+      "n": 8,
+      "hit": 3,
+      "pct": 0.375
+     }
+    }
+   }
+  },
+  "monLive": true
+ }
+}
