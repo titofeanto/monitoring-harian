@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Monitoring">
 <title>KPI Great Sales</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=202611171300">
+<link rel="stylesheet" href="assets/style.css?v=202611171500">
 <script src="assets/boot.js?v=202611031000"></script>
 </head>
 <body>
@@ -75,6 +75,7 @@
   <nav class="tabs" id="tabsNav" role="tablist" aria-label="Bagian">
     <button role="tab" data-tab="skor" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/></svg><span>Skor</span></button>
     <button role="tab" data-tab="fop" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span class="lbl-l">Weekly FOP</span><span class="lbl-s">FOP</span></button>
+    <button role="tab" data-tab="banded" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span>Banded</span></button>
     <button role="tab" data-tab="asrt" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span class="lbl-l">Assortment</span><span class="lbl-s">Asrt</span></button>
     <button role="tab" data-tab="ps" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6"/></svg><span class="lbl-l">Perfect Store</span><span class="lbl-s">PS</span></button>
     <a href="cek-stok.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span class="lbl-l">Cek Stok</span><span class="lbl-s">Stok</span></a>
@@ -120,6 +121,10 @@
     <!-- PERFECT STORE -->
     <section class="tab" id="tab-ps" hidden>
       <div class="tab" id="secPs"></div>
+    </section>
+
+    <!-- BANDED -->
+    <section class="tab" id="tab-banded" hidden>
       <div class="card" id="secBanded"></div>
     </section>
 
@@ -138,6 +143,6 @@
 <script src="assets/pwa.js?v=1"></script>
 <script src="assets/status-banner.js?v=2"></script>
 <script src="assets/fresh.js?v=202610311000"></script>
-<script src="assets/gs.js?v=202611171300"></script>
+<script src="assets/gs.js?v=202611171500"></script>
 </body>
 </html>

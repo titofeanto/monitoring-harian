@@ -148,7 +148,7 @@
     LISTS[id] = cfg;
     const st = LST[id] = LST[id] || { q: '', f: cfg.defaultF };
     if (!cfg.chips.some(c => c[0] === st.f)) st.f = cfg.defaultF;
-    return `<div class="tb" id="tb-${id}"><label class="sbox">${svg('search')}<input type="search" data-q="${id}" placeholder="Cari nama toko atau distributor" autocomplete="off" value="${esc(st.q)}"><button type="button" class="clr" data-clr="${id}" aria-label="Hapus pencarian" ${st.q ? '' : 'hidden'}>${svg('x')}</button></label>` +
+    return `<div class="tb" id="tb-${id}"><label class="sbox">${svg('search')}<input type="search" data-q="${id}" placeholder="${esc(cfg.ph || 'Cari nama toko atau distributor')}" autocomplete="off" value="${esc(st.q)}"><button type="button" class="clr" data-clr="${id}" aria-label="Hapus pencarian" ${st.q ? '' : 'hidden'}>${svg('x')}</button></label>` +
       `<div class="chips" id="ch-${id}" role="group" aria-label="Filter"></div><div class="tb-meta"><span id="mt-${id}"></span></div></div><div id="ls-${id}"></div>`;
   }
   function fillList(id) {
@@ -159,9 +159,9 @@
     if (q && !cnt[st.f] && st.f !== cfg.defaultF) st.f = cfg.defaultF;
     $('ch-' + id).innerHTML = cfg.chips.map(c => `<button type="button" data-ch="${id}" data-f="${c[0]}" aria-pressed="${st.f === c[0]}"${cnt[c[0]] ? '' : ' class="z"'}>${esc(c[1])} <b>${nf(cnt[c[0]])}</b></button>`).join('');
     const list = base.filter(r => cfg.test(st.f, r)).sort(cfg.sort);
-    $('mt-' + id).textContent = list.length === cfg.rows.length ? nf(cfg.rows.length) + ' toko' : nf(list.length) + ' dari ' + nf(cfg.rows.length) + ' toko';
+    $('mt-' + id).textContent = list.length === cfg.rows.length ? nf(cfg.rows.length) + ' ' + (cfg.unit || 'toko') : nf(list.length) + ' dari ' + nf(cfg.rows.length) + ' ' + (cfg.unit || 'toko');
     const shown = list.slice(0, st.limit || 60);
-    $('ls-' + id).innerHTML = !cfg.rows.length ? `<div class="empty">${cfg.empty}</div>` : !list.length ? `<div class="empty">Tidak ada toko yang cocok. <button type="button" class="lnk" data-reset="${id}">Hapus pencarian dan filter</button></div>`
+    $('ls-' + id).innerHTML = !cfg.rows.length ? `<div class="empty">${cfg.empty}</div>` : !list.length ? `<div class="empty">Tidak ada ${cfg.unit || 'toko'} yang cocok. <button type="button" class="lnk" data-reset="${id}">Hapus pencarian dan filter</button></div>`
       : `<div class="rk-list">${shown.map(cfg.row).join('')}</div>` + (list.length > shown.length ? `<button type="button" class="btn plain more" data-more="${id}">Tampilkan lebih banyak (${nf(list.length - shown.length)} lagi)</button>` : '');
   }
 
@@ -399,6 +399,19 @@
         outs.map(o => `<div class="rk"><div class="rk-h"><span class="si plus">${svg('store')}</span><div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)}</div></div><span class="tag a">${esc(o.remark)}</span></div></div>`).join('') + '</div></details>' : '');
   }
 
+  /* bysku:start */
+  /** Gabung ringkasan per SKU antar-DT: jumlah bought/total/month per sku_kode (penjumlahan tampilan, bukan aturan Banded). Urut bought menaik. */
+  function mergeBySku(lists) {
+    const m = {};
+    (lists || []).forEach(arr => (arr || []).forEach(b => {
+      const o = m[b.sku_kode] = m[b.sku_kode] || { sku_kode: b.sku_kode, sku_nama: b.sku_nama, bought: 0, total: 0, month: 0 };
+      o.bought += +b.bought || 0; o.total += +b.total || 0; o.month += +b.month || 0;
+    }));
+    return Object.keys(m).map(k => m[k]).sort((a, b) => a.bought - b.bought || (a.sku_kode < b.sku_kode ? -1 : a.sku_kode > b.sku_kode ? 1 : 0));
+  }
+  /* bysku:end */
+  let BND = {};
+  const BV = {};
   /** Banded dari Extract DMS: toko tercapai kalau bagian SKU banded channel-nya yang sudah dibeli >= ambang (config). */
   function renderBandedLive(kMinis, kSpm) {
     const cfg = DATA.mon.cfg, ms = DATA.live.summary.mon;
@@ -407,28 +420,79 @@
     $('secBanded').innerHTML = ciTitle('box', 'Banded') + monNote() +
       `<p class="hint">EVB ${esc(ms.qLabel)}: toko tercapai kalau SKU banded channel-nya yang pernah dibeli sepanjang kuartal ini minimal ${Math.round((num(cfg.banded_spm) || 0.8) * 100)}% (Supermarket) atau ${Math.round((num(cfg.banded_minis) || 0.7) * 100)}% (Local Minis). Bulan yang terhitung: ${esc(ms.qMonths.map(bulanLbl).join(', '))}; bulan lalu diambil dari rekap yang tersimpan, bulan berjalan dari Extract DMS sampai ${tgl(ms.tanggal)}. Hanya toko ber-REMARK monitoring. Ini hitungan sendiri, bukan angka HO.</p>` +
       groups.map(g => `<div class="card" style="margin-top:10px"><h3 style="margin:0 0 6px">${esc(g[1])} ${g[2] ? `<span class="lv ${g[2].level}">${pct(g[2].aktual)} / target ${pct(g[2].target)}</span>` : ''}</h3><div id="bd-${g[0]}"></div></div>`).join('');
+    BND = {};
     groups.forEach(g => {
-      const rows = monStores(g[0]), tot = rows.length ? rows[0].bTotal : 0, thr = g[3];
+      const ch = g[0], thr = g[3], rows = monStores(ch), tot = rows.length ? rows[0].bTotal : 0;
+      const minSku = Math.ceil(thr * tot - 1e-9);
       const need = o => Math.max(Math.ceil(thr * o.bTotal - 1e-9) - o.bBought, 0);
       const hit = rows.filter(o => o.bHit).length;
-      const box = $('bd-' + g[0]);
+      const box = $('bd-' + ch);
       if (!rows.length) { box.innerHTML = '<div class="empty">Belum ada toko monitoring di channel ini.</div>'; return; }
       if (!tot) { box.innerHTML = '<div class="empty">Daftar SKU banded channel ini belum diupload di tool upload.</div>'; return; }
-      box.innerHTML = `<p class="hint">${hit} dari ${rows.length} toko tercapai · ${tot} SKU banded, ambang ${Math.ceil(thr * tot - 1e-9)} SKU per toko.</p>` + mountList('bnd' + g[0], {
+      const skus = mergeBySku(monDts().map(d => d.bySku && d.bySku[ch]));
+      const hasSku = skus.length > 0;
+      // toko yang belum membeli tiap SKU (penyaringan tampilan dari bMiss)
+      const missBy = {};
+      rows.forEach(o => (o.bMiss || []).forEach(k => { (missBy[k] = missBy[k] || []).push(o); }));
+      const pctHit = rows.length ? Math.round(hit / rows.length * 100) : 0;
+      const summary = `<div class="hero-units"><div><b>${hit}/${rows.length}</b><span>Tercapai</span></div><div><b>${minSku}<small class="muted" style="font-weight:600;font-size:12px"> dari ${tot}</small></b><span>Ambang SKU</span></div><div><b>${rows.length - hit}</b><span>Kurang toko</span></div></div>` +
+        `<div class="bar"><i style="width:${pctHit}%"></i></div><div class="bar-meta"><span>EVB ${esc(ms.qLabel)}</span><span>${pctHit}% toko tercapai</span></div>`;
+      const skuList = () => mountList('bsku' + ch, {
+        rows: skus, defaultF: 'kurang', empty: 'Belum ada SKU banded.', unit: 'SKU', ph: 'Cari nama atau kode SKU',
+        chips: [['kurang', 'Paling banyak belum'], ['semua', 'Semua SKU']],
+        test: (f, b) => f === 'semua' || b.bought < b.total,
+        hay: b => (b.sku_nama + ' ' + b.sku_kode).toLowerCase(),
+        sort: (a, b) => a.bought - b.bought || (a.sku_kode < b.sku_kode ? -1 : a.sku_kode > b.sku_kode ? 1 : 0),
+        row: b => {
+          const r = b.total ? b.bought / b.total : 0, ic = r >= thr ? 'ok' : r >= 0.5 ? 'warn' : 'neg', belum = b.total - b.bought, miss = missBy[b.sku_kode] || [];
+          const cls = ic === 'ok' ? 'okc' : ic === 'warn' ? 'amb' : 'neg';
+          return `<div class="rk"><div class="rk-h"><span class="si ${ic}">${svg(ic === 'ok' ? 'check' : ic === 'warn' ? 'warn' : 'down')}</span>` +
+            `<div class="it-i"><div class="nm">${esc(b.sku_nama || b.sku_kode)}</div><div class="sk">${esc(b.sku_kode)}</div></div><span class="tag ${ic === 'ok' ? 'g' : ic === 'warn' ? 'a' : 'r'}">${belum > 0 ? nf(belum) + ' toko belum' : 'Semua sudah'}</span></div>` +
+            `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${(r * 100).toFixed(0)}%"></i></div>` +
+            `<div class="rk-s two"><div class="${cls}"><small>Sudah dibeli (kuartal)</small><b>${nf(b.bought)} / ${nf(b.total)}</b><em>${Math.round(r * 100)}%</em></div><div><small>Bulan ini</small><b>${nf(b.month)}</b></div></div>` +
+            (miss.length ? `<details class="box" style="margin-top:8px"><summary><span>Toko yang belum membeli (${nf(miss.length)})</span></summary><ul class="sku-list">${miss.slice(0, 30).map(o => `<li>${esc(o.outlet_nama)} · ${esc(o.dist_nama)}</li>`).join('')}${miss.length > 30 ? `<li>dan ${nf(miss.length - 30)} lagi</li>` : ''}</ul></details>` : '') + '</div>';
+        },
+      });
+      const tokoList = () => mountList('bnd' + ch, {
         rows, defaultF: 'belum', empty: 'Belum ada toko.',
-        chips: [['belum', 'Belum tercapai'], ['hit', 'Tercapai'], ['semua', 'Semua']],
-        test: (f, o) => f === 'semua' || (f === 'belum' && !o.bHit) || (f === 'hit' && !!o.bHit),
+        chips: [['belum', 'Belum tercapai'], ['dekat', 'Tinggal 1-2 SKU'], ['hit', 'Tercapai'], ['semua', 'Semua']],
+        test: (f, o) => f === 'semua' || (f === 'belum' && !o.bHit) || (f === 'hit' && !!o.bHit) || (f === 'dekat' && !o.bHit && need(o) <= 2),
         hay: o => (o.outlet_nama + ' ' + o.dist_nama + ' ' + o.remark).toLowerCase(),
         sort: (a, b) => (!!a.bHit) - (!!b.bHit) || need(a) - need(b) || String(a.outlet_nama).localeCompare(b.outlet_nama),
         row: o => {
-          const ok = !!o.bHit, near = need(o) <= 2;
+          const ok = !!o.bHit, near = need(o) <= 2, miss = ok ? [] : (o.bMiss || []);
+          const v = minSku ? Math.min(1, o.bBought / minSku) : 0;
           return `<div class="rk"><div class="rk-h"><span class="si ${ok ? 'ok' : near ? 'warn' : 'neg'}">${svg(ok ? 'check' : near ? 'warn' : 'down')}</span>` +
             `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)}</div></div><span class="tag ${ok ? 'g' : near ? 'a' : 'r'}">${ok ? 'Tercapai' : 'Kurang ' + need(o) + ' SKU'}</span></div>` +
-            `<div class="rk-s two"><div class="${ok ? 'okc' : near ? 'amb' : 'neg'}"><small>SKU banded dibeli (${esc(ms.qLabel.split(' ')[0])})</small><b>${o.bBought} / ${o.bTotal}</b></div><div><small>Bulan ini · persen</small><b>${o.bMonth} · ${o.bShare == null ? '-' : Math.round(o.bShare * 100) + '%'}</b></div></div>` +
-            (o.bMiss && o.bMiss.length ? `<details class="box" style="margin-top:8px"><summary><span>Belum dibeli (${o.bMiss.length} SKU)</span></summary><ul class="sku-list">${o.bMiss.map(k => `<li>${esc(k)} ${esc(names[k] || '')}</li>`).join('')}</ul></details>` : '') + '</div>';
+            `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${(v * 100).toFixed(0)}%"></i></div>` +
+            `<div class="bar-meta"><span>${o.bBought} dari ${minSku} SKU</span><span>Bulan ini ${o.bMonth} · ${o.bShare == null ? '-' : Math.round(o.bShare * 100) + '%'}</span></div>` +
+            (miss.length ? `<div class="skc">${miss.slice(0, 3).map(k => `<span title="${esc(k)}">${esc(names[k] || k)}</span>`).join('')}${miss.length > 3 ? `<button type="button" data-skmore="1">+${miss.length - 3}</button>` : ''}</div>` +
+              `<details class="box skm" style="margin-top:8px"><summary><span>Belum dibeli (${miss.length} SKU)</span></summary><ul class="sku-list">${miss.map(k => `<li>${esc(k)} ${esc(names[k] || '')}</li>`).join('')}</ul></details>` : '') + '</div>';
         },
       });
+      BND[ch] = { hasSku, skuList, tokoList };
+      const sw = hasSku ? `<div class="chips bv" role="group" aria-label="Pandangan ${esc(g[1])}" id="bvs-${ch}"></div>` : '';
+      box.innerHTML = summary + `<p class="hint" style="margin:10px 0 8px">${hasSku ? 'Per SKU: SKU mana yang belum dibeli banyak toko. Per toko: toko mana yang masih kurang SKU. Dihitung sepanjang kuartal.' : `${hit} dari ${rows.length} toko tercapai · ${tot} SKU banded, ambang ${minSku} SKU per toko (sepanjang kuartal).`}</p>` + sw + `<div id="bv-${ch}"></div>`;
+      paintBanded(ch);
     });
+  }
+
+  /* Pandangan Banded per channel: 'sku' atau 'toko'. Bawaan: SPM per SKU (wajib 80%), Minis per toko; pilihan diingat per channel. */
+  const bandedView = ch => {
+    let sv = {}; try { sv = JSON.parse(localStorage.getItem('mh_gs_bnd_view') || '{}') || {}; } catch (e) { /* mode privat */ }
+    const v = BV[ch] || sv[ch] || (ch === 'SPM' ? 'sku' : 'toko');
+    return v === 'sku' && BND[ch] && BND[ch].hasSku ? 'sku' : 'toko';
+  };
+  function paintBanded(ch) {
+    const b = BND[ch], el = $('bv-' + ch); if (!b || !el) return;
+    const v = bandedView(ch), sw = $('bvs-' + ch);
+    if (sw) sw.innerHTML = [['sku', 'Per SKU'], ['toko', 'Per toko']].map(x => `<button type="button" data-bv="${ch}" data-v="${x[0]}" aria-pressed="${v === x[0]}">${x[1]}</button>`).join('');
+    el.innerHTML = v === 'sku' ? b.skuList() : b.tokoList();
+    fillList(v === 'sku' ? 'bsku' + ch : 'bnd' + ch);
+  }
+  function setBandedView(ch, v) {
+    try { const sv = JSON.parse(localStorage.getItem('mh_gs_bnd_view') || '{}') || {}; sv[ch] = v; localStorage.setItem('mh_gs_bnd_view', JSON.stringify(sv)); } catch (e) { /* mode privat */ }
+    BV[ch] = v; paintBanded(ch);
   }
 
   /** Rekap bulanan tersimpan (GS_BULANAN): FOP, EVB kuartal, dan assortment per bulan. */
@@ -505,7 +569,7 @@
   });
 
   /* tab, daftar (cari/filter/lagi), muat ulang, popover status */
-  const TABS = ['skor', 'fop', 'asrt', 'ps'];
+  const TABS = ['skor', 'fop', 'banded', 'asrt', 'ps'];
   function setTab(t) {
     if (!TABS.includes(t)) t = 'skor';
     TABS.forEach(k => { $('tab-' + k).hidden = k !== t; });
@@ -519,6 +583,8 @@
     const c = e.target.closest('[data-ch]'); if (c) { LST[c.dataset.ch].f = c.dataset.f; LST[c.dataset.ch].limit = 60; fillList(c.dataset.ch); return; }
     const x = e.target.closest('[data-clr]'); if (x) { const id = x.dataset.clr; LST[id].q = ''; $('tb-' + id).querySelector('input').value = ''; x.hidden = true; fillList(id); return; }
     const m = e.target.closest('[data-more]'); if (m) { const id = m.dataset.more; LST[id].limit = (LST[id].limit || 60) + 60; fillList(id); return; }
+    const bv = e.target.closest('[data-bv]'); if (bv) { setBandedView(bv.dataset.bv, bv.dataset.v); return; }
+    const sm = e.target.closest('[data-skmore]'); if (sm) { const d = sm.closest('.rk').querySelector('details.skm'); if (d) d.open = !d.open; return; }
     const go = e.target.closest('[data-go]'); if (go) { setTab(go.dataset.go); return; }
     const r = e.target.closest('[data-reset]'); if (r) { const id = r.dataset.reset; LST[id].q = ''; LST[id].f = LISTS[id].defaultF; $('tb-' + id).querySelector('input').value = ''; fillList(id); return; }
     $('syncPop').hidden = true;
