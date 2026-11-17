@@ -67,16 +67,6 @@ const CHUNK = 90000; // batas satu item CacheService 100 KB
 
 function doGet(e) {
   try {
-    // Setup sementara: muat extract DMS + NGDMS mentah dari gist ke Sheet DT.
-    // Hanya jalan dengan kode akses peran pusat; kode DT biasa ditolak.
-    if (e.parameter && e.parameter.admin === 'loadRaw') {
-      const regA = readRegistry_();
-      const meA = regA.find(x => x.kode_akses === String(e.parameter.code || '').trim());
-      if (!meA || meA.peran !== 'pusat') return jsonOut({ error: 'invalid_code' });
-      const r = regA.find(x => x.dt_kode === String(e.parameter.dt || ''));
-      if (!r || !r.sheet_id) return jsonOut({ error: 'unknown_dt' });
-      return jsonOut(loadRaw_(r.sheet_id, e.parameter.url));
-    }
     // &admin=clearCache&dt=<dt_kode> (atau tanpa dt untuk semua DT): paksa baca ulang Sheet
     // sebelum cache 5 menit habis sendiri. Hanya jalan dengan kode akses peran pusat.
     if (e.parameter && e.parameter.admin === 'clearCache') {
@@ -281,36 +271,6 @@ function clearCache() {
     for (let i = 0; i < n; i++) keys.push(key + '_' + i);
     cache.removeAll(keys);
   });
-}
-
-/**
- * Isi tab DMS_EXTRACT dan NGDMS_ASRT satu Sheet DT dari JSON {ngdms, extract}
- * (masing-masing array 2D, baris pertama header). Menimpa isi lama, sesuai
- * aturan "hapus isi lama, tempel yang baru" di PANDUAN.
- */
-function loadRaw_(sheetId, url) {
-  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-  if (res.getResponseCode() !== 200) return { error: 'fetch_failed', code: res.getResponseCode() };
-  const data = JSON.parse(res.getContentText('UTF-8'));
-  const ss = SpreadsheetApp.openById(sheetId);
-  const put = (name, aoa) => {
-    const sh = ss.getSheetByName(name) || ss.insertSheet(name);
-    sh.clearContents();
-    const w = aoa.reduce((m, r) => Math.max(m, r.length), 1);
-    const rows = aoa.map(r => r.concat(new Array(w - r.length).fill('')));
-    if (sh.getMaxRows() < rows.length) sh.insertRowsAfter(sh.getMaxRows(), rows.length - sh.getMaxRows());
-    if (sh.getMaxColumns() < w) sh.insertColumnsAfter(sh.getMaxColumns(), w - sh.getMaxColumns());
-    sh.getRange(1, 1, sh.getMaxRows(), Math.min(6, sh.getMaxColumns())).setNumberFormat('@');
-    sh.getRange(1, 1, rows.length, w).setValues(rows);
-  };
-  // Hanya timpa tab yang memang dikirim di payload — bagian yang tidak dikirim
-  // (misal ngdms saat cuma update extract) dibiarkan, tidak dikosongkan.
-  const result = { ok: true };
-  if (data.extract) { put('DMS_EXTRACT', data.extract); result.extractRows = data.extract.length - 1; }
-  if (data.ngdms) { put('NGDMS_ASRT', data.ngdms); result.ngdmsRows = data.ngdms.length - 1; }
-  if (data.hariLibur) { put('HARI_LIBUR', data.hariLibur); result.hariLiburRows = data.hariLibur.length - 1; }
-  cacheClearKey_(CACHE_KEY + '_' + sheetId); // biar perubahan langsung terlihat, tidak nunggu cache habis
-  return result;
 }
 
 /**
