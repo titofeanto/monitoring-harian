@@ -537,8 +537,12 @@ function respondGs_(me, reg, dtWanted) {
     const have = {}; asrtDts.forEach(x => { have[String(x.dt_kode)] = true; });
     Object.keys(kodes).filter(k => !have[k]).forEach(k => mon.noDt.push({ dist_kode: k, dist_nama: kodes[k], stores: toko.filter(t => String(t.dist_kode) === k).length }));
   }
+  // Ranking sales per BU (FOP, Banded, Assortment) dari DT dalam cakupan; DT yang gagal tidak menggagalkan yang lain.
+  const rankRes = asrtDts.map(x => salesRankForDt_(x, toko, bandedSku, cfg, hist));
+  const ranking = rankSales_(rankRes, cfg.rank_min_toko);
+  ranking.perDt = rankRes.map(d => ({ dist_kode: d.dist_kode, dist_nama: d.dist_nama, stores: d.stores || 0, status: d.error ? 'error' : d.bulan ? 'ok' : 'tanpa_data', error: d.error || '' }));
   const dts = me.peran === 'pusat' ? reg.filter(r => r.peran === 'dt' && r.sheet_id).map(r => ({ kode: r.dt_kode, nama: r.nama_dt })) : null;
-  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets, ps: { stores: psStores, targets: psTargets, hist: psHist }, asrt: asrt, mon: mon,
+  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets, ps: { stores: psStores, targets: psTargets, hist: psHist }, asrt: asrt, mon: mon, ranking: ranking,
     live: computeGsLive_({ scorecard: scorecard, ps: { stores: psStores, targets: psTargets }, asrt: asrt, mon: mon, scoped: !!scope }) };
 }
 
@@ -801,6 +805,255 @@ function asrtForDt_(r) {
   return res;
 }
 
+// ====================== RANKING SALES PER BU (FOP, Banded, Assortment) ======================
+// Tiga papan peringkat terpisah per BU (Sub_division DMS), tanpa skor gabungan. Toko diatribusikan ke salesman yang
+// qty bersih BU itu terbanyak di bulan data (seri: kode lebih kecil). computeSalesRank_ menghitung per salesman satu DT,
+// rankSales_ menyusun papan dari banyak DT. Aturan FOP/Banded/Assortment sama dengan computeMon_/computeAsrt_,
+// hanya dibatasi ke BU yang bersangkutan.
+
+const RANK_BU = [['FOODS', 'Foods'], ['HOME CARE', 'Home Care'], ['PERSONAL CARE', 'Personal Care'], ['BEAUTY & WELLBEING', 'Beauty & Wellbeing']];
+
+/** Nama BU dirapikan (huruf besar, spasi tunggal); '' kalau bukan salah satu dari empat BU. */
+function rankBuOf_(v) {
+  const s = String(v === null || v === undefined ? '' : v).replace(/\s+/g, ' ').trim().toUpperCase();
+  return RANK_BU.some(b => b[0] === s) ? s : '';
+}
+
+/** Kode salesman DMS tanpa nol di depan ('021' -> '21'), sama dengan kodeOf di assets/app.js untuk kode angka. */
+function rankSmCode_(v) {
+  const s = String(v === null || v === undefined ? '' : v).trim();
+  return /^\d+$/.test(s) ? String(parseInt(s, 10)) : s;
+}
+
+/** true kalau kode a lebih kecil dari b (angka dibandingkan sebagai angka). */
+function rankCodeLess_(a, b) {
+  return /^\d+$/.test(a) && /^\d+$/.test(b) ? +a < +b : a < b;
+}
+
+/**
+ * Pure. Peringkat salesman per BU untuk Weekly FOP, Banded, Assortment, satu DT, bulan data terbaru.
+ * in_ = { dms, produk, outletMaster, dsr, stores, bandedSku, cfg, hist, dtKode, moq }
+ *   dms, produk, outletMaster, dsr = array 2D (baris 1 header) seperti tab Sheet DT
+ *   stores = [{outlet_kode, outlet_nama, remark, status}] toko monitoring DT itu; bandedSku, cfg, hist seperti computeMon_
+ * return { bulan, tanggalData,
+ *   bu: { '<BU>': { label, sales: [{ kode, nama, tokoFop, fop:{n,weekly,pct,spmN,spmWeekly}, tokoBanded, banded:{n,hit,pct}, tokoAsrt, asrt:{toko,lines,perToko} }],
+ *                   belumTransaksi } },
+ *   catatan: { bandedTanpaBu, salesTanpaNama } }
+ */
+function computeSalesRank_(in_) {
+  const col = (hdr, alts) => { const h = hdr.map(x => String(x).replace(/\s+/g, ' ').trim().toLowerCase()); for (let i = 0; i < alts.length; i++) { const k = h.indexOf(alts[i].toLowerCase()); if (k >= 0) return k; } return -1; };
+  const dms = in_.dms || [], produk = in_.produk || [], outletMaster = in_.outletMaster || [], dsr = in_.dsr || [];
+  const stores = in_.stores || [], bandedSku = in_.bandedSku || [], hist = in_.hist || [], cfg = in_.cfg || {};
+  const moq = in_.moq || ASRT_MOQ, dtKode = in_.dtKode;
+  const out = { bulan: '', tanggalData: '', bu: {}, catatan: { bandedTanpaBu: 0, salesTanpaNama: 0 } };
+  if (!dms.length) return out;
+  const cO = col(dms[0], ['Outlet', 'Kode Outlet Bersih']), cK = col(dms[0], ['SKUCode', 'SKU Code']), cQ = col(dms[0], ['TotalQuantity(PCS)', 'TotalQuantity (PCS)']),
+    cD = col(dms[0], ['INVDate', 'InvDate', 'Tanggal']), cS = col(dms[0], ['Salesman', 'DSR Code (Hygiene)']), cB = col(dms[0], ['Sub_division']);
+  if (cO < 0 || cQ < 0 || cD < 0 || cS < 0 || cB < 0) return out;
+  const body = dms.slice(1);
+  let maxIso = '';
+  body.forEach(r => { const d = asrtIso_(r[cD]); if (d > maxIso) maxIso = d; });
+  if (!maxIso) return out;
+  const bulan = maxIso.slice(0, 7);
+  out.bulan = bulan; out.tanggalData = maxIso;
+
+  // MASTER_PRODUK: basepack dan BU per SKU
+  const sku2bp = {}, sku2bu = {};
+  if (produk.length) {
+    const pS = col(produk[0], ['SKUCode']), pB = col(produk[0], ['LEVEL-9']), pU = col(produk[0], ['BU']);
+    produk.slice(1).forEach(r => {
+      const a = pS >= 0 ? String(r[pS]).trim() : ''; if (!a) return;
+      const b = pB >= 0 ? String(r[pB]).trim() : ''; if (b) sku2bp[a] = b;
+      const u = pU >= 0 ? rankBuOf_(r[pU]) : ''; if (u) sku2bu[a] = u;
+    });
+  }
+  // Identitas salesman: nama dari tab DSR, channel '-' = nonaktif
+  const nameOf = {}, inactive = {};
+  if (dsr.length) {
+    const dK = col(dsr[0], ['kode_dsr']), dN = col(dsr[0], ['nama_dsr']), dC = col(dsr[0], ['channel']);
+    dsr.slice(1).forEach(r => {
+      const k = dK >= 0 ? rankSmCode_(r[dK]) : ''; if (!k) return;
+      if (dN >= 0 && String(r[dN]).trim()) nameOf[k] = String(r[dN]).trim();
+      if (dC >= 0 && String(r[dC]).trim() === '-') inactive[k] = true;
+    });
+  }
+  // Channel toko dari OUTLET_MASTER (kode berawalan kode DT dipotong, seperti computeAsrt_)
+  const chOf = {};
+  if (outletMaster.length) {
+    const cC = col(outletMaster[0], ['Outlet Code']), cT = col(outletMaster[0], ['Outlet Type Desc']);
+    if (cC >= 0) outletMaster.slice(1).forEach(r => {
+      let c = String(r[cC] === undefined ? '' : r[cC]).trim(); if (!c) return;
+      if (dtKode && c.indexOf(dtKode) === 0 && c.length > dtKode.length) c = c.slice(dtKode.length);
+      chOf[c] = asrtChannelOf_(cT >= 0 ? r[cT] : '');
+    });
+  }
+  // Toko monitoring (aturan sama dengan computeMon_)
+  const remarkOf = { SPM: monList_(cfg.remark_spm), MINIS: monList_(cfg.remark_minis) };
+  const monitored = [];
+  stores.forEach(s => {
+    if (String(s.status || '').trim().toUpperCase() === 'INACTIVE') return;
+    const r = String(s.remark || '').trim().toUpperCase();
+    const g = remarkOf.SPM.indexOf(r) >= 0 ? 'SPM' : remarkOf.MINIS.indexOf(r) >= 0 ? 'MINIS' : '';
+    if (g) monitored.push({ o: String(s.outlet_kode).trim(), g: g });
+  });
+  // EVB kuartal: SKU banded yang dibeli di bulan lain dalam kuartal yang sama (dari GS_BULANAN)
+  const prior = {};
+  hist.forEach(h => {
+    if (String(h.periode) >= bulan || monQuarter_(h.periode) !== monQuarter_(bulan)) return;
+    const o = String(h.outlet_kode).trim(); prior[o] = prior[o] || {};
+    String(h.banded_sku || '').split(',').forEach(k => { k = k.trim(); if (k) prior[o][k] = true; });
+  });
+
+  // Satu putaran baris DMS bulan data
+  const att = {}, wk = {}, bpNet = {}, skuNet = {};
+  const add = (root, a, b, c, q) => { const x = root[a] = root[a] || {}, y = x[b] = x[b] || {}; y[c] = (y[c] || 0) + q; };
+  body.forEach(r => {
+    const d = asrtIso_(r[cD]); if (!d || d.slice(0, 7) !== bulan) return;
+    const o = String(r[cO]).trim(); if (!o) return;
+    const q = asrtNum_(r[cQ]), k = cK >= 0 ? String(r[cK]).trim() : '';
+    if (k) { const y = skuNet[o] = skuNet[o] || {}; y[k] = (y[k] || 0) + q; }
+    const bu = rankBuOf_(r[cB]); if (!bu) return;
+    const sm = rankSmCode_(r[cS]);
+    if (sm) add(att, bu, o, sm, q);
+    add(wk, bu, o, monIsoWeek_(d), q);
+    if (k && sku2bp[k]) add(bpNet, bu, o, sku2bp[k], q);
+  });
+
+  const need = Math.max(1, Math.round(cfg.fop_weekly || 3));
+  const tanpaBu = {}; bandedSku.forEach(b => { if (!sku2bu[String(b.sku_kode).trim()]) tanpaBu[String(b.sku_kode).trim()] = true; });
+  out.catatan.bandedTanpaBu = Object.keys(tanpaBu).length;
+  const namedSeen = {};
+
+  RANK_BU.forEach(def => {
+    const bu = def[0];
+    if (!att[bu]) return;
+    // atribusi: qty bersih terbanyak (harus positif), seri -> kode lebih kecil
+    const owner = {};
+    Object.keys(att[bu]).forEach(o => {
+      let best = '', bq = 0;
+      Object.keys(att[bu][o]).forEach(sm => { const q = att[bu][o][sm]; if (q > bq || (q === bq && q > 0 && rankCodeLess_(sm, best))) { best = sm; bq = q; } });
+      if (best) owner[o] = best;
+    });
+    const sales = {};
+    const entry = sm => sales[sm] = sales[sm] || { kode: sm, nama: nameOf[sm] || sm, tokoFop: 0, fop: { n: 0, weekly: 0, pct: null, spmN: 0, spmWeekly: 0 }, tokoBanded: 0, banded: { n: 0, hit: 0, pct: null }, tokoAsrt: 0, asrt: { toko: 0, lines: 0, perToko: 0 } };
+    let belum = 0;
+    monitored.forEach(m => {
+      const sm = owner[m.o]; if (!sm) { belum++; return; }
+      const e = entry(sm);
+      // FOP: minggu ISO dari baris BU ini dengan qty bersih positif
+      const ws = Object.keys((wk[bu] && wk[bu][m.o]) || {}).filter(w => wk[bu][m.o][w] > 0).length;
+      e.tokoFop++; e.fop.n++;
+      if (m.g === 'SPM') e.fop.spmN++;
+      if (ws >= need) { e.fop.weekly++; if (m.g === 'SPM') e.fop.spmWeekly++; }
+      // Banded: hanya SKU banded BU ini untuk channel toko
+      const list = bandedSku.filter(b => b.channel === m.g && sku2bu[String(b.sku_kode).trim()] === bu);
+      if (!list.length) return;
+      const bought = list.filter(b => { const k = String(b.sku_kode).trim(); return ((skuNet[m.o] || {})[k] || 0) > 0 || (prior[m.o] && prior[m.o][k]); }).length;
+      const thr = m.g === 'SPM' ? cfg.banded_spm : cfg.banded_minis;
+      e.tokoBanded++; e.banded.n++;
+      if (Math.round(bought / list.length * 1000) / 1000 >= thr) e.banded.hit++;
+    });
+    // Assortment: toko SPM/MINIS di OUTLET_MASTER, aktif = ada basepack BU ini dengan qty bersih positif
+    Object.keys(owner).forEach(o => {
+      if (chOf[o] !== 'SPM' && chOf[o] !== 'MINIS') return;
+      const bps = (bpNet[bu] && bpNet[bu][o]) || {}, keys = Object.keys(bps);
+      if (!keys.some(b => bps[b] > 0)) return;
+      const e = entry(owner[o]);
+      e.tokoAsrt++; e.asrt.toko++; e.asrt.lines += keys.filter(b => bps[b] >= moq).length;
+    });
+    const list = Object.keys(sales).filter(sm => !inactive[sm]).sort((a, b) => (rankCodeLess_(a, b) ? -1 : 1)).map(sm => {
+      const e = sales[sm];
+      e.fop.pct = e.fop.n ? e.fop.weekly / e.fop.n : null;
+      e.banded.pct = e.banded.n ? e.banded.hit / e.banded.n : null;
+      e.asrt.perToko = e.asrt.toko ? e.asrt.lines / e.asrt.toko : 0;
+      if (!nameOf[sm]) namedSeen[sm] = true;
+      return e;
+    });
+    out.bu[bu] = { label: def[1], sales: list, belumTransaksi: belum };
+  });
+  out.catatan.salesTanpaNama = Object.keys(namedSeen).length;
+  return out;
+}
+
+/**
+ * Pure. perDt = array keluaran computeSalesRank_ (masing-masing boleh membawa dist_kode/dist_nama; yang punya `error` dilewati).
+ * Salesman satu DT tidak digabung dengan DT lain (tiap baris papan membawa dt_kode). Hasil:
+ * { bulan, tanggalData, minToko, catatan, bu: { '<BU>': { label, fop:[...], banded:[...], asrt:[...], belumCukup:{fop,banded,asrt}, belumTransaksi } } }
+ * Baris papan: { rank, kode, nama, dt_kode, dt_nama, n, nilai, ... } (FOP: weekly, spm:{weekly,n}; Banded: hit; Assortment: lines, toko).
+ * Urut: nilai menurun, lalu jumlah toko menurun, lalu nama. Seri nilai berbagi peringkat (1, 2, 2, 4).
+ * Salesman dengan n < minToko tidak diberi peringkat (masuk belumCukup). n = 0 tidak ditampilkan di KPI itu.
+ */
+function rankSales_(perDt, minToko) {
+  const min = typeof minToko === 'number' && !isNaN(minToko) ? minToko : 5;
+  const out = { bulan: '', tanggalData: '', minToko: min, catatan: { bandedTanpaBu: 0, salesTanpaNama: 0 }, bu: {} };
+  const pick = {
+    fop: s => ({ n: s.tokoFop, nilai: s.fop.pct, ex: { weekly: s.fop.weekly, spm: { weekly: s.fop.spmWeekly, n: s.fop.spmN } } }),
+    banded: s => ({ n: s.tokoBanded, nilai: s.banded.pct, ex: { hit: s.banded.hit } }),
+    asrt: s => ({ n: s.tokoAsrt, nilai: s.asrt.perToko, ex: { lines: s.asrt.lines, toko: s.asrt.toko } }),
+  };
+  const raw = {};
+  (perDt || []).forEach(d => {
+    if (!d || d.error || !d.bu) return;
+    if (d.tanggalData > out.tanggalData) { out.tanggalData = d.tanggalData; out.bulan = d.bulan; }
+    out.catatan.bandedTanpaBu = Math.max(out.catatan.bandedTanpaBu, (d.catatan && d.catatan.bandedTanpaBu) || 0);
+    out.catatan.salesTanpaNama += (d.catatan && d.catatan.salesTanpaNama) || 0;
+    RANK_BU.forEach(def => {
+      const b = d.bu[def[0]]; if (!b) return;
+      const t = raw[def[0]] = raw[def[0]] || { label: def[1], rows: { fop: [], banded: [], asrt: [] }, belumTransaksi: 0 };
+      t.belumTransaksi += b.belumTransaksi || 0;
+      b.sales.forEach(s => Object.keys(pick).forEach(kpi => {
+        const p = pick[kpi](s); if (!(p.n > 0)) return;
+        t.rows[kpi].push(Object.assign({ rank: null, kode: s.kode, nama: s.nama, dt_kode: d.dist_kode || '', dt_nama: d.dist_nama || '', n: p.n, nilai: p.nilai }, p.ex));
+      }));
+    });
+  });
+  const same = (a, b) => Math.abs(a - b) < 1e-9;
+  RANK_BU.forEach(def => {
+    const t = raw[def[0]]; if (!t) return;
+    const res = { label: t.label, fop: [], banded: [], asrt: [], belumCukup: { fop: [], banded: [], asrt: [] }, belumTransaksi: t.belumTransaksi };
+    Object.keys(pick).forEach(kpi => {
+      const rows = t.rows[kpi].sort((a, b) => (same(a.nilai, b.nilai) ? 0 : b.nilai - a.nilai) || b.n - a.n || (a.nama < b.nama ? -1 : a.nama > b.nama ? 1 : 0));
+      let prev = null;
+      rows.forEach(r => {
+        if (r.n < min) { res.belumCukup[kpi].push(r); return; }
+        const i = res[kpi].length;
+        r.rank = prev && same(prev.nilai, r.nilai) ? prev.rank : i + 1;
+        res[kpi].push(r); prev = r;
+      });
+    });
+    out.bu[def[0]] = res;
+  });
+  return out;
+}
+
+/** Fingerprint pendek input yang memengaruhi hasil tetapi bukan bagian kunci cache DMS (daftar toko, SKU banded, config, riwayat). */
+function rankSig_(parts) {
+  const s = JSON.stringify(parts); let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+/** Ranking satu DT (cache 5 menit). Gagal -> { dist_kode, dist_nama, error } supaya DT lain tetap jalan. */
+function salesRankForDt_(r, toko, bandedSku, cfg, hist) {
+  try {
+    const mine = toko.filter(t => String(t.dist_kode).trim() === String(r.dt_kode).trim());
+    const myHist = (hist || []).filter(h => String(h.dist_kode) === String(r.dt_kode));
+    const payload = getPayload_(r.sheet_id);
+    const key = 'rank_v1_' + r.sheet_id + '_' + payload.builtAt + '_' + rankSig_([mine.map(t => [t.outlet_kode, t.remark, t.status]), bandedSku, cfg, myHist.length]);
+    const hit = cacheGet_(key);
+    if (hit) return hit;
+    const sh = SpreadsheetApp.openById(r.sheet_id).getSheetByName('MASTER_PRODUK');
+    const produk = sh ? sh.getDataRange().getValues() : [];
+    const res = computeSalesRank_({ dms: payload.tabs.DMS_EXTRACT || [], produk: produk, outletMaster: payload.tabs.OUTLET_MASTER || [], dsr: payload.tabs.DSR || [],
+      stores: mine, bandedSku: bandedSku, cfg: cfg, hist: myHist, dtKode: r.dt_kode, moq: ASRT_MOQ });
+    res.dist_kode = r.dt_kode; res.dist_nama = r.nama_dt; res.stores = mine.length;
+    cachePut_(key, res);
+    return res;
+  } catch (err) {
+    return { dist_kode: r.dt_kode, dist_nama: r.nama_dt, error: String(err) };
+  }
+}
+
 // ====================== WEEKLY FOP & BANDED (dari DMS Extract + daftar toko monitoring) ======================
 // Daftar toko (GS_TOKO) dan SKU banded (GS_BANDED_SKU) diisi lewat tool upload dari file referensi.
 // Toko yang dihitung = toko ACTIVE dengan REMARK yang ada di GS_CONFIG (remark_spm / remark_minis); toko lain
@@ -810,7 +1063,7 @@ function asrtForDt_(r) {
 //  - Banded: toko tercapai kalau SKU banded channel-nya yang sudah dibeli (qty bersih bulan data > 0) >= ambang
 //    (banded_spm / banded_minis di GS_CONFIG).
 
-const GS_CFG_DEFAULT = { remark_spm: 'LOCAL SPM', remark_minis: 'TOP 1000 LOCAL MINIS, LOCAL MINIS', banded_spm: 0.8, banded_minis: 0.7, fop_weekly: 3, fop_biweekly: 2 };
+const GS_CFG_DEFAULT = { remark_spm: 'LOCAL SPM', remark_minis: 'TOP 1000 LOCAL MINIS, LOCAL MINIS', banded_spm: 0.8, banded_minis: 0.7, fop_weekly: 3, fop_biweekly: 2, rank_min_toko: 5 };
 
 function monIsoWeek_(iso) {
   const p = iso.split('-'), ms = Date.UTC(+p[0], +p[1] - 1, +p[2]), d = new Date(ms);
