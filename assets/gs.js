@@ -416,7 +416,7 @@
   function renderBandedLive(kMinis, kSpm) {
     const cfg = DATA.mon.cfg, ms = DATA.live.summary.mon;
     const names = {}; (DATA.mon.bandedSku || []).forEach(b => { names[b.sku_kode] = b.sku_nama; });
-    const groups = [['MINIS', 'Local Minis', kMinis, num(cfg.banded_minis) || 0.7], ['SPM', 'Supermarket (SPM)', kSpm, num(cfg.banded_spm) || 0.8]];
+    const groups = [['SPM', 'Supermarket (SPM)', kSpm, num(cfg.banded_spm) || 0.8], ['MINIS', 'Local Minis', kMinis, num(cfg.banded_minis) || 0.7]];   // SPM dulu: channel wajib
     $('secBanded').innerHTML = ciTitle('box', 'Banded') + monNote() +
       `<p class="hint">EVB ${esc(ms.qLabel)}: toko tercapai kalau SKU banded channel-nya yang pernah dibeli sepanjang kuartal ini minimal ${Math.round((num(cfg.banded_spm) || 0.8) * 100)}% (Supermarket) atau ${Math.round((num(cfg.banded_minis) || 0.7) * 100)}% (Local Minis). Bulan yang terhitung: ${esc(ms.qMonths.map(bulanLbl).join(', '))}; bulan lalu diambil dari rekap yang tersimpan, bulan berjalan dari Extract DMS sampai ${tgl(ms.tanggal)}. Hanya toko ber-REMARK monitoring. Ini hitungan sendiri, bukan angka HO.</p>` +
       groups.map(g => `<div class="card" style="margin-top:10px"><h3 style="margin:0 0 6px">${esc(g[1])} ${g[2] ? `<span class="lv ${g[2].level}">${pct(g[2].aktual)} / target ${pct(g[2].target)}</span>` : ''}</h3><div id="bd-${g[0]}"></div></div>`).join('');
