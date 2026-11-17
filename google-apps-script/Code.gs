@@ -821,6 +821,22 @@ function monIsoWeek_(iso) {
 /** '2026-10' -> '2026-Q4'. */
 function monQuarter_(p) { return String(p).slice(0, 4) + '-Q' + Math.ceil(+String(p).slice(5, 7) / 3); }
 
+/**
+ * Pure. Minggu ISO yang memuat minimal satu hari di bulan 'YYYY-MM', urut kalender:
+ * [{ w, from, to, workdays }]. from/to = hari pertama/terakhir minggu itu DI DALAM bulan; workdays = hari Senin-Sabtu
+ * di rentang itu (libur nasional tidak dikurangi).
+ */
+function monWeeksOfMonth_(bulan) {
+  const y = +bulan.slice(0, 4), m = +bulan.slice(5, 7), last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const res = [], idx = {};
+  for (let d = 1; d <= last; d++) {
+    const iso = bulan + '-' + (d < 10 ? '0' : '') + d, w = monIsoWeek_(iso), dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    if (!(w in idx)) { idx[w] = res.length; res.push({ w: w, from: iso, to: iso, workdays: 0 }); }
+    const e = res[idx[w]]; e.to = iso; if (dow !== 0) e.workdays++;
+  }
+  return res;
+}
+
 function monList_(v) { return String(v === null || v === undefined ? '' : v).split(',').map(s => s.trim().toUpperCase()).filter(Boolean); }
 
 /** Config GS_CONFIG (key | value | keterangan) digabung dengan nilai awal. */
@@ -861,6 +877,10 @@ function computeMon_(dms, stores, bandedSku, cfg, hist) {
   if (!maxIso) { out.noData = true; return out; }
   const bulan = maxIso.slice(0, 7);
   out.bulan = bulan; out.tanggalData = maxIso; out.week = monIsoWeek_(maxIso);
+  out.monthWeeks = monWeeksOfMonth_(bulan);
+  out.bySku = { SPM: [], MINIS: [] };
+  const weekPos = out.monthWeeks.map(x => x.w), curPos = weekPos.indexOf(out.week);
+  if (curPos < 0) throw new Error('computeMon_: minggu data ' + out.week + ' tidak ada di monthWeeks ' + bulan);
   // EVB kuartal: SKU banded yang pernah dibeli di bulan-bulan sebelumnya dalam kuartal yang sama (dari rekap GS_BULANAN) + bulan data ini.
   const prior = {}, qHave = {};
   (hist || []).forEach(h => {
@@ -890,6 +910,11 @@ function computeMon_(dms, stores, bandedSku, cfg, hist) {
     const bought = list.filter(b => ((sku[o] || {})[b.sku_kode] || 0) > 0 || (prior[o] && prior[o][b.sku_kode]));
     const thr = m.g === 'SPM' ? cfg.banded_spm : cfg.banded_minis;
     const share = list.length ? bought.length / list.length : null;
+    // Minggu order (urut kalender) dan peluang WEEKLY: 'open' = minggu tersisa (dari minggu data terbaru) yang belum order.
+    const wks = weekPos.filter(w => ws.indexOf(w) >= 0), needMore = Math.max(need - n, 0);
+    let open = 0;
+    for (let i = curPos; i < out.monthWeeks.length; i++) if (out.monthWeeks[i].workdays >= 1 && wks.indexOf(out.monthWeeks[i].w) < 0) open++;
+    const risk = n >= need ? 'AMAN' : open < needMore ? 'GAGAL' : open === needMore ? 'KRITIS' : 'BIASA';
     out.groups[m.g].push({
       outlet_kode: o, outlet_nama: m.s.outlet_nama, remark: m.s.remark, weeks: n,
       status: n >= need ? 'WEEKLY' : n >= mid ? 'BIWEEKLY' : n >= 1 ? 'MONTHLY' : 'BELUM ORDER',
@@ -897,7 +922,17 @@ function computeMon_(dms, stores, bandedSku, cfg, hist) {
       bTotal: list.length, bBought: bought.length, bMonth: month.length, bSkus: month.map(b => b.sku_kode), bShare: share,
       bHit: share !== null && Math.round(share * 1000) / 1000 >= thr ? 1 : 0,
       bMiss: list.filter(b => bought.indexOf(b) < 0).map(b => b.sku_kode),
+      wks: wks, needMore: needMore, open: open, risk: risk,
     });
+  });
+  // Ringkasan per SKU banded per channel: berapa toko yang sudah membelinya (bulan ini / kuartal) dari total toko.
+  ['SPM', 'MINIS'].forEach(g => {
+    const sts = out.groups[g];
+    out.bySku[g] = skusOf(g).map(b => ({
+      sku_kode: b.sku_kode, sku_nama: b.sku_nama, total: sts.length,
+      bought: sts.length - sts.filter(x => x.bMiss.indexOf(b.sku_kode) >= 0).length,
+      month: sts.filter(x => x.bSkus.indexOf(b.sku_kode) >= 0).length,
+    })).sort((x, y) => x.bought - y.bought || (x.sku_kode < y.sku_kode ? -1 : x.sku_kode > y.sku_kode ? 1 : 0));
   });
   return out;
 }
