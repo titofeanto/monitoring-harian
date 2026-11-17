@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Monitoring">
 <title>KPI Great Sales</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=202611171500">
+<link rel="stylesheet" href="assets/style.css?v=202611171700">
 <script src="assets/boot.js?v=202611031000"></script>
 </head>
 <body>
@@ -76,6 +76,7 @@
     <button role="tab" data-tab="skor" aria-selected="true"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM17 6h3v1a3 3 0 0 1-3 3M7 6H4v1a3 3 0 0 0 3 3"/></svg><span>Skor</span></button>
     <button role="tab" data-tab="fop" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg><span class="lbl-l">Weekly FOP</span><span class="lbl-s">FOP</span></button>
     <button role="tab" data-tab="banded" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span>Banded</span></button>
+    <button role="tab" data-tab="toko" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6"/></svg><span>Toko</span></button>
     <button role="tab" data-tab="asrt" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span class="lbl-l">Assortment</span><span class="lbl-s">Asrt</span></button>
     <button role="tab" data-tab="ps" aria-selected="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6"/></svg><span class="lbl-l">Perfect Store</span><span class="lbl-s">PS</span></button>
     <a href="cek-stok.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg><span class="lbl-l">Cek Stok</span><span class="lbl-s">Stok</span></a>
@@ -128,6 +129,11 @@
       <div class="card" id="secBanded"></div>
     </section>
 
+    <!-- TOKO -->
+    <section class="tab" id="tab-toko" hidden>
+      <div class="card" id="secToko"></div>
+    </section>
+
     <div class="card">
       <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 6l3 3"/></svg></span>Akun</h2>
       <p class="hint">Login dibagi dengan Monitoring Harian. Keluar menghapus kode dan salinan data di HP ini.</p>
@@ -137,12 +143,22 @@
   </main>
 </div>
 
+<div class="modal-overlay" id="storeModal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="storeModalTitle">
+    <div class="modal-head">
+      <div class="mh-t"><h3 id="storeModalTitle">Detail toko</h3><p class="mh-s" id="storeModalSub"></p></div>
+      <button type="button" id="storeModalClose" aria-label="Tutup">✕</button>
+    </div>
+    <div class="modal-body" id="storeModalBody"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast" hidden></div>
 
 <script src="assets/config.js?v=202610311000"></script>
 <script src="assets/pwa.js?v=1"></script>
 <script src="assets/status-banner.js?v=2"></script>
 <script src="assets/fresh.js?v=202610311000"></script>
-<script src="assets/gs.js?v=202611171500"></script>
+<script src="assets/gs.js?v=202611171700"></script>
 </body>
 </html>

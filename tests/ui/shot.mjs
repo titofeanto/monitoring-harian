@@ -1,5 +1,6 @@
 // Tangkapan layar halaman lewat Chrome headless dengan data fixture.
 // Pakai: node tests/ui/shot.mjs <halaman> <tab> [fx=gs-live] [lebar=390] [tema=light|dark] [tinggi=1800]
+// Opsi: --click '<selector>' mengetuk elemen itu setelah halaman terisi (mis. --click '[data-store="X-S03"]' untuk membuka modal toko); nama berkas diberi akhiran -klik.
 // Hasil: $TMPDIR/shots/<halaman>-<tab>-<lebar>-<tema>[-<fx>].png
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -8,17 +9,19 @@ import os from 'node:os';
 import path from 'node:path';
 import { startServer } from './serve.mjs';
 
-const [page, tab = 'skor', fx = 'gs-live', width = '390', theme = 'light', height = '1800'] = process.argv.slice(2);
+const argv = process.argv.slice(2); let click = '';
+const ci = argv.indexOf('--click'); if (ci >= 0) { click = argv[ci + 1] || ''; argv.splice(ci, 2); }
+const [page, tab = 'skor', fx = 'gs-live', width = '390', theme = 'light', height = '1800'] = argv;
 if (!page) { console.error('pakai: node tests/ui/shot.mjs <halaman> <tab> [fx] [lebar] [tema] [tinggi]'); process.exit(2); }
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const dir = path.join(process.env.TMPDIR || os.tmpdir(), 'shots');
 fs.mkdirSync(dir, { recursive: true });
-const out = path.join(dir, `${page}-${tab}-${width}-${theme}${fx === 'gs-live' ? '' : '-' + fx}.png`);
+const out = path.join(dir, `${page}-${tab}-${width}-${theme}${fx === 'gs-live' ? '' : '-' + fx}${click ? '-klik' : ''}.png`);
 const prof = fs.mkdtempSync(path.join(os.tmpdir(), 'shot-prof-'));
 const srv = await startServer(8780, theme);
 try {
   const args = ['--headless=new', '--disable-gpu', '--no-first-run', '--user-data-dir=' + prof, `--window-size=${Math.max(+width, 500)},${height}`, '--virtual-time-budget=6000', '--hide-scrollbars', '--screenshot=' + out];
-  const target = `/${page}.html?fx=${fx}#${tab}`;
+  const target = `/${page}.html?fx=${fx}${click ? '&click=' + encodeURIComponent(click) : ''}#${tab}`;
   args.push(+width < 500 ? `http://localhost:8780/__frame?w=${width}&h=${height}&u=${encodeURIComponent(target)}` : 'http://localhost:8780' + target);
   await promisify(execFile)(CHROME, args, { timeout: 60000 });
   console.log(out, fs.statSync(out).size + ' bytes');

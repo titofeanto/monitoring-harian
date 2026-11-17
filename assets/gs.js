@@ -96,7 +96,7 @@
   const monLive = () => DATA.live.monLive;
   function monStores(g) {
     const out = [];
-    monDts().forEach(d => (d.groups[g] || []).forEach(o => out.push(Object.assign({ dist_nama: d.dist_nama, monthWeeks: d.monthWeeks, curWeek: d.week }, o))));
+    monDts().forEach(d => (d.groups[g] || []).forEach(o => out.push(Object.assign({ dist_nama: d.dist_nama, monthWeeks: d.monthWeeks, curWeek: d.week, qLabel: d.qLabel }, o))));
     return out;
   }
   /** Catatan kalau ada DT di daftar toko yang DMS-nya belum ada: tokonya tidak ikut hitungan. */
@@ -119,6 +119,32 @@
   const psStores = () => (DATA.ps && DATA.ps.stores) || [];
   const psMissing = o => PS_PARTS.filter(p => String(o[p[0]]) === '0').map(p => p[1]);
   const isPerfect = o => o.status === 'PS FULL' || o.status === 'PS LITE';
+
+  /* store:start */
+  /** Satu toko monitoring + Perfect Store-nya, hanya disusun ulang (tanpa aturan baru, tanpa DOM).
+   *  o = baris monStores(g); psList = DATA.ps.stores; skuList = DATA.mon.bandedSku. ps = null kalau kode outlet tidak ada di data PS. */
+  function storeCard(o, g, psList, skuList) {
+    const skus = (skuList || []).filter(b => !b.channel || b.channel === g), names = {};
+    (skuList || []).forEach(b => { names[b.sku_kode] = b.sku_nama; });
+    const nm = k => ({ kode: k, nama: names[k] || k });
+    const kode = String(o.outlet_kode == null ? '' : o.outlet_kode).trim();
+    const miss = (o.bMiss || []).map(nm), missSet = {};
+    miss.forEach(m => { missSet[m.kode] = true; });
+    const month = {}; (o.bSkus || []).forEach(k => { month[k] = true; });
+    // sudah dibeli (kuartal) = SKU banded channel ini yang tidak ada di bMiss; tanpa daftar SKU channel, pakai bSkus saja
+    const bought = skus.length ? skus.filter(b => !missSet[b.sku_kode]).map(b => ({ kode: b.sku_kode, nama: b.sku_nama || b.sku_kode, bulanIni: !!month[b.sku_kode] }))
+      : (o.bSkus || []).map(k => ({ kode: k, nama: names[k] || k, bulanIni: true }));
+    const rec = (psList || []).find(x => String(x.outlet_kode == null ? '' : x.outlet_kode).trim() === kode);
+    const PARTS = [['cotc', 'COTC'], ['npd', 'NPD'], ['sos', 'SOS'], ['sstd', 'SSTD'], ['banded', 'Banded']];
+    const sc = v => { if (v === '' || v == null) return null; const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g, '')); return isNaN(n) ? null : n; };
+    return {
+      kode: kode, nama: o.outlet_nama, dist: o.dist_nama, channel: g, remark: o.remark,
+      fop: { weeks: o.weeks, status: o.status, weekNow: o.weekNow, lastWeek: o.lastWeek, wks: o.wks, needMore: o.needMore, open: o.open, risk: o.risk, monthWeeks: o.monthWeeks, curWeek: o.curWeek },
+      banded: { qLabel: o.qLabel, bTotal: o.bTotal, bBought: o.bBought, bMonth: o.bMonth, bShare: o.bShare, bHit: o.bHit, bMiss: miss, bSkus: (o.bSkus || []).map(nm), bought: bought },
+      ps: rec ? { status: rec.status, total_kpi: rec.total_kpi, parts: PARTS.map(p => ({ k: p[0], label: p[1], ok: String(rec[p[0]]) === '1' ? true : String(rec[p[0]]) === '0' ? false : null, skor: sc(rec['s_' + p[0]]) })) } : null,
+    };
+  }
+  /* store:end */
 
 
   const ASRT_CH = [['SPM', 'LOCAL SUPERMARKET', 'Supermarket (SPM)', 'ASRT_SPM'], ['MINIS', 'LOCAL MINIS', 'Local Minis', 'ASRT_MINIS']];
@@ -201,6 +227,7 @@
     renderAsrt(kp);
     renderPs(kp.find(k => k.kpi === 'PS'));
     renderBanded(kp.find(k => k.kpi === 'BANDED_MINIS'), kp.find(k => k.kpi === 'BANDED_SPM'));
+    renderToko();
     renderHist(live.history);
     renderRecap();
     Object.keys(LISTS).forEach(fillList);
@@ -270,7 +297,7 @@
   function fopRows(channel) {
     const g = MON_G[channel];
     if (g && monLive()) return monStores(g).map(o => ({ outlet_kode: o.outlet_kode, outlet_nama: o.outlet_nama, dist_nama: o.dist_nama, remark: o.remark, status: o.status, orders: o.weeks, weekNow: o.weekNow === 1, lastWeek: o.lastWeek,
-      risk: o.risk, wks: o.wks, needMore: o.needMore, open: o.open, monthWeeks: o.monthWeeks, curWeek: o.curWeek }));   // risk dkk dari server (kosong di server lama)
+      risk: o.risk, wks: o.wks, needMore: o.needMore, open: o.open, monthWeeks: o.monthWeeks, curWeek: o.curWeek, g: g }));   // risk dkk dari server (kosong di server lama)
     return outlets('FOP').filter(o => o.channel === channel).map(o => ({ ...o, orders: num(o.v1) || 0, weekNow: String(o.v2) === '1', lastWeek: o.v3 }));
   }
 
@@ -300,17 +327,19 @@
     return `<p class="wk-note">Perlu ${o.needMore}x lagi, tersisa ${o.open} minggu.</p>`;
   }
   const RISK_ORD = { KRITIS: 0, BIASA: 1, GAGAL: 2, AMAN: 3 };
+  /** Tombol "Detail" di baris toko tab FOP dan Banded: membuka lembar detail toko (target sentuh 44 px). */
+  const detailBtn = (kode, g) => g && kode ? `<div class="rk-act"><button type="button" class="lnk" data-store="${esc(kode)}" data-g="${esc(g)}" aria-label="Detail toko">Detail toko</button></div>` : '';
 
   function rowLegacy(o) {
     const ok = o.status === 'WEEKLY'; return `<div class="rk"><div class="rk-h"><span class="si ${ok ? 'ok' : o.orders >= fopNeed() - 1 ? 'warn' : 'neg'}">${svg(ok ? 'check' : o.orders >= fopNeed() - 1 ? 'warn' : 'down')}</span>` +
       `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)} · ${esc(o.status || '-')}</div></div><span class="tag ${o.weekNow ? 'g' : 'r'}">${o.weekNow ? 'order mg ini' : 'belum mg ini'}</span></div>` +
-      `<div class="rk-s two"><div class="${o.orders >= fopNeed() ? 'okc' : o.orders >= fopNeed() - 1 ? 'amb' : 'neg'}"><small>Minggu order bulan ini</small><b>${o.orders} / ${fopNeed()}</b></div><div><small>Order terakhir</small><b>${o.lastWeek === '' ? '-' : 'mg ' + esc(o.lastWeek)}</b></div></div></div>`;
+      `<div class="rk-s two"><div class="${o.orders >= fopNeed() ? 'okc' : o.orders >= fopNeed() - 1 ? 'amb' : 'neg'}"><small>Minggu order bulan ini</small><b>${o.orders} / ${fopNeed()}</b></div><div><small>Order terakhir</small><b>${o.lastWeek === '' ? '-' : 'mg ' + esc(o.lastWeek)}</b></div></div>${detailBtn(o.outlet_kode, o.g)}</div>`;
   }
   function rowRisk(o) {
     const ic = o.risk === 'AMAN' ? ['ok', 'check'] : o.risk === 'BIASA' ? ['warn', 'warn'] : o.risk === 'KRITIS' ? ['neg', 'warn'] : ['neg', 'down'];
     return `<div class="rk"><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span>` +
       `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)} · ${esc(o.status || '-')}</div></div><span class="tag ${o.weekNow ? 'g' : 'r'}">${o.weekNow ? 'order mg ini' : 'belum mg ini'}</span></div>` +
-      weekStrip(o) + weekNote(o) + '</div>';
+      weekStrip(o) + weekNote(o) + detailBtn(o.outlet_kode, o.g) + '</div>';
   }
   /** Ringkasan wajib di atas daftar: jumlah toko per risiko dan target sebulan. */
   function wajibBox(rows, isSpm) {
@@ -465,7 +494,7 @@
           return `<div class="rk"><div class="rk-h"><span class="si ${ok ? 'ok' : near ? 'warn' : 'neg'}">${svg(ok ? 'check' : near ? 'warn' : 'down')}</span>` +
             `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)}</div></div><span class="tag ${ok ? 'g' : near ? 'a' : 'r'}">${ok ? 'Tercapai' : 'Kurang ' + need(o) + ' SKU'}</span></div>` +
             `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${(v * 100).toFixed(0)}%"></i></div>` +
-            `<div class="bar-meta"><span>${o.bBought} dari ${minSku} SKU</span><span>Bulan ini ${o.bMonth} · ${o.bShare == null ? '-' : Math.round(o.bShare * 100) + '%'}</span></div>` +
+            `<div class="bar-meta"><span>${o.bBought} dari ${minSku} SKU</span><span>Bulan ini ${o.bMonth} · ${o.bShare == null ? '-' : Math.round(o.bShare * 100) + '%'}</span></div>` + detailBtn(o.outlet_kode, ch) +
             (miss.length ? `<div class="skc">${miss.slice(0, 3).map(k => `<span title="${esc(k)}">${esc(names[k] || k)}</span>`).join('')}${miss.length > 3 ? `<button type="button" data-skmore="1">+${miss.length - 3}</button>` : ''}</div>` +
               `<details class="box skm" style="margin-top:8px"><summary><span>Belum dibeli (${miss.length} SKU)</span></summary><ul class="sku-list">${miss.map(k => `<li>${esc(k)} ${esc(names[k] || '')}</li>`).join('')}</ul></details>` : '') + '</div>';
         },
@@ -493,6 +522,86 @@
   function setBandedView(ch, v) {
     try { const sv = JSON.parse(localStorage.getItem('mh_gs_bnd_view') || '{}') || {}; sv[ch] = v; localStorage.setItem('mh_gs_bnd_view', JSON.stringify(sv)); } catch (e) { /* mode privat */ }
     BV[ch] = v; paintBanded(ch);
+  }
+
+  /* ---- tab Toko: semua toko monitoring dalam satu daftar, ketuk untuk lembar detail ---- */
+  const bandedThr = g => (g === 'SPM' ? num(DATA.mon.cfg.banded_spm) || 0.8 : num(DATA.mon.cfg.banded_minis) || 0.7);
+  const minSkuOf = (g, tot) => Math.ceil(bandedThr(g) * tot - 1e-9);
+  /** Satu definisi "perlu tindakan": SPM kritis, belum order minggu ini (dan belum aman), atau Banded belum tercapai. */
+  const fopAman = f => f.risk === 'AMAN' || (f.risk === undefined && f.status === 'WEEKLY');   // server lama tanpa risk: WEEKLY dianggap aman
+  const needsAction = c => c.fop.risk === 'KRITIS' || (!c.fop.weekNow && !fopAman(c.fop)) || !c.banded.bHit;
+  const riskTone = r => r === 'AMAN' ? 'okc' : r === 'BIASA' ? 'amb' : r === undefined ? '' : 'neg';
+  const psShort = c => !c.ps ? '-' : c.ps.status === 'PS FULL' ? 'FULL' : c.ps.status === 'PS LITE' ? 'LITE' : 'belum';
+  let STORES = [];
+  function tokoCards() {
+    if (!monLive()) return [];
+    const sk = DATA.mon.bandedSku || [], ps = psStores();
+    return ['SPM', 'MINIS'].reduce((a, g) => a.concat(monStores(g).map(o => storeCard(o, g, ps, sk))), []);
+  }
+  function tokoRow(c) {
+    const na = needsAction(c), f = c.fop, b = c.banded, min = minSkuOf(c.channel, b.bTotal);
+    const ic = !na ? ['ok', 'check'] : f.risk === 'KRITIS' || !b.bHit && !f.weekNow ? ['neg', 'down'] : ['warn', 'warn'];
+    const need = DATA.mon.cfg.fop_weekly;
+    return `<div class="rk tap" role="button" tabindex="0" data-store="${esc(c.kode)}" data-g="${esc(c.channel)}" aria-label="Buka detail ${esc(c.nama)}"><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span>` +
+      `<div class="it-i"><div class="nm">${esc(c.nama)}</div><div class="sk">${esc(c.dist)} · ${esc(c.channel === 'SPM' ? 'Supermarket' : 'Local Minis')}</div></div><span class="tag ${na ? 'r' : 'g'}">${na ? 'Perlu tindakan' : 'Aman'}</span></div>` +
+      `<div class="rk-s"><div class="${riskTone(f.risk)}"><small>Order</small><b>${f.weeks}/${need}</b><em>${f.weekNow ? 'mg ini sudah' : 'mg ini belum'}</em></div>` +
+      `<div class="${b.bHit ? 'okc' : 'neg'}"><small>Banded</small><b>${b.bBought}/${min}</b><em>${b.bHit ? 'tercapai' : 'belum'}</em></div>` +
+      `<div class="${!c.ps ? '' : isPerfect(c.ps) ? 'okc' : 'amb'}"><small>Perfect Store</small><b>${psShort(c)}</b><em>${c.ps ? esc(c.ps.status === 'NOT PERFECT' ? c.ps.total_kpi || '' : '') : 'tanpa data'}</em></div></div></div>`;
+  }
+  function renderToko() {
+    const el = $('secToko'); if (!el) return;
+    STORES = tokoCards();
+    el.innerHTML = ciTitle('store', 'Toko monitoring') + (monLive() ? monNote() : '') +
+      '<p class="hint">Semua toko monitoring SPM dan Minis dalam satu daftar: order mingguan, Banded, dan Perfect Store. Ketuk toko untuk melihat detailnya.</p>' +
+      mountList('toko', {
+        rows: STORES, empty: 'Belum ada data toko monitoring. Upload daftar toko dan Extract DMS di tool upload.',
+        defaultF: 'perlu',
+        chips: [['perlu', 'Perlu tindakan'], ['spm', 'SPM'], ['minis', 'Minis'], ['semua', 'Semua']],
+        test: (f, c) => f === 'semua' || (f === 'perlu' && needsAction(c)) || (f === 'spm' && c.channel === 'SPM') || (f === 'minis' && c.channel === 'MINIS'),
+        hay: c => (c.nama + ' ' + c.kode + ' ' + c.dist).toLowerCase(),
+        sort: (a, b) => (a.channel === b.channel ? 0 : a.channel === 'SPM' ? -1 : 1) || ((RISK_ORD[a.fop.risk] == null ? 9 : RISK_ORD[a.fop.risk]) - (RISK_ORD[b.fop.risk] == null ? 9 : RISK_ORD[b.fop.risk])) || String(a.nama).localeCompare(b.nama),
+        row: tokoRow,
+      });
+  }
+
+  /* ---- lembar detail toko (modal) ---- */
+  let storeOpener = null;
+  const emptyMsg = t => `<div class="empty">${t}</div>`;
+  function storeBody(c) {
+    const f = c.fop, b = c.banded, fo = Object.assign({}, f, { orders: f.weeks });
+    const order = f.monthWeeks && f.monthWeeks.length ? weekStrip(fo) + (f.risk === undefined ? `<p class="wk-note">Sudah order di ${f.weeks} minggu bulan ini.</p>` : weekNote(fo))
+      : emptyMsg('Kalender minggu belum ada. Perbarui data dari tombol muat ulang; kalau tetap kosong, Apps Script perlu diperbarui.');
+    const min = minSkuOf(c.channel, b.bTotal), v = min ? Math.min(1, b.bBought / min) : 0;
+    const li = (arr, mark) => arr.map(s => `<li>${esc(s.nama)} <span class="muted">${esc(s.kode)}</span>${mark && s.bulanIni ? ' <span class="tag b">bulan ini</span>' : ''}</li>`).join('');
+    const banded = !b.bTotal ? emptyMsg('Daftar SKU banded channel ini belum diupload di tool upload.')
+      : `<div class="bar" style="height:8px"><i style="width:${(v * 100).toFixed(0)}%"></i></div><div class="bar-meta"><span>${b.bBought} dari ${min} SKU (ambang), total ${b.bTotal} SKU</span><b>${b.bHit ? 'Tercapai' : 'Kurang ' + Math.max(min - b.bBought, 0) + ' SKU'}</b></div>` +
+        `<details class="box" open style="margin-top:8px"><summary><span>Belum dibeli (${b.bMiss.length} SKU)</span></summary>${b.bMiss.length ? `<ul class="sku-list">${li(b.bMiss)}</ul>` : '<p class="hint" style="margin:6px 0 0">Semua SKU banded sudah dibeli.</p>'}</details>` +
+        `<details class="box" style="margin-top:8px"><summary><span>Sudah dibeli (${b.bought.length} SKU)</span></summary>${b.bought.length ? `<ul class="sku-list">${li(b.bought, true)}</ul>` : '<p class="hint" style="margin:6px 0 0">Belum ada SKU banded yang dibeli.</p>'}</details>`;
+    let ps;
+    if (!c.ps) ps = emptyMsg('Belum ada data Perfect Store untuk toko ini. Upload sheet Perfect Stores di tool upload.');
+    else {
+      const miss = c.ps.parts.filter(p => p.ok === false).map(p => p.label), ok = isPerfect(c.ps);
+      ps = `<div class="ps-st"><span class="tag ${ok ? 'g' : 'a'}">${esc(c.ps.status)}</span>${c.ps.total_kpi ? ` <span class="muted">KPI ${esc(c.ps.total_kpi)}</span>` : ''}</div>` +
+        '<div class="rk-s five">' + c.ps.parts.map(p => `<div class="${p.ok === true ? 'okc' : p.ok === false ? 'neg' : ''}"><small>${p.label}</small><b>${p.ok === true ? '✓' : p.ok === false ? '✗' : '–'}</b><em>${p.skor == null ? ' ' : Math.round(p.skor * 100) + '%'}</em></div>`).join('') + '</div>' +
+        (miss.length ? `<p class="wk-note k">Kurang: <b>${esc(miss.join(', '))}</b></p>` : ok ? '<p class="wk-note a">Perfect Store lengkap.</p>' : '');
+    }
+    return `<h4 class="mh">Order mingguan</h4>${order}<h4 class="mh">Banded${b.qLabel ? ' (EVB ' + esc(b.qLabel) + ')' : ''}</h4>${banded}<h4 class="mh">Perfect Store</h4>${ps}`;
+  }
+  function openStore(kode, g) {
+    const c = STORES.find(x => x.kode === String(kode) && x.channel === g) || STORES.find(x => x.kode === String(kode)); if (!c) return;
+    storeOpener = document.activeElement;
+    $('storeModalTitle').textContent = c.nama;
+    $('storeModalSub').textContent = [c.dist, c.remark, c.channel === 'SPM' ? 'Supermarket' : 'Local Minis'].filter(Boolean).join(' · ');
+    $('storeModalBody').innerHTML = storeBody(c);
+    $('storeModalBody').scrollTop = 0;
+    $('storeModal').hidden = false;
+    $('storeModalClose').focus();
+  }
+  function closeStore() {
+    if ($('storeModal').hidden) return;
+    $('storeModal').hidden = true;
+    const o = storeOpener; storeOpener = null;
+    if (o && document.body.contains(o)) o.focus();
   }
 
   /** Rekap bulanan tersimpan (GS_BULANAN): FOP, EVB kuartal, dan assortment per bulan. */
@@ -569,7 +678,7 @@
   });
 
   /* tab, daftar (cari/filter/lagi), muat ulang, popover status */
-  const TABS = ['skor', 'fop', 'banded', 'asrt', 'ps'];
+  const TABS = ['skor', 'fop', 'banded', 'toko', 'asrt', 'ps'];
   function setTab(t) {
     if (!TABS.includes(t)) t = 'skor';
     TABS.forEach(k => { $('tab-' + k).hidden = k !== t; });
@@ -580,6 +689,7 @@
   $('tabsNav').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
   document.addEventListener('input', e => { const id = e.target.getAttribute && e.target.getAttribute('data-q'); if (!id) return; LST[id].q = e.target.value; LST[id].limit = 60; $('tb-' + id).querySelector('.clr').hidden = !e.target.value; fillList(id); });
   document.addEventListener('click', e => {
+    const st = e.target.closest('[data-store]'); if (st) { openStore(st.dataset.store, st.dataset.g); return; }
     const c = e.target.closest('[data-ch]'); if (c) { LST[c.dataset.ch].f = c.dataset.f; LST[c.dataset.ch].limit = 60; fillList(c.dataset.ch); return; }
     const x = e.target.closest('[data-clr]'); if (x) { const id = x.dataset.clr; LST[id].q = ''; $('tb-' + id).querySelector('input').value = ''; x.hidden = true; fillList(id); return; }
     const m = e.target.closest('[data-more]'); if (m) { const id = m.dataset.more; LST[id].limit = (LST[id].limit || 60) + 60; fillList(id); return; }
@@ -589,6 +699,20 @@
     const r = e.target.closest('[data-reset]'); if (r) { const id = r.dataset.reset; LST[id].q = ''; LST[id].f = LISTS[id].defaultF; $('tb-' + id).querySelector('input').value = ''; fillList(id); return; }
     $('syncPop').hidden = true;
   });
+  document.addEventListener('keydown', e => {
+    const t = e.target.closest && e.target.closest('.rk.tap');
+    if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openStore(t.dataset.store, t.dataset.g); return; }
+    if ($('storeModal').hidden) return;
+    if (e.key === 'Escape') { closeStore(); return; }
+    if (e.key === 'Tab') {   // fokus tetap di dalam lembar
+      const f = [...$('storeModal').querySelectorAll('button, summary, [tabindex="0"]')].filter(x => x.offsetParent !== null);
+      if (!f.length) return;
+      const i = f.indexOf(document.activeElement);
+      if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+    }
+  });
+  $('storeModalClose').addEventListener('click', closeStore);
+  $('storeModal').addEventListener('click', e => { if (e.target.id === 'storeModal') closeStore(); });
   window.MHFresh.bind();
   $('refreshBtn').addEventListener('click', () => {
     const b = $('refreshBtn'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');

@@ -518,3 +518,20 @@ table.hd{border-collapse:separate;border-spacing:0;font-size:12px;font-variant-n
 .wajib .k-neg b{color:var(--minus)}
 .wajib .k-amb b{color:var(--warn-ink)}
 .wajib-t{margin:10px 0 0;font-size:13px;line-height:1.4}
+/* tab Toko dan lembar detail toko */
+.rk.tap{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.rk.tap:active{filter:brightness(.97)}
+.rk.tap:focus-visible,.rk-act .lnk:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.rk-act{display:flex;justify-content:flex-end;margin-top:2px}
+.rk-act .lnk{min-height:44px;padding:0 4px;font-size:13px}
+.modal-head{gap:12px;align-items:flex-start}
+.modal-head .mh-t{min-width:0}
+.modal-head .mh-s{margin:2px 0 0;font-size:12px;line-height:1.35;color:var(--ink-2)}
+.modal-head button{flex:none;width:40px;height:40px}
+.modal-body .mh{margin:16px 0 6px;font-size:14px;font-weight:700}
+.modal-body .mh:first-child{margin-top:0}
+.modal-body .wks{margin-top:0}
+.modal-body details.box{background:var(--surface-2);box-shadow:none;padding:10px 12px}
+.modal-body .sku-list{columns:1;font-size:13px}
+.modal-body .empty{margin:0}
+.ps-st{display:flex;align-items:center;gap:8px;margin-bottom:2px;font-size:12px}

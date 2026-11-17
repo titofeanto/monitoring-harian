@@ -15,6 +15,9 @@ localStorage.setItem('mh_code', 'demo'); localStorage.removeItem('mh_gs_cache');
 const FX = '/tests/ui/fixtures/' + (new URLSearchParams(location.search).get('fx') || 'gs-live') + '.json';
 const of = window.fetch;
 window.fetch = (u, o) => String(u).includes('script.google.com') ? of(FX) : of(u, o);
+// ?click=<selector>: ketuk elemen itu sekali setelah halaman terisi (untuk memotret modal dsb.)
+const CLICK = new URLSearchParams(location.search).get('click');
+if (CLICK) { let n = 0; const t = setInterval(() => { const el = document.querySelector(CLICK); if (el || ++n > 40) { clearInterval(t); if (el) el.click(); } }, 150); }
 </script>`;
 
 // theme 'light' | 'dark' memaksa tema lewat penulisan ulang CSS (Chrome headless mengikuti tema sistem, bukan pengaturan blink).
