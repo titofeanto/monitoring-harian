@@ -96,7 +96,7 @@
   const monLive = () => DATA.live.monLive;
   function monStores(g) {
     const out = [];
-    monDts().forEach(d => (d.groups[g] || []).forEach(o => out.push(Object.assign({ dist_nama: d.dist_nama }, o))));
+    monDts().forEach(d => (d.groups[g] || []).forEach(o => out.push(Object.assign({ dist_nama: d.dist_nama, monthWeeks: d.monthWeeks, curWeek: d.week }, o))));
     return out;
   }
   /** Catatan kalau ada DT di daftar toko yang DMS-nya belum ada: tokonya tidak ikut hitungan. */
@@ -106,6 +106,14 @@
     return miss.length ? `<div class="notice" style="margin-bottom:10px">Extract DMS belum ada untuk <b>${esc(miss.join(', '))}</b>, jadi tokonya belum ikut hitungan.</div>` : '';
   }
   const wkTag = '<span class="tag b">Update mingguan</span>';
+  /** Minggu data terbaru dan sisa minggu kerja bulan ini (termasuk minggu ini). null kalau server belum mengirim monthWeeks (server lama). */
+  function monRemain() {
+    const ms = DATA.live.summary.mon; if (!ms) return null;
+    const d = monDts().find(x => x.monthWeeks && x.week === ms.week) || monDts().find(x => x.monthWeeks);
+    if (!d) return null;
+    const i = d.monthWeeks.findIndex(m => m.w === d.week); if (i < 0) return null;
+    return { week: d.week, sisa: d.monthWeeks.slice(i).filter(m => m.workdays >= 1).length };
+  }
 
   const PS_PARTS = [['cotc', 'COTC'], ['npd', 'NPD'], ['sos', 'SOS'], ['sstd', 'SSTD'], ['banded', 'Banded']];
   const psStores = () => (DATA.ps && DATA.ps.stores) || [];
@@ -186,8 +194,9 @@
         `<div class="rk-s"><div class="${l === 'green' ? 'okc' : l === 'amber' ? 'amb' : 'neg'}"><small>Aktual</small><b>${pct(k.aktual)}</b></div><div><small>Target</small><b>${pct(k.target)}</b></div><div><small>Poin</small><b>${k.poin == null ? '-' : k.poin.toFixed(1)}<span class="muted" style="font-weight:600;font-size:11px"> / ${k.bobot}</span></b></div></div></div>`;
     }).join('');
 
-    renderFop('secFopMinis', 'fopMinis', 'LOCAL MINIS', 'Weekly FOP Local Minis', kp.find(k => k.kpi === 'FOP_MINIS'));
     renderFop('secFopSpm', 'fopSpm', 'LOCAL SUPERMARKET', 'Weekly FOP Supermarket (SPM)', kp.find(k => k.kpi === 'FOP_SPM'));
+    renderFop('secFopMinis', 'fopMinis', 'LOCAL MINIS', 'Weekly FOP Local Minis', kp.find(k => k.kpi === 'FOP_MINIS'));
+    renderWajibBanner();
     renderUnmapped();
     renderAsrt(kp);
     renderPs(kp.find(k => k.kpi === 'PS'));
@@ -260,8 +269,65 @@
 
   function fopRows(channel) {
     const g = MON_G[channel];
-    if (g && monLive()) return monStores(g).map(o => ({ outlet_kode: o.outlet_kode, outlet_nama: o.outlet_nama, dist_nama: o.dist_nama, remark: o.remark, status: o.status, orders: o.weeks, weekNow: o.weekNow === 1, lastWeek: o.lastWeek }));
+    if (g && monLive()) return monStores(g).map(o => ({ outlet_kode: o.outlet_kode, outlet_nama: o.outlet_nama, dist_nama: o.dist_nama, remark: o.remark, status: o.status, orders: o.weeks, weekNow: o.weekNow === 1, lastWeek: o.lastWeek,
+      risk: o.risk, wks: o.wks, needMore: o.needMore, open: o.open, monthWeeks: o.monthWeeks, curWeek: o.curWeek }));   // risk dkk dari server (kosong di server lama)
     return outlets('FOP').filter(o => o.channel === channel).map(o => ({ ...o, orders: num(o.v1) || 0, weekNow: String(o.v2) === '1', lastWeek: o.v3 }));
+  }
+
+  /** Sel kalender minggu satu toko (tanpa DOM). kind: ok = sudah order, now = minggu ini belum order, miss = terlewat, next = belum berjalan, off = tanpa hari kerja. */
+  function weekCells(o) {
+    const wks = o.wks || [], mw = o.monthWeeks || [], ci = mw.findIndex(m => m.w === o.curWeek);
+    return mw.map((m, i) => ({ w: m.w, from: m.from, to: m.to, kind: wks.indexOf(m.w) >= 0 ? 'ok' : m.workdays < 1 ? 'off' : i === ci ? 'now' : ci >= 0 && i < ci ? 'miss' : 'next' }));
+  }
+  const WK_TXT = { ok: 'sudah order', now: 'minggu ini, belum order', miss: 'terlewat, tidak ada order', next: 'belum berjalan', off: 'tidak ada hari kerja' };
+  function weekStrip(o) {
+    const cells = weekCells(o); if (!cells.length) return '';
+    return '<div class="wks" role="group" aria-label="Minggu order bulan ini">' + cells.map(c => {
+      const d1 = +c.from.slice(8), d2 = +c.to.slice(8), rng = d1 === d2 ? String(d1) : d1 + '-' + d2;
+      const aria = `Minggu ${c.w}, ${d1 === d2 ? d1 : d1 + ' sampai ' + d2} ${BULAN[+c.from.slice(5, 7)]}: ${WK_TXT[c.kind]}`;
+      const inner = c.kind === 'ok' ? `${svg('check')}<b>Mg ${c.w}</b><small>${rng}</small>`
+        : c.kind === 'now' ? `<b>Mg ${c.w}</b><small>minggu ini</small>`
+        : c.kind === 'miss' ? `${svg('x')}<b>Mg ${c.w}</b>`
+        : c.kind === 'next' ? `<b>Mg ${c.w}</b>` : '<b>-</b>';
+      return `<span class="wk ${c.kind}" role="img" aria-label="${aria}">${inner}</span>`;
+    }).join('') + '</div>';
+  }
+  /** Kalimat status dari angka server (risk, needMore, open); tidak dihitung ulang di sini. */
+  function weekNote(o) {
+    if (o.risk === 'AMAN') return `<p class="wk-note a">Sudah ${o.orders}x. Aman bulan ini.</p>`;
+    if (o.risk === 'KRITIS') return `<p class="wk-note k">Perlu ${o.needMore}x lagi, tersisa ${o.open} minggu: <b>wajib order setiap minggu</b>.</p>`;
+    if (o.risk === 'GAGAL') return `<p class="wk-note k">Tidak bisa WEEKLY bulan ini (sisa ${o.open} minggu, perlu ${o.needMore}x).</p>`;
+    return `<p class="wk-note">Perlu ${o.needMore}x lagi, tersisa ${o.open} minggu.</p>`;
+  }
+  const RISK_ORD = { KRITIS: 0, BIASA: 1, GAGAL: 2, AMAN: 3 };
+
+  function rowLegacy(o) {
+    const ok = o.status === 'WEEKLY'; return `<div class="rk"><div class="rk-h"><span class="si ${ok ? 'ok' : o.orders >= fopNeed() - 1 ? 'warn' : 'neg'}">${svg(ok ? 'check' : o.orders >= fopNeed() - 1 ? 'warn' : 'down')}</span>` +
+      `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)} · ${esc(o.status || '-')}</div></div><span class="tag ${o.weekNow ? 'g' : 'r'}">${o.weekNow ? 'order mg ini' : 'belum mg ini'}</span></div>` +
+      `<div class="rk-s two"><div class="${o.orders >= fopNeed() ? 'okc' : o.orders >= fopNeed() - 1 ? 'amb' : 'neg'}"><small>Minggu order bulan ini</small><b>${o.orders} / ${fopNeed()}</b></div><div><small>Order terakhir</small><b>${o.lastWeek === '' ? '-' : 'mg ' + esc(o.lastWeek)}</b></div></div></div>`;
+  }
+  function rowRisk(o) {
+    const ic = o.risk === 'AMAN' ? ['ok', 'check'] : o.risk === 'BIASA' ? ['warn', 'warn'] : o.risk === 'KRITIS' ? ['neg', 'warn'] : ['neg', 'down'];
+    return `<div class="rk"><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span>` +
+      `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)} · ${esc(o.status || '-')}</div></div><span class="tag ${o.weekNow ? 'g' : 'r'}">${o.weekNow ? 'order mg ini' : 'belum mg ini'}</span></div>` +
+      weekStrip(o) + weekNote(o) + '</div>';
+  }
+  /** Ringkasan wajib di atas daftar: jumlah toko per risiko dan target sebulan. */
+  function wajibBox(rows, isSpm) {
+    const n = f => rows.filter(f).length, need = fopNeed(), r = monRemain();
+    const cell = (cls, v, lbl) => `<div class="${cls}"><b>${nf(v)}</b><span>${lbl}</span></div>`;
+    return `<div class="wajib"><div class="hero-units">${cell('k-ok', n(o => o.risk === 'AMAN'), 'Aman')}${cell('k-neg', n(o => o.risk === 'KRITIS'), 'Kritis')}${cell('k-neg', n(o => o.risk === 'GAGAL'), 'Tidak bisa')}${cell('k-amb', n(o => o.risk !== 'AMAN' && !o.weekNow), 'Belum order mg ini')}</div>` +
+      `<p class="wajib-t">${isSpm ? `SPM <b>wajib ${need}x sebulan</b>.` + (r ? ` Minggu ke-${r.week}, tersisa ${r.sisa} minggu kerja.` : '') : `Target ${need}x sebulan.`}</p></div>`;
+  }
+  /** Peringatan di halaman Skor: ada toko SPM kritis yang belum order minggu ini. Server lama (tanpa risk): disembunyikan. */
+  function renderWajibBanner() {
+    const el = $('wajibBanner'); if (!el) return;
+    const rows = monLive() ? fopRows('LOCAL SUPERMARKET') : [];
+    const kritis = rows.filter(o => o.risk === 'KRITIS');
+    if (!kritis.some(o => !o.weekNow)) { el.hidden = true; el.innerHTML = ''; return; }
+    const belum = rows.filter(o => o.risk !== 'AMAN' && !o.weekNow).length;
+    el.innerHTML = `SPM <b>wajib ${fopNeed()}x sebulan</b>: <b>${kritis.length} toko kritis</b>, ${belum} belum order minggu ini. <button type="button" class="linkbtn" data-go="fop">Lihat toko</button>`;
+    el.hidden = false;
   }
 
   function renderFop(id, key, channel, title, k) {
@@ -269,18 +335,22 @@
     const el = $(id);
     if (!rows.length) { el.innerHTML = ciTitle('cal', esc(title)) + monNote() + '<div class="empty">Belum ada data toko. Upload daftar toko monitoring di tool upload.</div>'; return; }
     const done = rows.filter(o => o.status === 'WEEKLY').length, live = MON_G[channel] && monLive(), ms = live ? DATA.live.summary.mon : null;
-    el.innerHTML = ciTitle('cal', esc(title), k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '') +
+    const hasRisk = rows.some(o => o.risk !== undefined), isSpm = channel === 'LOCAL SUPERMARKET';   // server lama: tampilan dan filter lama
+    el.innerHTML = ciTitle('cal', esc(title), (k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '') + (isSpm && live ? ` <span class="tag r">WAJIB ${fopNeed()}x</span>` : '')) +
       (live ? monNote() + `<p class="hint">${done} dari ${rows.length} toko monitoring sudah WEEKLY (order di ${fopNeed()} minggu atau lebih bulan ini). Dihitung dari Extract DMS sampai ${tgl(ms.tanggal)}, minggu ke-${ms.week}. Aturan: ${fopNeed()} minggu = WEEKLY, ${num(DATA.mon.cfg.fop_biweekly) || 2} = BIWEEKLY, 1 = MONTHLY.</p>`
         : `<p class="hint">${done} dari ${rows.length} toko aktif sudah WEEKLY di file. Sisanya perlu order ${fopNeed()}x bulan ini, mulai dari yang paling dekat.</p>`) +
+      (hasRisk ? wajibBox(rows, isSpm) : '') +
       mountList(key, {
-        rows, defaultF: 'belum', empty: 'Belum ada toko.',
-        chips: [['belum', 'Belum WEEKLY'], ['minggu', 'Belum order mg ini'], ['weekly', 'WEEKLY'], ['semua', 'Semua']],
-        test: (f, o) => f === 'semua' || (f === 'belum' && o.status !== 'WEEKLY') || (f === 'minggu' && o.status !== 'WEEKLY' && !o.weekNow) || (f === 'weekly' && o.status === 'WEEKLY'),
+        rows, empty: 'Belum ada toko.',
+        defaultF: hasRisk ? (rows.some(o => o.risk === 'KRITIS') ? 'kritis' : 'minggu') : 'belum',
+        chips: hasRisk ? [['kritis', 'Kritis'], ['minggu', 'Belum order mg ini'], ['gagal', 'Tidak bisa WEEKLY'], ['weekly', 'WEEKLY'], ['semua', 'Semua']]
+          : [['belum', 'Belum WEEKLY'], ['minggu', 'Belum order mg ini'], ['weekly', 'WEEKLY'], ['semua', 'Semua']],
+        test: hasRisk ? (f, o) => f === 'semua' || (f === 'kritis' && o.risk === 'KRITIS') || (f === 'minggu' && o.risk !== 'AMAN' && !o.weekNow) || (f === 'gagal' && o.risk === 'GAGAL') || (f === 'weekly' && o.risk === 'AMAN')
+          : (f, o) => f === 'semua' || (f === 'belum' && o.status !== 'WEEKLY') || (f === 'minggu' && o.status !== 'WEEKLY' && !o.weekNow) || (f === 'weekly' && o.status === 'WEEKLY'),
         hay: o => (o.outlet_nama + ' ' + o.dist_nama + ' ' + o.remark).toLowerCase(),
-        sort: (a, b) => (a.status === 'WEEKLY') - (b.status === 'WEEKLY') || b.orders - a.orders || String(a.outlet_nama).localeCompare(b.outlet_nama),
-        row: o => { const ok = o.status === 'WEEKLY'; return `<div class="rk"><div class="rk-h"><span class="si ${ok ? 'ok' : o.orders >= fopNeed() - 1 ? 'warn' : 'neg'}">${svg(ok ? 'check' : o.orders >= fopNeed() - 1 ? 'warn' : 'down')}</span>` +
-          `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)} · ${esc(o.status || '-')}</div></div><span class="tag ${o.weekNow ? 'g' : 'r'}">${o.weekNow ? 'order mg ini' : 'belum mg ini'}</span></div>` +
-          `<div class="rk-s two"><div class="${o.orders >= fopNeed() ? 'okc' : o.orders >= fopNeed() - 1 ? 'amb' : 'neg'}"><small>Minggu order bulan ini</small><b>${o.orders} / ${fopNeed()}</b></div><div><small>Order terakhir</small><b>${o.lastWeek === '' ? '-' : 'mg ' + esc(o.lastWeek)}</b></div></div></div>`; },
+        sort: hasRisk ? (a, b) => (RISK_ORD[a.risk] - RISK_ORD[b.risk]) || (a.weekNow - b.weekNow) || String(a.outlet_nama).localeCompare(b.outlet_nama)
+          : (a, b) => (a.status === 'WEEKLY') - (b.status === 'WEEKLY') || b.orders - a.orders || String(a.outlet_nama).localeCompare(b.outlet_nama),
+        row: o => o.risk === undefined ? rowLegacy(o) : rowRisk(o),
       });
   }
 
@@ -395,12 +465,22 @@
       L.push('', 'Fokus poin:');
       kp.forEach((k, i) => L.push((i + 1) + '. ' + k.label + ': ' + pct(k.aktual) + ' (target ' + pct(k.target) + '), poin hilang ' + k.hilang.toFixed(1)));
     }
-    [['LOCAL MINIS', 'Local Minis'], ['LOCAL SUPERMARKET', 'SPM']].forEach(c => {
+    const fopTodo = c => {
       const todo = fopRows(c[0]).filter(o => o.status !== 'WEEKLY' && !o.weekNow).sort((a, b) => b.orders - a.orders).slice(0, 15);
       if (!todo.length) return;
       L.push('', 'Toko ' + c[1] + ' belum order minggu ini (target ' + fopNeed() + 'x sebulan):');
       todo.forEach(o => L.push('- ' + o.outlet_nama + ' (' + o.orders + '/' + fopNeed() + ')'));
-    });
+    };
+    const spm = monLive() ? fopRows('LOCAL SUPERMARKET') : [];
+    if (spm.some(o => o.risk !== undefined)) {   // server baru: SPM wajib dulu, lalu Minis
+      const r = monRemain(), need = fopNeed();
+      L.push('', '*SPM wajib ' + need + 'x sebulan*' + (r ? ' (minggu ' + r.week + ', tersisa ' + r.sisa + ' minggu kerja)' : ''));
+      const kritis = spm.filter(o => o.risk === 'KRITIS').sort((a, b) => String(a.outlet_nama).localeCompare(b.outlet_nama)).slice(0, 15);
+      if (kritis.length) { L.push('Kritis:'); kritis.forEach(o => L.push('- ' + o.outlet_nama + ' (' + o.orders + '/' + need + ', perlu ' + o.needMore + 'x lagi, wajib setiap minggu)')); }
+      const belum = spm.filter(o => o.risk !== 'AMAN' && o.risk !== 'KRITIS' && !o.weekNow).sort((a, b) => b.orders - a.orders).slice(0, 15);
+      if (belum.length) { L.push('Belum order minggu ini:'); belum.forEach(o => L.push('- ' + o.outlet_nama + ' (' + o.orders + '/' + need + ')')); }
+      fopTodo(['LOCAL MINIS', 'Local Minis']);
+    } else [['LOCAL MINIS', 'Local Minis'], ['LOCAL SUPERMARKET', 'SPM']].forEach(fopTodo);
     const ps = psStores().filter(o => !isPerfect(o) && psMissing(o).length).sort((a, b) => psMissing(a).length - psMissing(b).length).slice(0, 10);
     if (ps.length) {
       L.push('', 'Perfect Store, lengkapi:');
@@ -439,6 +519,7 @@
     const c = e.target.closest('[data-ch]'); if (c) { LST[c.dataset.ch].f = c.dataset.f; LST[c.dataset.ch].limit = 60; fillList(c.dataset.ch); return; }
     const x = e.target.closest('[data-clr]'); if (x) { const id = x.dataset.clr; LST[id].q = ''; $('tb-' + id).querySelector('input').value = ''; x.hidden = true; fillList(id); return; }
     const m = e.target.closest('[data-more]'); if (m) { const id = m.dataset.more; LST[id].limit = (LST[id].limit || 60) + 60; fillList(id); return; }
+    const go = e.target.closest('[data-go]'); if (go) { setTab(go.dataset.go); return; }
     const r = e.target.closest('[data-reset]'); if (r) { const id = r.dataset.reset; LST[id].q = ''; LST[id].f = LISTS[id].defaultF; $('tb-' + id).querySelector('input').value = ''; fillList(id); return; }
     $('syncPop').hidden = true;
   });
