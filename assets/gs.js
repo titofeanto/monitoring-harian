@@ -228,6 +228,7 @@
     renderPs(kp.find(k => k.kpi === 'PS'));
     renderBanded(kp.find(k => k.kpi === 'BANDED_MINIS'), kp.find(k => k.kpi === 'BANDED_SPM'));
     renderToko();
+    renderRanking();
     renderHist(live.history);
     renderRecap();
     Object.keys(LISTS).forEach(fillList);
@@ -564,6 +565,78 @@
       });
   }
 
+  /* ---- tab Ranking: papan peringkat sales per BU (FOP, Banded, Assortment). Semua angka dan urutan dari server (DATA.ranking); di sini hanya ditampilkan. ---- */
+  const RK = { bu: '', kpi: 'fop' };
+  const RK_KPI = [['fop', 'FOP'], ['banded', 'Banded'], ['asrt', 'Assortment']];
+  const rkBus = () => (DATA.ranking && DATA.ranking.bu) || {};
+  function rkBoard() {
+    const b = rkBus(); if (!RK.bu || !b[RK.bu]) RK.bu = Object.keys(b)[0] || '';
+    const bu = b[RK.bu]; if (!bu) return { ranked: [], low: [], top: 0 };
+    const ranked = bu[RK.kpi].map((r, i) => Object.assign({ ord: i }, r)), low = bu.belumCukup[RK.kpi];
+    return { bu: bu, ranked: ranked, low: low, top: ranked.length ? ranked[0].nilai : 0 };
+  }
+  const rkValue = r => RK.kpi === 'asrt' ? nf1(r.nilai) + ' lines/toko' : pct(r.nilai);
+  /** Dua angka pendukung per baris; label dan angka apa adanya dari server. */
+  function rkStats(r) {
+    const cell = (l, v, cls) => `<div${cls ? ` class="${cls}"` : ''}><small>${l}</small><b>${v}</b></div>`;
+    if (RK.kpi === 'fop') return cell('WEEKLY', r.weekly + '/' + r.n) + cell('SPM wajib', r.spm.weekly + '/' + r.spm.n);
+    if (RK.kpi === 'banded') return cell('Tercapai', r.hit + '/' + r.n) + cell('Toko', nf(r.n));
+    return cell('Lines', nf(r.lines)) + cell('Toko aktif', nf(r.toko));
+  }
+  const rkTone = n => n === 1 ? 'ok' : n === 2 ? 'warn' : n === 3 ? 'plus' : 'off';
+  function rkRow(r, top) {
+    const w = top > 0 ? Math.max(2, Math.min(100, r.nilai / top * 100)) : 0;
+    return `<div class="rk"><div class="rk-h"><span class="si rkn ${rkTone(r.rank)}" aria-label="Peringkat ${r.rank}">${r.rank}</span><div class="it-i"><div class="nm">${esc(r.nama)}</div><div class="sk">${esc(r.dt_nama)} · ${nf(r.n)} toko</div></div><span class="tag b lg">${rkValue(r)}</span></div>` +
+      `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${w.toFixed(0)}%"></i></div><div class="rk-s two">${rkStats(r)}</div></div>`;
+  }
+  function rkLowRow(r) {
+    return `<div class="rk"><div class="rk-h"><span class="si rkn off" aria-hidden="true">–</span><div class="it-i"><div class="nm">${esc(r.nama)}</div><div class="sk">${esc(r.dt_nama)} · ${nf(r.n)} toko</div></div><span class="tag b lg">${rkValue(r)}</span></div></div>`;
+  }
+  function renderRanking() {
+    const el = $('secRanking'), rk = DATA.ranking; if (!el) return;
+    const navBtn = document.querySelector('#tabsNav [data-tab="ranking"]');
+    if (navBtn) navBtn.hidden = !rk;    // server lama tanpa ranking: tab disembunyikan
+    if (!rk) { if (!$('tab-ranking').hidden) setTab('skor'); el.innerHTML = ''; return; }
+    const title = ciTitle('trophy', 'Ranking sales');
+    const buKeys = Object.keys(rkBus());
+    if (!buKeys.length) { el.innerHTML = title + '<div class="empty">Belum ada data ranking. Upload Extract DMS dan daftar toko monitoring di tool upload.</div>'; return; }
+    const bd = rkBoard(), bus = rkBus();
+    const buChips = buKeys.map(k => `<button type="button" data-rkbu="${esc(k)}" aria-pressed="${k === RK.bu}">${esc(bus[k].label)}</button>`).join('');
+    const kpiChips = RK_KPI.map(c => `<button type="button" data-rkkpi="${c[0]}" aria-pressed="${c[0] === RK.kpi}">${c[1]} <b>${nf(bus[RK.bu][c[0]].length)}</b></button>`).join('');
+    const notes = [];
+    if (bd.bu.belumTransaksi > 0) notes.push(`${nf(bd.bu.belumTransaksi)} toko monitoring belum bertransaksi di BU ini, jadi belum ikut peringkat.`);
+    if (RK.kpi === 'banded' && rk.catatan && rk.catatan.bandedTanpaBu > 0) notes.push(`${nf(rk.catatan.bandedTanpaBu)} SKU banded belum terdaftar di MASTER_PRODUK, jadi tidak ikut hitungan Banded BU mana pun.`);
+    const failed = (rk.perDt || []).filter(d => d.status === 'error').map(d => d.dist_nama);
+    if (failed.length) notes.push('Ranking belum bisa dihitung untuk ' + failed.join(', ') + '.');
+    const what = RK.kpi === 'fop' ? 'Persen toko yang WEEKLY (order di ' + (DATA.mon && DATA.mon.cfg ? fopNeed() : 3) + ' minggu atau lebih bulan ini).' : RK.kpi === 'banded' ? 'Persen toko yang tercapai Banded kuartal ini, hanya SKU banded BU ini.' : 'Rata-rata lines (base pack) per toko aktif di BU ini, minimal ' + ((DATA.asrt && DATA.asrt.moq) || 3) + ' pcs per base pack.';
+    el.innerHTML = title + `<p class="hint">Peringkat salesman per BU, dari toko yang dilayani bulan ini. Dihitung dari Extract DMS sampai ${esc(tgl(rk.tanggalData))}. ${what} Minimal ${nf(rk.minToko)} toko untuk dapat peringkat.</p>` +
+      `<div class="chips" id="rkBu" role="group" aria-label="Pilih BU">${buChips}</div><div class="chips" id="rkKpi" role="group" aria-label="Pilih KPI" style="margin-top:8px">${kpiChips}</div>` +
+      (notes.length ? `<div class="notice" style="margin-top:10px">${notes.map(esc).join('<br>')}</div>` : '') +
+      '<div style="margin-top:10px">' + mountList('rk', {
+        rows: bd.ranked, ph: 'Cari nama atau kode salesman', unit: 'salesman', empty: 'Belum ada salesman yang cukup toko untuk diberi peringkat di KPI ini.',
+        defaultF: 'semua', chips: [['semua', 'Semua'], ['top', '10 teratas']],
+        test: (f, r) => f === 'semua' || r.rank <= 10,
+        hay: r => (r.nama + ' ' + r.kode + ' ' + r.dt_nama).toLowerCase(),
+        sort: (a, b) => a.ord - b.ord,
+        row: r => rkRow(r, bd.top),
+      }) + '</div>' +
+      (bd.low.length ? `<details class="box" style="margin-top:10px"><summary><span>Belum cukup toko (kurang dari ${nf(rk.minToko)}) · ${nf(bd.low.length)}</span></summary><div class="rk-list" style="margin-top:10px">${bd.low.slice(0, 60).map(rkLowRow).join('')}</div>` +
+        (bd.low.length > 60 ? `<p class="hint" style="margin-top:8px">Menampilkan 60 dari ${nf(bd.low.length)}.</p>` : '') + '</details>' : '') +
+      `<div class="row" style="margin-top:12px"><button type="button" class="btn ic" data-rkwa>Kirim ke WhatsApp</button><button type="button" class="btn plain ic" data-rkcopy>Salin teks</button></div>`;
+  }
+  /** Teks 5 teratas BU dan KPI yang sedang dibuka, untuk grup WhatsApp. */
+  function rankText() {
+    const rk = DATA.ranking, bd = rkBoard(), L = [];
+    const kpi = RK_KPI.find(c => c[0] === RK.kpi)[1];
+    L.push('*RANKING SALES ' + (bd.bu ? bd.bu.label.toUpperCase() : '') + ' - ' + kpi.toUpperCase() + '*' + (DATA.scope ? ' (' + DATA.scope.nama + ')' : ''));
+    L.push('Data DMS s.d. ' + tgl(rk.tanggalData) + ' · minimal ' + rk.minToko + ' toko');
+    L.push('');
+    bd.ranked.slice(0, 5).forEach(r => L.push(r.rank + '. ' + r.nama + ' (' + r.dt_nama + ') ' + rkValue(r) + ' · ' + r.n + ' toko'));
+    if (!bd.ranked.length) L.push('Belum ada salesman yang cukup toko.');
+    L.push('', 'Detail: ' + location.href.split('?')[0] + '#ranking');
+    return L.join('\n');
+  }
+
   /* ---- lembar detail toko (modal) ---- */
   let storeOpener = null;
   const emptyMsg = t => `<div class="empty">${t}</div>`;
@@ -678,9 +751,9 @@
   });
 
   /* tab, daftar (cari/filter/lagi), muat ulang, popover status */
-  const TABS = ['skor', 'fop', 'banded', 'toko', 'asrt', 'ps'];
+  const TABS = ['skor', 'fop', 'banded', 'toko', 'ranking', 'asrt', 'ps'];
   function setTab(t) {
-    if (!TABS.includes(t)) t = 'skor';
+    if (!TABS.includes(t) || (t === 'ranking' && DATA && !DATA.ranking)) t = 'skor';   // server lama: tanpa tab Ranking
     TABS.forEach(k => { $('tab-' + k).hidden = k !== t; });
     document.querySelectorAll('#tabsNav [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
     try { localStorage.setItem('mh_gs_tab', t); } catch (e) { /* mode privat */ }
@@ -695,6 +768,10 @@
     const m = e.target.closest('[data-more]'); if (m) { const id = m.dataset.more; LST[id].limit = (LST[id].limit || 60) + 60; fillList(id); return; }
     const bv = e.target.closest('[data-bv]'); if (bv) { setBandedView(bv.dataset.bv, bv.dataset.v); return; }
     const sm = e.target.closest('[data-skmore]'); if (sm) { const d = sm.closest('.rk').querySelector('details.skm'); if (d) d.open = !d.open; return; }
+    const rb = e.target.closest('[data-rkbu]'); if (rb) { RK.bu = rb.dataset.rkbu; LST.rk.limit = 60; renderRanking(); fillList('rk'); return; }
+    const rq = e.target.closest('[data-rkkpi]'); if (rq) { RK.kpi = rq.dataset.rkkpi; LST.rk.limit = 60; renderRanking(); fillList('rk'); return; }
+    if (e.target.closest('[data-rkwa]')) { window.open('https://wa.me/?text=' + encodeURIComponent(rankText()), '_blank'); return; }
+    if (e.target.closest('[data-rkcopy]')) { navigator.clipboard.writeText(rankText()).then(() => toast('Teks ranking disalin. Tempel di grup WhatsApp.'), () => toast('Browser tidak mengizinkan salin otomatis. Pakai tombol WhatsApp.')); return; }
     const go = e.target.closest('[data-go]'); if (go) { setTab(go.dataset.go); return; }
     const r = e.target.closest('[data-reset]'); if (r) { const id = r.dataset.reset; LST[id].q = ''; LST[id].f = LISTS[id].defaultF; $('tb-' + id).querySelector('input').value = ''; fillList(id); return; }
     $('syncPop').hidden = true;

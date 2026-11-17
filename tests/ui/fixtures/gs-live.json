@@ -1602,5 +1602,873 @@
    }
   },
   "monLive": true
+ },
+ "ranking": {
+  "bulan": "2026-11",
+  "tanggalData": "2026-11-26",
+  "minToko": 5,
+  "catatan": {
+   "bandedTanpaBu": 0,
+   "salesTanpaNama": 2
+  },
+  "bu": {
+   "FOODS": {
+    "label": "Foods",
+    "fop": [
+     {
+      "rank": 1,
+      "kode": "201",
+      "nama": "Aldo BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 1,
+      "weekly": 6,
+      "spm": {
+       "weekly": 3,
+       "n": 3
+      }
+     },
+     {
+      "rank": 1,
+      "kode": "101",
+      "nama": "Salesman Contoh Dengan Nama Yang Sangat Panjang Sekali Untuk Uji Potong Teks",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 1,
+      "weekly": 6,
+      "spm": {
+       "weekly": 3,
+       "n": 3
+      }
+     },
+     {
+      "rank": 3,
+      "kode": "203",
+      "nama": "203",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.8333333333333334,
+      "weekly": 5,
+      "spm": {
+       "weekly": 3,
+       "n": 3
+      }
+     },
+     {
+      "rank": 3,
+      "kode": "102",
+      "nama": "Bima AF",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.8333333333333334,
+      "weekly": 5,
+      "spm": {
+       "weekly": 3,
+       "n": 3
+      }
+     },
+     {
+      "rank": 3,
+      "kode": "202",
+      "nama": "Bima BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.8333333333333334,
+      "weekly": 5,
+      "spm": {
+       "weekly": 3,
+       "n": 3
+      }
+     },
+     {
+      "rank": 3,
+      "kode": "103",
+      "nama": "Citra AF",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.8333333333333334,
+      "weekly": 5,
+      "spm": {
+       "weekly": 3,
+       "n": 3
+      }
+     },
+     {
+      "rank": 7,
+      "kode": "104",
+      "nama": "104",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.6666666666666666,
+      "weekly": 4,
+      "spm": {
+       "weekly": 2,
+       "n": 3
+      }
+     },
+     {
+      "rank": 7,
+      "kode": "204",
+      "nama": "Dian BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.6666666666666666,
+      "weekly": 4,
+      "spm": {
+       "weekly": 2,
+       "n": 3
+      }
+     },
+     {
+      "rank": 9,
+      "kode": "105",
+      "nama": "Eka AF",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.5,
+      "weekly": 3,
+      "spm": {
+       "weekly": 2,
+       "n": 3
+      }
+     },
+     {
+      "rank": 9,
+      "kode": "205",
+      "nama": "Eka BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.5,
+      "weekly": 3,
+      "spm": {
+       "weekly": 2,
+       "n": 3
+      }
+     }
+    ],
+    "banded": [
+     {
+      "rank": 1,
+      "kode": "203",
+      "nama": "203",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.8333333333333334,
+      "hit": 5
+     },
+     {
+      "rank": 1,
+      "kode": "103",
+      "nama": "Citra AF",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.8333333333333334,
+      "hit": 5
+     },
+     {
+      "rank": 3,
+      "kode": "201",
+      "nama": "Aldo BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.6666666666666666,
+      "hit": 4
+     },
+     {
+      "rank": 3,
+      "kode": "105",
+      "nama": "Eka AF",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.6666666666666666,
+      "hit": 4
+     },
+     {
+      "rank": 3,
+      "kode": "205",
+      "nama": "Eka BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.6666666666666666,
+      "hit": 4
+     },
+     {
+      "rank": 3,
+      "kode": "101",
+      "nama": "Salesman Contoh Dengan Nama Yang Sangat Panjang Sekali Untuk Uji Potong Teks",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.6666666666666666,
+      "hit": 4
+     },
+     {
+      "rank": 7,
+      "kode": "104",
+      "nama": "104",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.5,
+      "hit": 3
+     },
+     {
+      "rank": 7,
+      "kode": "102",
+      "nama": "Bima AF",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.5,
+      "hit": 3
+     },
+     {
+      "rank": 7,
+      "kode": "202",
+      "nama": "Bima BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.5,
+      "hit": 3
+     },
+     {
+      "rank": 7,
+      "kode": "204",
+      "nama": "Dian BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.5,
+      "hit": 3
+     }
+    ],
+    "asrt": [
+     {
+      "rank": 1,
+      "kode": "104",
+      "nama": "104",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 5,
+      "lines": 30,
+      "toko": 6
+     },
+     {
+      "rank": 1,
+      "kode": "204",
+      "nama": "Dian BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 5,
+      "lines": 30,
+      "toko": 6
+     },
+     {
+      "rank": 3,
+      "kode": "105",
+      "nama": "Eka AF",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 4.333333333333333,
+      "lines": 26,
+      "toko": 6
+     },
+     {
+      "rank": 3,
+      "kode": "205",
+      "nama": "Eka BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 4.333333333333333,
+      "lines": 26,
+      "toko": 6
+     },
+     {
+      "rank": 5,
+      "kode": "203",
+      "nama": "203",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 4,
+      "lines": 24,
+      "toko": 6
+     },
+     {
+      "rank": 5,
+      "kode": "103",
+      "nama": "Citra AF",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 4,
+      "lines": 24,
+      "toko": 6
+     },
+     {
+      "rank": 7,
+      "kode": "102",
+      "nama": "Bima AF",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 3.8333333333333335,
+      "lines": 23,
+      "toko": 6
+     },
+     {
+      "rank": 7,
+      "kode": "202",
+      "nama": "Bima BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 3.8333333333333335,
+      "lines": 23,
+      "toko": 6
+     },
+     {
+      "rank": 9,
+      "kode": "201",
+      "nama": "Aldo BF",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 3.6666666666666665,
+      "lines": 22,
+      "toko": 6
+     },
+     {
+      "rank": 9,
+      "kode": "101",
+      "nama": "Salesman Contoh Dengan Nama Yang Sangat Panjang Sekali Untuk Uji Potong Teks",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 3.6666666666666665,
+      "lines": 22,
+      "toko": 6
+     }
+    ],
+    "belumCukup": {
+     "fop": [
+      {
+       "rank": null,
+       "kode": "106",
+       "nama": "Fajar AF",
+       "dt_kode": "DTA",
+       "dt_nama": "DT Contoh A",
+       "n": 2,
+       "nilai": 1,
+       "weekly": 2,
+       "spm": {
+        "weekly": 1,
+        "n": 1
+       }
+      },
+      {
+       "rank": null,
+       "kode": "206",
+       "nama": "Fajar BF",
+       "dt_kode": "DTB",
+       "dt_nama": "DT Contoh B",
+       "n": 2,
+       "nilai": 1,
+       "weekly": 2,
+       "spm": {
+        "weekly": 1,
+        "n": 1
+       }
+      }
+     ],
+     "banded": [
+      {
+       "rank": null,
+       "kode": "106",
+       "nama": "Fajar AF",
+       "dt_kode": "DTA",
+       "dt_nama": "DT Contoh A",
+       "n": 2,
+       "nilai": 0.5,
+       "hit": 1
+      },
+      {
+       "rank": null,
+       "kode": "206",
+       "nama": "Fajar BF",
+       "dt_kode": "DTB",
+       "dt_nama": "DT Contoh B",
+       "n": 2,
+       "nilai": 0.5,
+       "hit": 1
+      }
+     ],
+     "asrt": [
+      {
+       "rank": null,
+       "kode": "106",
+       "nama": "Fajar AF",
+       "dt_kode": "DTA",
+       "dt_nama": "DT Contoh A",
+       "n": 2,
+       "nilai": 3,
+       "lines": 6,
+       "toko": 2
+      },
+      {
+       "rank": null,
+       "kode": "206",
+       "nama": "Fajar BF",
+       "dt_kode": "DTB",
+       "dt_nama": "DT Contoh B",
+       "n": 2,
+       "nilai": 3,
+       "lines": 6,
+       "toko": 2
+      }
+     ]
+    },
+    "belumTransaksi": 2
+   },
+   "HOME CARE": {
+    "label": "Home Care",
+    "fop": [
+     {
+      "rank": 1,
+      "kode": "151",
+      "nama": "Gita AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 1,
+      "weekly": 6,
+      "spm": {
+       "weekly": 3,
+       "n": 3
+      }
+     },
+     {
+      "rank": 1,
+      "kode": "251",
+      "nama": "Gita BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 1,
+      "weekly": 6,
+      "spm": {
+       "weekly": 3,
+       "n": 3
+      }
+     },
+     {
+      "rank": 1,
+      "kode": "153",
+      "nama": "Indra AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 5,
+      "nilai": 1,
+      "weekly": 5,
+      "spm": {
+       "weekly": 2,
+       "n": 2
+      }
+     },
+     {
+      "rank": 1,
+      "kode": "253",
+      "nama": "Indra BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 5,
+      "nilai": 1,
+      "weekly": 5,
+      "spm": {
+       "weekly": 2,
+       "n": 2
+      }
+     },
+     {
+      "rank": 5,
+      "kode": "152",
+      "nama": "Hadi AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 5,
+      "nilai": 0.8,
+      "weekly": 4,
+      "spm": {
+       "weekly": 2,
+       "n": 3
+      }
+     },
+     {
+      "rank": 5,
+      "kode": "252",
+      "nama": "Hadi BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 5,
+      "nilai": 0.8,
+      "weekly": 4,
+      "spm": {
+       "weekly": 2,
+       "n": 3
+      }
+     },
+     {
+      "rank": 7,
+      "kode": "154",
+      "nama": "Joko AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.6666666666666666,
+      "weekly": 4,
+      "spm": {
+       "weekly": 2,
+       "n": 3
+      }
+     },
+     {
+      "rank": 7,
+      "kode": "254",
+      "nama": "Joko BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.6666666666666666,
+      "weekly": 4,
+      "spm": {
+       "weekly": 2,
+       "n": 3
+      }
+     },
+     {
+      "rank": 9,
+      "kode": "155",
+      "nama": "Kirana AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 5,
+      "nilai": 0.6,
+      "weekly": 3,
+      "spm": {
+       "weekly": 1,
+       "n": 3
+      }
+     },
+     {
+      "rank": 9,
+      "kode": "255",
+      "nama": "Kirana BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 5,
+      "nilai": 0.6,
+      "weekly": 3,
+      "spm": {
+       "weekly": 1,
+       "n": 3
+      }
+     }
+    ],
+    "banded": [
+     {
+      "rank": 1,
+      "kode": "153",
+      "nama": "Indra AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 5,
+      "nilai": 0.8,
+      "hit": 4
+     },
+     {
+      "rank": 1,
+      "kode": "253",
+      "nama": "Indra BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 5,
+      "nilai": 0.8,
+      "hit": 4
+     },
+     {
+      "rank": 1,
+      "kode": "155",
+      "nama": "Kirana AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 5,
+      "nilai": 0.8,
+      "hit": 4
+     },
+     {
+      "rank": 1,
+      "kode": "255",
+      "nama": "Kirana BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 5,
+      "nilai": 0.8,
+      "hit": 4
+     },
+     {
+      "rank": 5,
+      "kode": "152",
+      "nama": "Hadi AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 5,
+      "nilai": 0.6,
+      "hit": 3
+     },
+     {
+      "rank": 5,
+      "kode": "252",
+      "nama": "Hadi BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 5,
+      "nilai": 0.6,
+      "hit": 3
+     },
+     {
+      "rank": 7,
+      "kode": "151",
+      "nama": "Gita AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.5,
+      "hit": 3
+     },
+     {
+      "rank": 7,
+      "kode": "251",
+      "nama": "Gita BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.5,
+      "hit": 3
+     },
+     {
+      "rank": 9,
+      "kode": "154",
+      "nama": "Joko AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 0.3333333333333333,
+      "hit": 2
+     },
+     {
+      "rank": 9,
+      "kode": "254",
+      "nama": "Joko BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 0.3333333333333333,
+      "hit": 2
+     }
+    ],
+    "asrt": [
+     {
+      "rank": 1,
+      "kode": "155",
+      "nama": "Kirana AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 5,
+      "nilai": 4.2,
+      "lines": 21,
+      "toko": 5
+     },
+     {
+      "rank": 1,
+      "kode": "255",
+      "nama": "Kirana BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 5,
+      "nilai": 4.2,
+      "lines": 21,
+      "toko": 5
+     },
+     {
+      "rank": 3,
+      "kode": "152",
+      "nama": "Hadi AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 5,
+      "nilai": 4,
+      "lines": 20,
+      "toko": 5
+     },
+     {
+      "rank": 3,
+      "kode": "252",
+      "nama": "Hadi BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 5,
+      "nilai": 4,
+      "lines": 20,
+      "toko": 5
+     },
+     {
+      "rank": 3,
+      "kode": "153",
+      "nama": "Indra AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 5,
+      "nilai": 4,
+      "lines": 20,
+      "toko": 5
+     },
+     {
+      "rank": 3,
+      "kode": "253",
+      "nama": "Indra BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 5,
+      "nilai": 4,
+      "lines": 20,
+      "toko": 5
+     },
+     {
+      "rank": 7,
+      "kode": "151",
+      "nama": "Gita AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 3.8333333333333335,
+      "lines": 23,
+      "toko": 6
+     },
+     {
+      "rank": 7,
+      "kode": "251",
+      "nama": "Gita BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 3.8333333333333335,
+      "lines": 23,
+      "toko": 6
+     },
+     {
+      "rank": 9,
+      "kode": "154",
+      "nama": "Joko AH",
+      "dt_kode": "DTA",
+      "dt_nama": "DT Contoh A",
+      "n": 6,
+      "nilai": 3,
+      "lines": 18,
+      "toko": 6
+     },
+     {
+      "rank": 9,
+      "kode": "254",
+      "nama": "Joko BH",
+      "dt_kode": "DTB",
+      "dt_nama": "DT Contoh B",
+      "n": 6,
+      "nilai": 3,
+      "lines": 18,
+      "toko": 6
+     }
+    ],
+    "belumCukup": {
+     "fop": [
+      {
+       "rank": null,
+       "kode": "256",
+       "nama": "Lala BH",
+       "dt_kode": "DTB",
+       "dt_nama": "DT Contoh B",
+       "n": 3,
+       "nilai": 0.6666666666666666,
+       "weekly": 2,
+       "spm": {
+        "weekly": 1,
+        "n": 1
+       }
+      }
+     ],
+     "banded": [
+      {
+       "rank": null,
+       "kode": "256",
+       "nama": "Lala BH",
+       "dt_kode": "DTB",
+       "dt_nama": "DT Contoh B",
+       "n": 3,
+       "nilai": 0.6666666666666666,
+       "hit": 2
+      }
+     ],
+     "asrt": [
+      {
+       "rank": null,
+       "kode": "256",
+       "nama": "Lala BH",
+       "dt_kode": "DTB",
+       "dt_nama": "DT Contoh B",
+       "n": 3,
+       "nilai": 3.6666666666666665,
+       "lines": 11,
+       "toko": 3
+      }
+     ]
+    },
+    "belumTransaksi": 6
+   }
+  },
+  "perDt": [
+   {
+    "dist_kode": "DTA",
+    "dist_nama": "DT Contoh A",
+    "stores": 33,
+    "status": "ok",
+    "error": ""
+   },
+   {
+    "dist_kode": "DTB",
+    "dist_nama": "DT Contoh B",
+    "stores": 33,
+    "status": "ok",
+    "error": ""
+   }
+  ]
  }
 }
