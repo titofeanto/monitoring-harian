@@ -901,6 +901,9 @@ function monRecap_(hist, asrtRows, bandedSku, cfg) {
 const STOK_TAB = 'STOK_GUDANG';
 const STOK_HEADER = ['dt_kode', 'tanggal', 'sku', 'karton', 'lusin', 'pcs', 'isi', 'rpp'];
 const STOK_MAX_ROWS = 8000;
+const STOK_MIN_INTERVAL_SEC = 20;  // jarak minimum dua penyimpanan untuk DT yang sama
+const STOK_WC_WARN = 100;          // peringatan bila week cover satu parent SKU >= 100 minggu
+const STOK_WC_MAX_WARN = 20;       // maksimum jumlah peringatan di balasan
 const STOK_BACKUP_TAB = '(Backup) STOK_GUDANG';
 
 /** Terima stock gudang satu DT dari SBA Logbook App. Mengganti baris DT itu saja di STOK_GUDANG. */
@@ -910,6 +913,8 @@ function simpanStok_(body) {
   if (!reg) return { ok: true, skipped: true, reason: 'DT ' + dt + ' tidak terdaftar di Monitoring Daily, data tidak dikirim.' };
   const tanggal = String(body.tanggal || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) return { error: 'bad_request', message: 'tanggal harus format YYYY-MM-DD.' };
+  const batas = Utilities.formatDate(new Date(Date.now() + 86400000), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  if (tanggal > batas) return { ok: true, skipped: true, reason: 'Tanggal laporan ' + tanggal + ' ada di masa depan, data tidak dikirim.' };
   const rows = body.rows;
   if (!Array.isArray(rows) || !rows.length) return { error: 'bad_request', message: 'rows kosong.' };
   if (rows.length > STOK_MAX_ROWS) return { error: 'bad_request', message: 'rows terlalu banyak (maks ' + STOK_MAX_ROWS + ').' };
@@ -920,6 +925,9 @@ function simpanStok_(body) {
     clean.push([dt, tanggal, sku, +r[1] || 0, +r[2] || 0, +r[3] || 0, +r[4] || 1, Math.max(0, +r[5] || 0)]);
   }
   if (!clean.length) return { error: 'bad_request', message: 'Tidak ada baris SKU yang valid.' };
+  const cache = CacheService.getScriptCache(), rk = 'stok_rl_' + dt;
+  if (cache.get(rk)) return { ok: true, skipped: true, reason: 'Terlalu sering mengirim stok untuk DT ' + dt + ', coba lagi sebentar lagi.' };
+  cache.put(rk, '1', STOK_MIN_INTERVAL_SEC);
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -938,7 +946,82 @@ function simpanStok_(body) {
     if (all.length) { writeObjs_(ss, STOK_BACKUP_TAB, STOK_HEADER, all); bak.hideSheet(); }
     writeObjs_(ss, STOK_TAB, STOK_HEADER, keep.concat(clean));
   } finally { lock.releaseLock(); }
-  return { ok: true, dt: dt, dtNama: reg.nama_dt, rows: clean.length, tanggal: tanggal };
+  const out = { ok: true, dt: dt, dtNama: reg.nama_dt, rows: clean.length, tanggal: tanggal, wcWarn: STOK_WC_WARN, warnings: [] };
+  try { out.warnings = stokWcWarningsForDt_(reg, tanggal, clean); } catch (err) { out.warningsError = String(err); }
+  return out;
+}
+
+/**
+ * Pure. Week cover per parent SKU (LEVEL-9). Stok dijumlah dalam pcs per parent dulu, baru dibagi rata-rata penjualan per minggu.
+ * Aturan penjualan meniru assets/stok.js (monthly/metrics): qty karton = GSV ribuan x 1000 / (harga / 1.11), rata-rata 13 minggu
+ * = jumlah 3 bulan terakhir (sampai bulan terakhir data jual DT) / (hari / 7), semua bucket dijumlah.
+ * in_ = { stok:[{sku,karton,lusin,pcs,isi}], harga:[{sku,isi,mulai,h_new,h_old}], jual:[{sku,bkt,mulai,v}], parentOf:{sku:level9}, today:'YYYY-MM-DD' }
+ * return [{ parent, skus, stokPcs, ratePcsMgg, wc }] untuk parent dengan rate > 0, urut wc menurun.
+ */
+function computeStokWc_(in_) {
+  const parentOf = in_.parentOf || {}, today = String(in_.today || '');
+  const par = sku => parentOf[sku] || sku;
+  const hargaBy = {};
+  (in_.harga || []).forEach(h => { const k = String(h.sku); if (!hargaBy[k]) hargaBy[k] = h; });
+  const isiOf = {};
+  (in_.stok || []).forEach(s => { isiOf[String(s.sku)] = +s.isi || 1; });
+  // Bulan terakhir data jual DT (JL) dan deret bulanan per SKU (semua bucket dijumlah)
+  let JL = -1;
+  const rec = [];
+  (in_.jual || []).forEach(r => {
+    const p = String(r.mulai).split('-'), i0 = +p[0] * 12 + (+p[1]) - 1, v = String(r.v).split(',').map(Number);
+    rec.push({ sku: String(r.sku), i0: i0, v: v });
+    JL = Math.max(JL, i0 + v.length - 1);
+  });
+  if (JL < 0) return [];
+  const monthDays = idx => new Date(Date.UTC(Math.floor(idx / 12), idx % 12 + 1, 0)).getUTCDate();
+  let hari = 0;
+  for (let i = JL - 2; i <= JL; i++) hari += monthDays(i);
+  const minggu = hari / 7;
+  const rateOf = {};   // sku -> pcs per minggu
+  rec.forEach(r => {
+    const h = hargaBy[r.sku];
+    if (!h) return;
+    const hNew = +h.h_new || 0, hOld = +h.h_old || 0;
+    const hp = (h.mulai && String(h.mulai) > today) ? (hOld || hNew) : (hNew || hOld);
+    if (!hp) return;
+    const price = hp / 1.11, isi = +h.isi || isiOf[r.sku] || 1;
+    let kartonTot = 0;
+    r.v.forEach((g, k) => { const idx = r.i0 + k; if (idx >= JL - 2 && idx <= JL) kartonTot += (+g || 0) * 1000 / price; });
+    rateOf[r.sku] = (rateOf[r.sku] || 0) + kartonTot / minggu * (isiOf[r.sku] || isi);
+  });
+  const by = {};
+  const slot = sku => { const p = par(sku); return by[p] || (by[p] = { parent: p, skus: [], stokPcs: 0, ratePcsMgg: 0, wc: null }); };
+  (in_.stok || []).forEach(s => {
+    const sku = String(s.sku), g = slot(sku);
+    g.skus.push(sku);
+    g.stokPcs += (+s.karton || 0) * (+s.isi || 1) + (+s.lusin || 0) * 12 + (+s.pcs || 0);
+  });
+  Object.keys(rateOf).forEach(sku => { slot(sku).ratePcsMgg += rateOf[sku]; });
+  return Object.keys(by).map(k => by[k]).filter(g => g.ratePcsMgg > 0)
+    .map(g => { g.wc = g.stokPcs / g.ratePcsMgg; return g; })
+    .sort((a, b) => b.wc - a.wc);
+}
+
+/** Peringatan WC besar untuk laporan stok yang baru disimpan. Hanya parent dengan WC >= STOK_WC_WARN, maks STOK_WC_MAX_WARN. */
+function stokWcWarningsForDt_(reg, tanggal, clean) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet(), tz = ss.getSpreadsheetTimeZone();
+  const iso = v => v instanceof Date ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : String(v || '');
+  const harga = readObjs_(ss, 'HARGA_PL').map(r => ({ sku: String(r.sku), isi: +r.isi || 1, mulai: iso(r.mulai), h_new: r.h_new === '' ? null : +r.h_new, h_old: r.h_old === '' ? null : +r.h_old }));
+  const jual = readObjs_(ss, 'JUAL_SKU').filter(r => String(r.dt_kode) === reg.dt_kode).map(r => ({ sku: String(r.sku), bkt: String(r.bkt), mulai: String(r.mulai), v: String(r.v) }));
+  const parentOf = {};
+  const sh = SpreadsheetApp.openById(reg.sheet_id).getSheetByName('MASTER_PRODUK');
+  const produk = sh ? sh.getDataRange().getValues() : [];
+  if (produk.length) {
+    const h = produk[0].map(x => String(x).replace(/\s+/g, ' ').trim().toLowerCase());
+    const cS = h.indexOf('skucode'), cB = h.indexOf('level-9');
+    if (cS >= 0 && cB >= 0) produk.slice(1).forEach(r => { const a = String(r[cS]).trim(), b = String(r[cB]).trim(); if (a && b) parentOf[a] = b; });
+  }
+  const stok = clean.map(r => ({ sku: String(r[2]), karton: r[3], lusin: r[4], pcs: r[5], isi: r[6] }));
+  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return computeStokWc_({ stok: stok, harga: harga, jual: jual, parentOf: parentOf, today: today })
+    .filter(g => g.wc >= STOK_WC_WARN).slice(0, STOK_WC_MAX_WARN)
+    .map(g => ({ parent: g.parent, skus: g.skus, stokPcs: g.stokPcs, ratePcsMgg: Math.round(g.ratePcsMgg * 10) / 10, wc: Math.round(g.wc * 10) / 10 }));
 }
 
 
