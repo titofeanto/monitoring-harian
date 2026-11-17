@@ -444,16 +444,18 @@ function respondStok_(me, reg, dtWanted) {
   const iso = v => v instanceof Date ? Utilities.formatDate(v, ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : String(v);
   const tanggal = {};
   stok.forEach(r => { tanggal[String(r.dt_kode)] = iso(r.tanggal); });
+  const jualObjs = readObjs_(ss, 'JUAL_SKU').filter(r => ok[String(r.dt_kode)]);
   return {
     mode: 'stok',
     dts: dts.filter(x => tanggal[x.dt_kode]).map(x => ({ kode: x.dt_kode, nama: x.nama_dt, tanggal: tanggal[x.dt_kode] })),
     stok: stok.map(r => [String(r.dt_kode), String(r.sku), +r.karton || 0, +r.lusin || 0, +r.pcs || 0, +r.isi || 1, +r.rpp || 0]),
-    jual: readObjs_(ss, 'JUAL_SKU').filter(r => ok[String(r.dt_kode)]).map(r => [String(r.dt_kode), String(r.sku), String(r.bkt), String(r.mulai), String(r.v)]),
+    jual: jualObjs.map(r => [String(r.dt_kode), String(r.sku), String(r.bkt), String(r.mulai), String(r.v)]),
     flags: readObjs_(ss, 'SKU_FLAG').map(r => [String(r.barcode), String(r.flag), String(r.plu || ''), String(r.ket || '')]),
     harga: harga.map(r => ({ sku: String(r.sku), bc: String(r.barcode), brand: String(r.brand), nama: String(r.nama), kemasan: String(r.kemasan),
       isi: +r.isi || 1, mulai: iso(r.mulai || ''), hNew: r.h_new === '' ? null : +r.h_new, hOld: r.h_old === '' ? null : +r.h_old,
       sNew: r.s_new === '' ? null : +r.s_new, sOld: r.s_old === '' ? null : +r.s_old })),
     hargaTanggal: harga.length ? String(harga[0].tanggal_pl || '') : '',
+    wcWarn: { ambang: STOK_WC_WARN, perDt: stokWcPerDt_(dts, stok, harga, jualObjs, tanggal, iso) },
   };
 }
 
@@ -1166,12 +1168,13 @@ function computeStokWc_(in_) {
     .sort((a, b) => b.wc - a.wc);
 }
 
-/** Peringatan WC besar untuk laporan stok yang baru disimpan. Hanya parent dengan WC >= STOK_WC_WARN, maks STOK_WC_MAX_WARN. */
-function stokWcWarningsForDt_(reg, tanggal, clean) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet(), tz = ss.getSpreadsheetTimeZone();
-  const iso = v => v instanceof Date ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : String(v || '');
-  const harga = readObjs_(ss, 'HARGA_PL').map(r => ({ sku: String(r.sku), isi: +r.isi || 1, mulai: iso(r.mulai), h_new: r.h_new === '' ? null : +r.h_new, h_old: r.h_old === '' ? null : +r.h_old }));
-  const jual = readObjs_(ss, 'JUAL_SKU').filter(r => String(r.dt_kode) === reg.dt_kode).map(r => ({ sku: String(r.sku), bkt: String(r.bkt), mulai: String(r.mulai), v: String(r.v) }));
+/** Bentuk HARGA_PL (baris readObjs_) untuk computeStokWc_. */
+function stokWcHarga_(rows, iso) {
+  return rows.map(r => ({ sku: String(r.sku), isi: +r.isi || 1, mulai: iso(r.mulai), h_new: r.h_new === '' ? null : +r.h_new, h_old: r.h_old === '' ? null : +r.h_old }));
+}
+
+/** Inti peringatan WC: baca MASTER_PRODUK Sheet DT (LEVEL-9), hitung lewat computeStokWc_, saring >= STOK_WC_WARN. stok = [{sku,karton,lusin,pcs,isi}]. */
+function stokWcWarnCore_(reg, stok, harga, jual) {
   const parentOf = {};
   const sh = SpreadsheetApp.openById(reg.sheet_id).getSheetByName('MASTER_PRODUK');
   const produk = sh ? sh.getDataRange().getValues() : [];
@@ -1180,11 +1183,44 @@ function stokWcWarningsForDt_(reg, tanggal, clean) {
     const cS = h.indexOf('skucode'), cB = h.indexOf('level-9');
     if (cS >= 0 && cB >= 0) produk.slice(1).forEach(r => { const a = String(r[cS]).trim(), b = String(r[cB]).trim(); if (a && b) parentOf[a] = b; });
   }
-  const stok = clean.map(r => ({ sku: String(r[2]), karton: r[3], lusin: r[4], pcs: r[5], isi: r[6] }));
   const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
   return computeStokWc_({ stok: stok, harga: harga, jual: jual, parentOf: parentOf, today: today })
     .filter(g => g.wc >= STOK_WC_WARN).slice(0, STOK_WC_MAX_WARN)
     .map(g => ({ parent: g.parent, skus: g.skus, stokPcs: g.stokPcs, ratePcsMgg: Math.round(g.ratePcsMgg * 10) / 10, wc: Math.round(g.wc * 10) / 10 }));
+}
+
+/** Peringatan WC besar untuk laporan stok yang baru disimpan. Hanya parent dengan WC >= STOK_WC_WARN, maks STOK_WC_MAX_WARN. */
+function stokWcWarningsForDt_(reg, tanggal, clean) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet(), tz = ss.getSpreadsheetTimeZone();
+  const iso = v => v instanceof Date ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : String(v || '');
+  const harga = stokWcHarga_(readObjs_(ss, 'HARGA_PL'), iso);
+  const jual = readObjs_(ss, 'JUAL_SKU').filter(r => String(r.dt_kode) === reg.dt_kode).map(r => ({ sku: String(r.sku), bkt: String(r.bkt), mulai: String(r.mulai), v: String(r.v) }));
+  const stok = clean.map(r => ({ sku: String(r[2]), karton: r[3], lusin: r[4], pcs: r[5], isi: r[6] }));
+  return stokWcWarnCore_(reg, stok, harga, jual);
+}
+
+/**
+ * Peringatan WC untuk stok TERSIMPAN tiap DT di Cek Stok. perDt[dt] = daftar peringatan, atau { error } bila DT itu gagal.
+ * Cache 5 menit per DT (kunci memuat dt_kode, tanggal stok, tanggal daftar harga).
+ */
+function stokWcPerDt_(dts, stokObjs, hargaObjs, jualObjs, tanggal, iso) {
+  const harga = stokWcHarga_(hargaObjs, iso), hTgl = hargaObjs.length ? String(hargaObjs[0].tanggal_pl || '') : '';
+  const perDt = {};
+  dts.forEach(reg => {
+    const dt = String(reg.dt_kode);
+    if (!tanggal[dt]) return;
+    try {
+      const key = 'stokwc_v1_' + dt + '_' + tanggal[dt] + '_' + hTgl;
+      const hit = cacheGet_(key);
+      if (hit) { perDt[dt] = hit.list; return; }
+      const stok = stokObjs.filter(r => String(r.dt_kode) === dt).map(r => ({ sku: String(r.sku), karton: +r.karton || 0, lusin: +r.lusin || 0, pcs: +r.pcs || 0, isi: +r.isi || 1 }));
+      const jual = jualObjs.filter(r => String(r.dt_kode) === dt).map(r => ({ sku: String(r.sku), bkt: String(r.bkt), mulai: String(r.mulai), v: String(r.v) }));
+      const list = stokWcWarnCore_(reg, stok, harga, jual);
+      cachePut_(key, { list: list });
+      perDt[dt] = list;
+    } catch (err) { perDt[dt] = { error: String(err) }; }
+  });
+  return perDt;
 }
 
 

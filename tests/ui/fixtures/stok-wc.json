@@ -1,0 +1,122 @@
+{
+ "mode": "stok",
+ "dts": [
+  {
+   "kode": "DTA",
+   "nama": "DT Contoh A",
+   "tanggal": "2026-11-16"
+  }
+ ],
+ "stok": [
+  [
+   "DTA",
+   "100",
+   10,
+   0,
+   0,
+   12,
+   0
+  ],
+  [
+   "DTA",
+   "200",
+   100,
+   0,
+   0,
+   24,
+   0
+  ],
+  [
+   "DTA",
+   "300",
+   5,
+   0,
+   0,
+   12,
+   0
+  ]
+ ],
+ "jual": [
+  [
+   "DTA",
+   "100",
+   "GT",
+   "2026-08",
+   "300,300,300"
+  ],
+  [
+   "DTA",
+   "200",
+   "GT",
+   "2026-08",
+   "300,300,300"
+  ],
+  [
+   "DTA",
+   "300",
+   "GT",
+   "2026-08",
+   "300,300,300"
+  ]
+ ],
+ "flags": [],
+ "harga": [
+  {
+   "sku": "100",
+   "bc": "8990000000001",
+   "brand": "Brand Contoh",
+   "nama": "Produk Contoh Satu 80g",
+   "kemasan": "Karton",
+   "isi": 12,
+   "mulai": "2026-10-01",
+   "hNew": 111000,
+   "hOld": 111000,
+   "sNew": 9250,
+   "sOld": 9250
+  },
+  {
+   "sku": "200",
+   "bc": "8990000000002",
+   "brand": "Brand Contoh",
+   "nama": "Produk Contoh Dua 40g",
+   "kemasan": "Karton",
+   "isi": 24,
+   "mulai": "2026-10-01",
+   "hNew": 111000,
+   "hOld": 111000,
+   "sNew": 4625,
+   "sOld": 4625
+  },
+  {
+   "sku": "300",
+   "bc": "8990000000003",
+   "brand": "Brand Contoh",
+   "nama": "Produk Contoh Tiga 200g",
+   "kemasan": "Karton",
+   "isi": 12,
+   "mulai": "2026-10-01",
+   "hNew": 111000,
+   "hOld": 111000,
+   "sNew": 9250,
+   "sOld": 9250
+  }
+ ],
+ "hargaTanggal": "2026-11-01",
+ "wcWarn": {
+  "ambang": 100,
+  "perDt": {
+   "DTA": [
+    {
+     "parent": "PARENT-CONTOH-P",
+     "skus": [
+      "100",
+      "200"
+     ],
+     "stokPcs": 2520,
+     "ratePcsMgg": 24.7,
+     "wc": 102.2
+    }
+   ]
+  }
+ }
+}

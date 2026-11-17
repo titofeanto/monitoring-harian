@@ -254,11 +254,25 @@
       '<div class="cs-stok"><b>' + (i.tot > 0 ? esc(stokText(i)) : 'Stok 0') + '</b>' + stokTag(i) + (i.tot > 0 ? '<small>= ' + i.tot.toLocaleString('id-ID') + ' pcs</small>' : '') + '</div>' + harga + note + '</article>';
   }
 
+  /* Peringatan stok sangat besar per parent SKU: angka dihitung server (wcWarn), browser hanya menampilkan. */
+  function wcBox() {
+    const el = $('csWc'), w = DATA && DATA.wcWarn, list = w && w.perDt && w.perDt[DT];
+    if (!Array.isArray(list) || !list.length) { el.hidden = true; el.innerHTML = ''; return; }
+    const n = list.length, int = v => Math.round(v).toLocaleString('id-ID');
+    el.innerHTML = '<b>' + n + ' parent SKU stoknya sangat besar (≥ ' + esc(w.ambang) + ' minggu).</b> Periksa apakah angka stok benar. Angkanya perkiraan dari penjualan 3 bulan terakhir.' +
+      '<details class="box" style="margin-top:8px"><summary>Lihat daftar</summary>' +
+      list.slice(0, 20).map(g => '<div style="margin-top:8px;font-size:13px"><div><b>' + esc(g.parent) + '</b> · ' + esc((g.skus || []).length) + ' SKU</div>' +
+        '<div>Stok ' + int(g.stokPcs) + ' pcs · jual rata-rata ' + int(g.ratePcsMgg) + ' pcs/minggu · <b>WC ' + int(g.wc) + '</b></div></div>').join('') +
+      '</details>';
+    el.hidden = false;
+  }
+
   function render() {
     const hm = S.mode === 'HM', ana = S.mode !== 'harga';
     $('csHargaF').hidden = ana; $('csAnaF').hidden = !ana; $('csOnlyW').hidden = ana;
     $('csWin').hidden = hm; $('csDem').hidden = hm;
     document.querySelectorAll('#csMode [data-m]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === S.mode)));
+    wcBox();
     const r = filtered();
     if (hm) {
       const chips = [['semua', 'Semua']].concat(Object.keys(HMA).map(k => [k, HMA[k][0]])).filter(c => c[0] === 'semua' || CNT[c[0]]);
