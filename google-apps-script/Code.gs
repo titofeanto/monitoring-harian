@@ -536,7 +536,135 @@ function respondGs_(me, reg, dtWanted) {
     Object.keys(kodes).filter(k => !have[k]).forEach(k => mon.noDt.push({ dist_kode: k, dist_nama: kodes[k], stores: toko.filter(t => String(t.dist_kode) === k).length }));
   }
   const dts = me.peran === 'pusat' ? reg.filter(r => r.peran === 'dt' && r.sheet_id).map(r => ({ kode: r.dt_kode, nama: r.nama_dt })) : null;
-  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets, ps: { stores: psStores, targets: psTargets, hist: psHist }, asrt: asrt, mon: mon };
+  return { mode: 'gs', peran: me.peran, scope: scope ? { kode: scope.dt_kode, nama: scope.nama_dt } : null, dts: dts, scorecard: scorecard, outlets: outlets, ps: { stores: psStores, targets: psTargets, hist: psHist }, asrt: asrt, mon: mon,
+    live: computeGsLive_({ scorecard: scorecard, ps: { stores: psStores, targets: psTargets }, asrt: asrt, mon: mon, scoped: !!scope }) };
+}
+
+// ====================== KPI & SKOR GREAT SALES (satu sumber logika) ======================
+const GS_BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const GS_ASRT_CH = [['SPM', 'LOCAL SUPERMARKET', 'ASRT_SPM'], ['MINIS', 'LOCAL MINIS', 'ASRT_MINIS']];
+
+/** Parser angka sama dengan browser lama: koma dibuang, parseFloat, NaN jadi null. Bukan asrtNum_. */
+function gsNum_(v) { const n = typeof v === 'number' ? v : parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isNaN(n) ? null : n; }
+/** '2026-11-12' -> '12 Nov 2026'. */
+function gsTgl_(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? (+m[3]) + ' ' + GS_BULAN[+m[2]] + ' ' + m[1] : String(iso || ''); }
+function gsLevel_(aktual, target) {
+  const a = gsNum_(aktual), t = gsNum_(target);
+  if (a == null || !t) return 'amber';
+  if (a >= t) return 'green';
+  return a >= t * 0.8 ? 'amber' : 'red';
+}
+function gsSetKpi_(k, aktual, catatan) {
+  k.aktual = aktual;
+  k.poin = k.target ? k.bobot * Math.min(aktual / k.target, 1) : null;
+  k.hilang = k.poin == null ? 0 : k.bobot - k.poin;
+  k.catatan = catatan;
+}
+
+/**
+ * Satu-satunya tempat KPI Great Sales dihitung dan diberi poin/level. Pure (tanpa layanan Apps Script); diuji di tests/gslive.test.mjs.
+ * in_ = { scorecard, ps:{stores,targets}, asrt:{perDt,targets}, mon:{cfg,hasList,perDt,manual}, scoped }.
+ * Per toko (FOP, Banded, Assortment) tidak dihitung ulang di sini: hasil monForDt_/asrtForDt_ dipakai apa adanya.
+ */
+function computeGsLive_(in_) {
+  const scorecard = in_.scorecard || [], ps = in_.ps || {}, asrt = in_.asrt || {}, mon = in_.mon || {};
+  // snapshot per tanggal: {tanggal: {kpi: baris}}
+  const by = {};
+  scorecard.forEach(r => { const t = String(r.tanggal); (by[t] = by[t] || {})[r.kpi] = r; });
+  const snaps = Object.keys(by).sort().map(t => ({ tanggal: t, rows: by[t] }));
+  const cur = snaps[snaps.length - 1], prev = snaps.length > 1 ? snaps[snaps.length - 2] : null;
+  if (!cur) return null;
+
+  const kp = Object.values(cur.rows).filter(r => ['SCORE', 'RANK', 'FOP_WEEK'].indexOf(r.kpi) < 0).map(r => {
+    const bobot = gsNum_(r.bobot) || 0, poin = gsNum_(r.poin);
+    return { kpi: r.kpi, label: r.label, target: gsNum_(r.target), aktual: gsNum_(r.aktual), bobot: bobot, poin: poin, hilang: poin == null ? 0 : bobot - poin, catatan: r.catatan };
+  }).sort((a, b) => b.hilang - a.hilang);
+
+  // Rank & %DR isian manual mingguan: entri terbaru dan sebelumnya (hanya yang punya rank).
+  const man = (mon.manual || []).filter(x => gsNum_(x.rank) != null).sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)));
+  const mm = { cur: man[man.length - 1] || null, prev: man.length > 1 ? man[man.length - 2] : null };
+
+  // PS dari upload mingguan
+  let sm = null;
+  const st = ps.stores || [];
+  if (st.length) {
+    const tg = (ps.targets || []).reduce((a, t) => ({ full: a.full + (gsNum_(t.target_full) || 0), lite: a.lite + (gsNum_(t.target_lite) || 0) }), { full: 0, lite: 0 });
+    const full = st.filter(o => o.status === 'PS FULL').length, lite = st.filter(o => o.status === 'PS LITE').length;
+    sm = { stores: st.length, full: full, lite: lite, perfect: full + lite, target: tg.full + tg.lite, tFull: tg.full, tLite: tg.lite, tanggal: String(st[0].tanggal) };
+  }
+
+  // Assortment per channel dari DMS Extract
+  let as = null;
+  const adts = (asrt.perDt || []).filter(d => !d.error);
+  if (adts.length) {
+    as = {};
+    GS_ASRT_CH.forEach(c => {
+      let lines = 0, outlets = 0, target = 0;
+      adts.forEach(d => { const x = d.channels && d.channels[c[0]]; if (x) { lines += x.lines; outlets += x.outlets; } });
+      (asrt.targets || []).forEach(t => { if (t.channel === c[1]) target += gsNum_(t.target_lines) || 0; });
+      as[c[0]] = { lines: lines, outlets: outlets, target: target, pct: target > 0 ? lines / target : null, perOutlet: outlets ? lines / outlets : 0 };
+    });
+  }
+
+  // Weekly FOP & Banded dari daftar toko monitoring
+  const mdts = (mon.perDt || []).filter(d => !d.error && !d.noData && d.groups);
+  const monLive = !!(mon.hasList && mdts.length);
+  let ms = null;
+  if (monLive) {
+    ms = { bulan: '', tanggal: '', week: null, qLabel: '', qMonths: [], fop: {}, banded: {} };
+    mdts.forEach(d => { if (d.tanggalData > ms.tanggal) { ms.tanggal = d.tanggalData; ms.bulan = d.bulan; ms.week = d.week; ms.qLabel = d.qLabel; ms.qMonths = d.qMonths || []; } });
+    ['SPM', 'MINIS'].forEach(g => {
+      const stores = [];
+      mdts.forEach(d => (d.groups[g] || []).forEach(o => stores.push(o)));
+      const w = stores.filter(o => o.status === 'WEEKLY').length, h = stores.filter(o => o.bHit).length;
+      ms.fop[g] = { n: stores.length, weekly: w, pct: stores.length ? w / stores.length : null };
+      ms.banded[g] = { n: stores.length, hit: h, pct: stores.length ? h / stores.length : null };
+    });
+  }
+
+  // KPI yang dihitung ulang dari data kita, bukan angka HO
+  let changed = false;
+  if (sm && sm.target) {
+    const k = kp.find(x => x.kpi === 'PS');
+    if (k) { gsSetKpi_(k, sm.perfect / sm.target, 'Dihitung dari upload Perfect Stores ' + gsTgl_(sm.tanggal) + ': ' + sm.perfect + ' dari target ' + sm.target + ' toko perfect'); changed = true; }
+  }
+  if (as) GS_ASRT_CH.forEach(c => {
+    const a = as[c[0]], k = kp.find(x => x.kpi === c[2]);
+    if (k && a.pct != null) { gsSetKpi_(k, a.pct, 'Dihitung dari Extract DMS: ' + a.lines + ' lines dari target ' + a.target); changed = true; }
+  });
+  if (ms) [['FOP_SPM', 'fop', 'SPM'], ['FOP_MINIS', 'fop', 'MINIS'], ['BANDED_SPM', 'banded', 'SPM'], ['BANDED_MINIS', 'banded', 'MINIS']].forEach(c => {
+    const k = kp.find(x => x.kpi === c[0]), a = ms[c[1]][c[2]];
+    if (!k || a.pct == null) return;
+    gsSetKpi_(k, a.pct, c[1] === 'fop' ? 'Dihitung dari Extract DMS ' + gsTgl_(ms.tanggal) + ': ' + a.weekly + ' dari ' + a.n + ' toko monitoring WEEKLY'
+      : 'EVB ' + ms.qLabel + ' dari Extract DMS ' + gsTgl_(ms.tanggal) + ': ' + a.hit + ' dari ' + a.n + ' toko tercapai');
+    changed = true;
+  });
+  const dr = kp.find(x => x.kpi === 'DR');
+  if (dr) {
+    dr.weekly = true;
+    if (mm.cur && gsNum_(mm.cur.dr) != null) { gsSetKpi_(dr, gsNum_(mm.cur.dr), 'Isian manual ' + gsTgl_(mm.cur.tanggal)); changed = true; }
+    else dr.catatan = (dr.catatan ? dr.catatan + ' · ' : '') + 'belum diisi di tool upload, memakai angka file';
+  }
+  if (changed) kp.sort((a, b) => b.hilang - a.hilang);
+  kp.forEach(k => { k.level = gsLevel_(k.aktual, k.target); });
+
+  const score = changed ? kp.reduce((a, x) => a + (x.poin || 0), 0) : null;
+  const scoreHo = gsNum_(cur.rows.SCORE && cur.rows.SCORE.aktual);
+  const recalculated = score != null && !in_.scoped;
+  const fw = cur.rows.FOP_WEEK;
+  return {
+    tanggal: cur.tanggal,
+    kpis: kp,
+    score: score,
+    scoreShown: recalculated ? score : scoreHo,
+    recalculated: recalculated,
+    rank: mm.cur ? gsNum_(mm.cur.rank) : gsNum_(cur.rows.RANK && cur.rows.RANK.aktual),
+    prevRank: mm.cur ? (mm.prev ? gsNum_(mm.prev.rank) : null) : (prev ? gsNum_(prev.rows.RANK && prev.rows.RANK.aktual) : null),
+    fopWeek: fw && fw.aktual !== undefined && fw.aktual !== null ? fw.aktual : '',
+    history: snaps.map(s => ({ tanggal: s.tanggal, rank: s.rows.RANK ? s.rows.RANK.aktual : null, score: s.rows.SCORE ? (gsNum_(s.rows.SCORE.aktual) || 0) : null })),
+    summary: { ps: sm, asrt: as, mon: ms },
+    monLive: monLive,
+  };
 }
 
 // ====================== ASSORTMENT PER CHANNEL (dari DMS Extract) ======================

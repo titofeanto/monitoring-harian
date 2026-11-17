@@ -1,0 +1,482 @@
+{
+ "a-semua-dt.json": {
+  "kpis": [
+   {
+    "kpi": "FOP_SPM",
+    "label": "FOP SPM",
+    "target": 0.8,
+    "aktual": 0.4,
+    "bobot": 8,
+    "poin": 4,
+    "hilang": 4,
+    "catatan": "Dihitung dari Extract DMS 15 Nov 2026: 4 dari 10 toko monitoring WEEKLY",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "FOP_MINIS",
+    "label": "FOP Minis",
+    "target": 0.8,
+    "aktual": 0.4,
+    "bobot": 8,
+    "poin": 4,
+    "hilang": 4,
+    "catatan": "Dihitung dari Extract DMS 15 Nov 2026: 4 dari 10 toko monitoring WEEKLY",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "ASRT_SPM",
+    "label": "Assortment SPM",
+    "target": 0.9,
+    "aktual": 0.6,
+    "bobot": 8,
+    "poin": 5.333333333333333,
+    "hilang": 2.666666666666667,
+    "catatan": "Dihitung dari Extract DMS: 120 lines dari target 200",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "PS",
+    "label": "Perfect Stores",
+    "target": 0.9,
+    "aktual": 0.8,
+    "bobot": 10,
+    "poin": 8.88888888888889,
+    "hilang": 1.1111111111111107,
+    "catatan": "Dihitung dari upload Perfect Stores 15 Nov 2026: 4 dari target 5 toko perfect",
+    "level": "amber",
+    "weekly": false
+   },
+   {
+    "kpi": "BANDED_SPM",
+    "label": "Banded SPM",
+    "target": 0.8,
+    "aktual": 0.7,
+    "bobot": 6,
+    "poin": 5.249999999999999,
+    "hilang": 0.7500000000000009,
+    "catatan": "EVB Q4 2026 dari Extract DMS 15 Nov 2026: 7 dari 10 toko tercapai",
+    "level": "amber",
+    "weekly": false
+   },
+   {
+    "kpi": "R2G",
+    "label": "R2G",
+    "target": 1,
+    "aktual": 95,
+    "bobot": 12,
+    "poin": 11.4,
+    "hilang": 0.5999999999999996,
+    "catatan": "HO R2G",
+    "level": "green",
+    "weekly": false
+   },
+   {
+    "kpi": "DR",
+    "label": "DR",
+    "target": 0.95,
+    "aktual": 0.93,
+    "bobot": 10,
+    "poin": 9.789473684210527,
+    "hilang": 0.21052631578947256,
+    "catatan": "Isian manual 17 Nov 2026",
+    "level": "amber",
+    "weekly": true
+   },
+   {
+    "kpi": "ASRT_MINIS",
+    "label": "Assortment Minis",
+    "target": 0.9,
+    "aktual": 0.9,
+    "bobot": 8,
+    "poin": 8,
+    "hilang": 0,
+    "catatan": "Dihitung dari Extract DMS: 90 lines dari target 100",
+    "level": "green",
+    "weekly": false
+   },
+   {
+    "kpi": "BANDED_MINIS",
+    "label": "Banded Minis",
+    "target": 0.7,
+    "aktual": 0.7,
+    "bobot": 6,
+    "poin": 6,
+    "hilang": 0,
+    "catatan": "EVB Q4 2026 dari Extract DMS 15 Nov 2026: 7 dari 10 toko tercapai",
+    "level": "green",
+    "weekly": false
+   }
+  ],
+  "score": 62.66169590643275,
+  "scoreShown": 62.66169590643275,
+  "rank": 7,
+  "prevRank": 11,
+  "fopWeek": 3,
+  "summary": {
+   "ps": {
+    "stores": 5,
+    "full": 3,
+    "lite": 1,
+    "perfect": 4,
+    "target": 5,
+    "tFull": 3,
+    "tLite": 2,
+    "tanggal": "2026-11-15"
+   },
+   "asrt": {
+    "SPM": {
+     "lines": 120,
+     "outlets": 12,
+     "target": 200,
+     "pct": 0.6,
+     "perOutlet": 10
+    },
+    "MINIS": {
+     "lines": 90,
+     "outlets": 9,
+     "target": 100,
+     "pct": 0.9,
+     "perOutlet": 10
+    }
+   },
+   "mon": {
+    "bulan": "2026-11",
+    "tanggal": "2026-11-15",
+    "week": 3,
+    "qLabel": "Q4 2026",
+    "qMonths": [
+     "2026-10",
+     "2026-11"
+    ],
+    "fop": {
+     "SPM": {
+      "n": 10,
+      "weekly": 4,
+      "pct": 0.4
+     },
+     "MINIS": {
+      "n": 10,
+      "weekly": 4,
+      "pct": 0.4
+     }
+    },
+    "banded": {
+     "SPM": {
+      "n": 10,
+      "hit": 7,
+      "pct": 0.7
+     },
+     "MINIS": {
+      "n": 10,
+      "hit": 7,
+      "pct": 0.7
+     }
+    }
+   }
+  }
+ },
+ "b-dt-tunggal.json": {
+  "kpis": [
+   {
+    "kpi": "FOP_MINIS",
+    "label": "FOP Minis",
+    "target": 0.8,
+    "aktual": 0.25,
+    "bobot": 8,
+    "poin": 2.5,
+    "hilang": 5.5,
+    "catatan": "Dihitung dari Extract DMS 15 Nov 2026: 1 dari 4 toko monitoring WEEKLY",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "FOP_SPM",
+    "label": "FOP SPM",
+    "target": 0.8,
+    "aktual": 0.3333333333333333,
+    "bobot": 8,
+    "poin": 3.333333333333333,
+    "hilang": 4.666666666666667,
+    "catatan": "Dihitung dari Extract DMS 15 Nov 2026: 2 dari 6 toko monitoring WEEKLY",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "ASRT_SPM",
+    "label": "Assortment SPM",
+    "target": 0.9,
+    "aktual": 0.5833333333333334,
+    "bobot": 8,
+    "poin": 5.185185185185185,
+    "hilang": 2.814814814814815,
+    "catatan": "Dihitung dari Extract DMS: 70 lines dari target 120",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "BANDED_SPM",
+    "label": "Banded SPM",
+    "target": 0.8,
+    "aktual": 0.6666666666666666,
+    "bobot": 6,
+    "poin": 5,
+    "hilang": 1,
+    "catatan": "EVB Q4 2026 dari Extract DMS 15 Nov 2026: 4 dari 6 toko tercapai",
+    "level": "amber",
+    "weekly": false
+   },
+   {
+    "kpi": "R2G",
+    "label": "R2G",
+    "target": 1,
+    "aktual": 95,
+    "bobot": 12,
+    "poin": 11.4,
+    "hilang": 0.5999999999999996,
+    "catatan": "HO R2G",
+    "level": "green",
+    "weekly": false
+   },
+   {
+    "kpi": "ASRT_MINIS",
+    "label": "Assortment Minis",
+    "target": 0.9,
+    "aktual": 0.8333333333333334,
+    "bobot": 8,
+    "poin": 7.407407407407407,
+    "hilang": 0.5925925925925926,
+    "catatan": "Dihitung dari Extract DMS: 50 lines dari target 60",
+    "level": "amber",
+    "weekly": false
+   },
+   {
+    "kpi": "PS",
+    "label": "Perfect Stores",
+    "target": 0.9,
+    "aktual": 1,
+    "bobot": 10,
+    "poin": 10,
+    "hilang": 0,
+    "catatan": "Dihitung dari upload Perfect Stores 15 Nov 2026: 3 dari target 3 toko perfect",
+    "level": "green",
+    "weekly": false
+   },
+   {
+    "kpi": "BANDED_MINIS",
+    "label": "Banded Minis",
+    "target": 0.7,
+    "aktual": 0.75,
+    "bobot": 6,
+    "poin": 6,
+    "hilang": 0,
+    "catatan": "EVB Q4 2026 dari Extract DMS 15 Nov 2026: 3 dari 4 toko tercapai",
+    "level": "green",
+    "weekly": false
+   },
+   {
+    "kpi": "DR",
+    "label": "DR",
+    "target": 0.95,
+    "aktual": 93,
+    "bobot": 10,
+    "poin": 10,
+    "hilang": 0,
+    "catatan": "Isian manual 17 Nov 2026",
+    "level": "green",
+    "weekly": true
+   }
+  ],
+  "score": 60.82592592592592,
+  "scoreShown": 7225,
+  "rank": 7,
+  "prevRank": null,
+  "fopWeek": 3,
+  "summary": {
+   "ps": {
+    "stores": 3,
+    "full": 2,
+    "lite": 1,
+    "perfect": 3,
+    "target": 3,
+    "tFull": 2,
+    "tLite": 1,
+    "tanggal": "2026-11-15"
+   },
+   "asrt": {
+    "SPM": {
+     "lines": 70,
+     "outlets": 7,
+     "target": 120,
+     "pct": 0.5833333333333334,
+     "perOutlet": 10
+    },
+    "MINIS": {
+     "lines": 50,
+     "outlets": 5,
+     "target": 60,
+     "pct": 0.8333333333333334,
+     "perOutlet": 10
+    }
+   },
+   "mon": {
+    "bulan": "2026-11",
+    "tanggal": "2026-11-15",
+    "week": 3,
+    "qLabel": "Q4 2026",
+    "qMonths": [
+     "2026-10",
+     "2026-11"
+    ],
+    "fop": {
+     "SPM": {
+      "n": 6,
+      "weekly": 2,
+      "pct": 0.3333333333333333
+     },
+     "MINIS": {
+      "n": 4,
+      "weekly": 1,
+      "pct": 0.25
+     }
+    },
+    "banded": {
+     "SPM": {
+      "n": 6,
+      "hit": 4,
+      "pct": 0.6666666666666666
+     },
+     "MINIS": {
+      "n": 4,
+      "hit": 3,
+      "pct": 0.75
+     }
+    }
+   }
+  }
+ },
+ "c-scorecard-saja.json": {
+  "kpis": [
+   {
+    "kpi": "FOP_SPM",
+    "label": "FOP SPM",
+    "target": 0.8,
+    "aktual": 0.3,
+    "bobot": 8,
+    "poin": 3,
+    "hilang": 5,
+    "catatan": "HO",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "FOP_MINIS",
+    "label": "FOP Minis",
+    "target": 0.8,
+    "aktual": 0.35,
+    "bobot": 8,
+    "poin": 3.5,
+    "hilang": 4.5,
+    "catatan": "HO",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "ASRT_SPM",
+    "label": "Assortment SPM",
+    "target": 0.9,
+    "aktual": 0.45,
+    "bobot": 8,
+    "poin": 4,
+    "hilang": 4,
+    "catatan": "HO",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "PS",
+    "label": "Perfect Stores",
+    "target": 0.9,
+    "aktual": 0.55,
+    "bobot": 10,
+    "poin": 6.11,
+    "hilang": 3.8899999999999997,
+    "catatan": "HO PS",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "ASRT_MINIS",
+    "label": "Assortment Minis",
+    "target": 0.9,
+    "aktual": 0.5,
+    "bobot": 8,
+    "poin": 4.44,
+    "hilang": 3.5599999999999996,
+    "catatan": "HO",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "BANDED_MINIS",
+    "label": "Banded Minis",
+    "target": 0.7,
+    "aktual": 0.5,
+    "bobot": 6,
+    "poin": 4.3,
+    "hilang": 1.7000000000000002,
+    "catatan": "HO",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "BANDED_SPM",
+    "label": "Banded SPM",
+    "target": 0.8,
+    "aktual": 0.6,
+    "bobot": 6,
+    "poin": 4.5,
+    "hilang": 1.5,
+    "catatan": "HO",
+    "level": "red",
+    "weekly": false
+   },
+   {
+    "kpi": "R2G",
+    "label": "R2G",
+    "target": 1,
+    "aktual": 95,
+    "bobot": 12,
+    "poin": 11.4,
+    "hilang": 0.5999999999999996,
+    "catatan": "HO R2G",
+    "level": "green",
+    "weekly": false
+   },
+   {
+    "kpi": "DR",
+    "label": "DR",
+    "target": 0.95,
+    "aktual": 0.9,
+    "bobot": 10,
+    "poin": 9.47,
+    "hilang": 0.5299999999999994,
+    "catatan": "angka HO · belum diisi di tool upload, memakai angka file",
+    "level": "amber",
+    "weekly": true
+   }
+  ],
+  "score": null,
+  "scoreShown": 7225,
+  "rank": 8,
+  "prevRank": null,
+  "fopWeek": 3,
+  "summary": {
+   "ps": null,
+   "asrt": null,
+   "mon": null
+  }
+ }
+}

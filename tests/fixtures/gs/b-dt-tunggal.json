@@ -1,0 +1,430 @@
+{
+ "mode": "gs",
+ "peran": "dt",
+ "scope": {
+  "kode": "DT1",
+  "nama": "DT Satu"
+ },
+ "dts": null,
+ "scorecard": [
+  {
+   "tanggal": "2026-11-10",
+   "kpi": "SCORE",
+   "label": "SCORE",
+   "target": "",
+   "aktual": 70.5,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-10",
+   "kpi": "RANK",
+   "label": "RANK",
+   "target": "",
+   "aktual": 9,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-10",
+   "kpi": "FOP_WEEK",
+   "label": "FOP_WEEK",
+   "target": "",
+   "aktual": 2,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-10",
+   "kpi": "PS",
+   "label": "PS",
+   "target": 0.9,
+   "aktual": 0.5,
+   "bobot": 10,
+   "poin": 5.56,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-10",
+   "kpi": "ASRT_SPM",
+   "label": "ASRT_SPM",
+   "target": 0.9,
+   "aktual": 0.4,
+   "bobot": 8,
+   "poin": 3.56,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-10",
+   "kpi": "FOP_SPM",
+   "label": "FOP_SPM",
+   "target": 0.8,
+   "aktual": 0.2,
+   "bobot": 8,
+   "poin": 2,
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-10",
+   "kpi": "DR",
+   "label": "DR",
+   "target": 0.95,
+   "aktual": 0.9,
+   "bobot": 10,
+   "poin": 9.47,
+   "catatan": "file HO"
+  },
+  {
+   "tanggal": "2026-11-10",
+   "kpi": "R2G",
+   "label": "R2G",
+   "target": 1,
+   "aktual": 0.9,
+   "bobot": 12,
+   "poin": 10.8,
+   "catatan": "HO R2G"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "SCORE",
+   "label": "SCORE",
+   "target": "",
+   "aktual": "72,25",
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "RANK",
+   "label": "RANK",
+   "target": "",
+   "aktual": 8,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "FOP_WEEK",
+   "label": "FOP_WEEK",
+   "target": "",
+   "aktual": 3,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "PS",
+   "label": "Perfect Stores",
+   "target": 0.9,
+   "aktual": 0.55,
+   "bobot": 10,
+   "poin": 6.11,
+   "catatan": "HO PS"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "ASRT_SPM",
+   "label": "Assortment SPM",
+   "target": 0.9,
+   "aktual": 0.45,
+   "bobot": 8,
+   "poin": 4,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "ASRT_MINIS",
+   "label": "Assortment Minis",
+   "target": 0.9,
+   "aktual": 0.5,
+   "bobot": 8,
+   "poin": 4.44,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "FOP_SPM",
+   "label": "FOP SPM",
+   "target": 0.8,
+   "aktual": 0.3,
+   "bobot": 8,
+   "poin": 3,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "FOP_MINIS",
+   "label": "FOP Minis",
+   "target": 0.8,
+   "aktual": 0.35,
+   "bobot": 8,
+   "poin": 3.5,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "BANDED_SPM",
+   "label": "Banded SPM",
+   "target": 0.8,
+   "aktual": 0.6,
+   "bobot": 6,
+   "poin": 4.5,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "BANDED_MINIS",
+   "label": "Banded Minis",
+   "target": 0.7,
+   "aktual": 0.5,
+   "bobot": 6,
+   "poin": 4.3,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "DR",
+   "label": "DR",
+   "target": 0.95,
+   "aktual": 0.9,
+   "bobot": 10,
+   "poin": 9.47,
+   "catatan": "angka HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "R2G",
+   "label": "R2G",
+   "target": 1,
+   "aktual": "0,95",
+   "bobot": 12,
+   "poin": 11.4,
+   "catatan": "HO R2G"
+  }
+ ],
+ "outlets": [],
+ "ps": {
+  "stores": [
+   {
+    "dist_kode": "DT1",
+    "outlet_kode": "DT1P0",
+    "status": "PS FULL",
+    "tanggal": "2026-11-15",
+    "cotc": 1,
+    "npd": 1,
+    "sos": 1,
+    "sstd": 1,
+    "banded": 1
+   },
+   {
+    "dist_kode": "DT1",
+    "outlet_kode": "DT1P1",
+    "status": "PS FULL",
+    "tanggal": "2026-11-15",
+    "cotc": 1,
+    "npd": 1,
+    "sos": 1,
+    "sstd": 1,
+    "banded": 1
+   },
+   {
+    "dist_kode": "DT1",
+    "outlet_kode": "DT1P2",
+    "status": "PS LITE",
+    "tanggal": "2026-11-15",
+    "cotc": 1,
+    "npd": 1,
+    "sos": 1,
+    "sstd": 1,
+    "banded": 1
+   }
+  ],
+  "targets": [
+   {
+    "dist_kode": "DT1",
+    "target_full": 2,
+    "target_lite": 1
+   }
+  ],
+  "hist": []
+ },
+ "asrt": {
+  "moq": 3,
+  "perDt": [
+   {
+    "dist_kode": "DT1",
+    "dist_nama": "DT Satu",
+    "tanggalData": "2026-11-15",
+    "channels": {
+     "SPM": {
+      "lines": 70,
+      "outlets": 7,
+      "registered": 10
+     },
+     "MINIS": {
+      "lines": 50,
+      "outlets": 5,
+      "registered": 8
+     }
+    }
+   }
+  ],
+  "targets": [
+   {
+    "dist_kode": "DT1",
+    "channel": "LOCAL SUPERMARKET",
+    "target_lines": 120
+   },
+   {
+    "dist_kode": "DT1",
+    "channel": "LOCAL MINIS",
+    "target_lines": "60"
+   }
+  ]
+ },
+ "mon": {
+  "cfg": {
+   "fop_weekly": 3,
+   "fop_biweekly": 2,
+   "banded_spm": 0.8,
+   "banded_minis": 0.7
+  },
+  "hasList": true,
+  "bandedSku": [],
+  "noDt": [],
+  "recap": null,
+  "perDt": [
+   {
+    "dist_kode": "DT1",
+    "dist_nama": "DT Satu",
+    "tanggalData": "2026-11-15",
+    "bulan": "2026-11",
+    "week": 3,
+    "qLabel": "Q4 2026",
+    "qMonths": [
+     "2026-10",
+     "2026-11"
+    ],
+    "groups": {
+     "SPM": [
+      {
+       "outlet_kode": "DT1S0",
+       "outlet_nama": "Toko DT1S0",
+       "remark": "MON",
+       "status": "WEEKLY",
+       "weeks": 3,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": true
+      },
+      {
+       "outlet_kode": "DT1S1",
+       "outlet_nama": "Toko DT1S1",
+       "remark": "MON",
+       "status": "WEEKLY",
+       "weeks": 3,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": true
+      },
+      {
+       "outlet_kode": "DT1S2",
+       "outlet_nama": "Toko DT1S2",
+       "remark": "MON",
+       "status": "MONTHLY",
+       "weeks": 1,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": true
+      },
+      {
+       "outlet_kode": "DT1S3",
+       "outlet_nama": "Toko DT1S3",
+       "remark": "MON",
+       "status": "MONTHLY",
+       "weeks": 1,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": true
+      },
+      {
+       "outlet_kode": "DT1S4",
+       "outlet_nama": "Toko DT1S4",
+       "remark": "MON",
+       "status": "MONTHLY",
+       "weeks": 1,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": false
+      },
+      {
+       "outlet_kode": "DT1S5",
+       "outlet_nama": "Toko DT1S5",
+       "remark": "MON",
+       "status": "MONTHLY",
+       "weeks": 1,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": false
+      }
+     ],
+     "MINIS": [
+      {
+       "outlet_kode": "DT1M0",
+       "outlet_nama": "Toko DT1M0",
+       "remark": "MON",
+       "status": "WEEKLY",
+       "weeks": 3,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": true
+      },
+      {
+       "outlet_kode": "DT1M1",
+       "outlet_nama": "Toko DT1M1",
+       "remark": "MON",
+       "status": "MONTHLY",
+       "weeks": 1,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": true
+      },
+      {
+       "outlet_kode": "DT1M2",
+       "outlet_nama": "Toko DT1M2",
+       "remark": "MON",
+       "status": "MONTHLY",
+       "weeks": 1,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": true
+      },
+      {
+       "outlet_kode": "DT1M3",
+       "outlet_nama": "Toko DT1M3",
+       "remark": "MON",
+       "status": "MONTHLY",
+       "weeks": 1,
+       "weekNow": 1,
+       "lastWeek": 2,
+       "bHit": false
+      }
+     ]
+    }
+   }
+  ],
+  "manual": [
+   {
+    "tanggal": "2026-11-17",
+    "rank": 7,
+    "dr": "0,93"
+   }
+  ]
+ }
+}

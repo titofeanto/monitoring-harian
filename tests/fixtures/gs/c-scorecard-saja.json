@@ -1,0 +1,153 @@
+{
+ "mode": "gs",
+ "peran": "pusat",
+ "scope": null,
+ "dts": null,
+ "scorecard": [
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "SCORE",
+   "label": "SCORE",
+   "target": "",
+   "aktual": "72,25",
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "RANK",
+   "label": "RANK",
+   "target": "",
+   "aktual": 8,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "FOP_WEEK",
+   "label": "FOP_WEEK",
+   "target": "",
+   "aktual": 3,
+   "bobot": "",
+   "poin": "",
+   "catatan": ""
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "PS",
+   "label": "Perfect Stores",
+   "target": 0.9,
+   "aktual": 0.55,
+   "bobot": 10,
+   "poin": 6.11,
+   "catatan": "HO PS"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "ASRT_SPM",
+   "label": "Assortment SPM",
+   "target": 0.9,
+   "aktual": 0.45,
+   "bobot": 8,
+   "poin": 4,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "ASRT_MINIS",
+   "label": "Assortment Minis",
+   "target": 0.9,
+   "aktual": 0.5,
+   "bobot": 8,
+   "poin": 4.44,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "FOP_SPM",
+   "label": "FOP SPM",
+   "target": 0.8,
+   "aktual": 0.3,
+   "bobot": 8,
+   "poin": 3,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "FOP_MINIS",
+   "label": "FOP Minis",
+   "target": 0.8,
+   "aktual": 0.35,
+   "bobot": 8,
+   "poin": 3.5,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "BANDED_SPM",
+   "label": "Banded SPM",
+   "target": 0.8,
+   "aktual": 0.6,
+   "bobot": 6,
+   "poin": 4.5,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "BANDED_MINIS",
+   "label": "Banded Minis",
+   "target": 0.7,
+   "aktual": 0.5,
+   "bobot": 6,
+   "poin": 4.3,
+   "catatan": "HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "DR",
+   "label": "DR",
+   "target": 0.95,
+   "aktual": 0.9,
+   "bobot": 10,
+   "poin": 9.47,
+   "catatan": "angka HO"
+  },
+  {
+   "tanggal": "2026-11-17",
+   "kpi": "R2G",
+   "label": "R2G",
+   "target": 1,
+   "aktual": "0,95",
+   "bobot": 12,
+   "poin": 11.4,
+   "catatan": "HO R2G"
+  }
+ ],
+ "outlets": [],
+ "ps": {
+  "stores": [],
+  "targets": [],
+  "hist": []
+ },
+ "asrt": {
+  "moq": 3,
+  "perDt": [],
+  "targets": []
+ },
+ "mon": {
+  "cfg": {
+   "fop_weekly": 3,
+   "fop_biweekly": 2,
+   "banded_spm": 0.8,
+   "banded_minis": 0.7
+  },
+  "hasList": false,
+  "bandedSku": [],
+  "noDt": [],
+  "perDt": [],
+  "manual": [],
+  "recap": null
+ }
+}
