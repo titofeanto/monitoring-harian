@@ -9,7 +9,7 @@
 
 const idn = new Intl.NumberFormat('id-ID');
 const idn1 = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 });
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = window.MHUtil.esc;
 const rp = v => { if (v == null || isNaN(v)) return '–'; const a = Math.abs(v), s = v < 0 ? '-' : ''; return a >= 1e9 ? s + 'Rp ' + idn.format(+(a / 1e9).toFixed(2)) + ' M' : a >= 1e6 ? s + 'Rp ' + idn1.format(a / 1e6) + ' Jt' : s + 'Rp ' + idn.format(Math.round(a)); };
 const rpFull = v => (v == null || isNaN(v)) ? '–' : (v < 0 ? '-' : '') + 'Rp ' + idn.format(Math.abs(Math.round(v)));
 const pct = v => isFinite(v) ? idn1.format(v * 100) + ' %' : '–';

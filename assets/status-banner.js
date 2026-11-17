@@ -14,7 +14,7 @@
       '#sb-full div{max-width:420px}#sb-full h2{margin:0 0 10px;font-size:20px}#sb-full button{margin-top:16px;border:0;border-radius:999px;padding:11px 22px;font:700 14px system-ui;background:#fff;color:#3E24C9}';
     document.head.appendChild(s);
   }
-  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  const esc = window.MHUtil.esc;
   function show(kind, judul, pesan, canReload) {
     if (shown === kind + pesan) return; shown = kind + pesan;
     css();

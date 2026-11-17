@@ -8,7 +8,7 @@
   const utcIso = ms => { const d = new Date(ms); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); };
   const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? (+m[3]) + ' ' + BULAN[+m[2]] + ' ' + m[1] : String(iso || ''); };
   const jam = t => { const d = new Date(t); return pad(d.getHours()) + '.' + pad(d.getMinutes()); };
-  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const esc = window.MHUtil.esc;
 
   function expected(today, libur) {
     const off = libur instanceof Set ? libur : new Set(libur || []);

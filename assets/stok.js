@@ -4,7 +4,7 @@
   const CACHE_KEY = 'mh_stok_cache';
   const CFG = { batasMenipisKarton: 2, page: 40, kritisMgg: 1, menipisMgg: 2, targetMgg: 2 };
   const $ = id => document.getElementById(id);
-  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const esc = window.MHUtil.esc;
   const BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
   const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? (+m[3]) + ' ' + BULAN[+m[2]] + ' ' + m[1] : String(iso || ''); };
   const rp = n => n == null ? '-' : 'Rp ' + Math.round(n).toLocaleString('id-ID');
