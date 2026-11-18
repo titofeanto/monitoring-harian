@@ -27,7 +27,7 @@ export function loadGs(overrides = {}) {
       base64Encode: b => Buffer.from(b).toString('base64'),
       computeDigest: (_alg, s) => [...crypto.createHash('sha256').update(s).digest()],
       DigestAlgorithm: { SHA_256: 'SHA_256' },
-      formatDate: (d, _tz, f) => d.toISOString().slice(0, 10),
+      formatDate: (d, _tz, f) => d.toISOString().slice(0, f === 'yyyy-MM' ? 7 : 10),
     },
     ContentService: { MimeType: { JSON: 'JSON' }, createTextOutput: s => ({ getContent: () => s, setMimeType() { return this; } }) },
     SpreadsheetApp: overrides.SpreadsheetApp,

@@ -460,7 +460,7 @@ function respondStok_(me, reg, dtWanted) {
     mode: 'stok',
     dts: dts.filter(x => tanggal[x.dt_kode]).map(x => ({ kode: x.dt_kode, nama: x.nama_dt, tanggal: tanggal[x.dt_kode] })),
     stok: stok.map(r => [str_(r.dt_kode), str_(r.sku), +r.karton || 0, +r.lusin || 0, +r.pcs || 0, +r.isi || 1, +r.rpp || 0]),
-    jual: jualObjs.map(r => [str_(r.dt_kode), str_(r.sku), str_(r.bkt), str_(r.mulai), str_(r.v)]),
+    jual: jualObjs.map(r => [str_(r.dt_kode), str_(r.sku), str_(r.bkt), cellText_(r.mulai, ss, 'yyyy-MM'), str_(r.v)]),
     flags: readObjs_(ss, 'SKU_FLAG').map(r => [str_(r.barcode), str_(r.flag), str_(r.plu), str_(r.ket)]),
     harga: harga.map(r => ({ sku: str_(r.sku), bc: str_(r.barcode), brand: str_(r.brand), nama: str_(r.nama), kemasan: str_(r.kemasan),
       isi: +r.isi || 1, mulai: iso(r.mulai || ''), hNew: numOrNull_(r.h_new), hOld: numOrNull_(r.h_old),

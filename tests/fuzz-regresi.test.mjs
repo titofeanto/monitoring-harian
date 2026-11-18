@@ -86,3 +86,13 @@ test('doPost: periode bulan 13/00 dan body JSON null ditolak dengan bad_request 
     assert.ok(r.error && r.error !== 'server_error', c + ' -> ' + JSON.stringify(r));
   }
 });
+
+test('JUAL_SKU.mulai bertipe Date keluar yyyy-MM (T-05); teks tetap, sampah tetap string aman', () => {
+  const set = fn => ds => { const a = ds.pusat.JUAL_SKU, i = a[0].indexOf('mulai'); a.slice(1).forEach(r => { r[i] = fn(r[i]); }); };
+  const mulaiOf = o => o.jual.map(r => r[3]);
+  const d = mulaiOf(call(set(() => new Date('2026-08-01T00:00:00Z')), { view: 'stok', code: ACCESS.pusat }));
+  assert.ok(d.length > 0);
+  d.forEach(m => assert.equal(m, '2026-08'));
+  mulaiOf(call(set(() => '2026-08'), { view: 'stok', code: ACCESS.pusat })).forEach(m => assert.equal(m, '2026-08'));
+  mulaiOf(call(set(() => '<b>x</b> sampah'), { view: 'stok', code: ACCESS.pusat })).forEach(m => { assert.equal(typeof m, 'string'); assert.doesNotMatch(m, /GMT|undefined/); });
+});
