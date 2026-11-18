@@ -4,7 +4,7 @@ Acuan: aplikasi Stok Opname dan Radar Sonik (https://ulisonik.github.io/radar-so
 
 ## Prinsip
 
-1. **HP dulu.** Pengguna memakai HP. Rancang di lebar 390 px, lalu lebarkan ke desktop (maks 1080 px).
+1. **HP dulu.** Pengguna memakai HP. Rancang di lebar 390 px, lalu lebarkan ke desktop (isi maks 1100 px).
 2. **Satu pola per kebutuhan.** Daftar toko selalu kartu `.rk`, ringkasan selalu tile berwarna, judul bagian selalu `h2` dengan chip ikon. Jangan bikin pola baru kalau pola lama cukup.
 3. **Angka mudah dibaca.** Angka utama besar dan tebal, label kecil di atasnya, satuan atau keterangan di bawahnya. Angka selalu `tabular-nums`.
 4. **Warna bermakna.** Hijau = tercapai, kuning = mendekati (80% ke atas), merah = jauh, biru = netral atau info. Jangan pakai warna hanya untuk hiasan.
@@ -20,8 +20,8 @@ Acuan: aplikasi Stok Opname dan Radar Sonik (https://ulisonik.github.io/radar-so
 | `--surface-2` | #F3F9FD | #192A4A | isi kartu, isian, baris |
 | `--line` | #D4E8F6 | #27406A | garis pemisah |
 | `--ink` / `--ink-2` | #0F172A / #5A6777 | #E8F1FB / #9FB4D0 | teks utama / pendukung |
-| `--brand` | #176DA6 | #4AA9E8 | aksi, tab aktif |
-| `--brand-2`, `--brand-deep` | #1B76B3, #0F3F66 | #1A5F8F, #0B2A47 | gradien header halaman |
+| `--brand` | #176DA6 | #4AA9E8 | aksi, item sidebar aktif |
+| `--brand-2`, `--brand-deep` | #1B76B3, #0F3F66 | #1A5F8F, #0B2A47 | gradien header halaman (bar ramping) |
 | `--head-1`, `--head-2` | #176DA6, #135A8C | #1A5F8F, #164E78 | gradien `.card-head`; putih di atasnya 5,6:1 sampai 8,8:1 |
 | `--cyan` | #30A0E5 | #4AA9E8 | ujung gradien ikon dan bar |
 | `--ok` / `--ok-bg` | #12724A / #DDF6E8 | #6CC592 / #16382B | tercapai |
@@ -35,15 +35,16 @@ Acuan: aplikasi Stok Opname dan Radar Sonik (https://ulisonik.github.io/radar-so
 Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya pasangan gelap.
 
 - Font **Geist** 400 sampai 700 (Google Fonts; tanpa jaringan jatuh ke system-ui). Dasar 14 px, judul bagian 16 px/700, angka tile 24 px/800, label 11 sampai 12 px/600.
-- Radius: kartu 16, elemen dalam 11, chip dan tag bulat penuh (999), tile 14, header bawah 24.
+- Radius: kartu 16, elemen dalam 11, chip dan tag bulat penuh (999), tile 14, laci/sidebar 0 (menempel di tepi).
 - Bayangan: kartu `0 2px 10px rgba(15,60,130,.07)`, elemen mengambang `0 8px 28px rgba(15,60,130,.12)`.
 - Ukuran sentuh: tombol 44 px, chip 34 px, tombol ikon 40 px, kolom cari 42 px, sakelar 46x28.
 
 ## Kerangka halaman
 
-- **Header gradien** `.top`: gradien 165° dari `--brand-2` ke `--brand-deep`, sudut bawah 24 px, padding atas memakai `env(safe-area-inset-top)`. Baris atas: tanda (mark) 40 px + nama + tombol muat ulang bulat 36 px. Baris sapa: teks kecil + judul besar 25 px (otomatis 21 atau 17 px kalau panjang), pil tautan di kanan atas, status data di kanan bawah.
-- **Tab**: di HP berupa bar tetap di bawah (sudut atas 20 px, ikon 22 px + label 11 px, tab aktif berwarna `--brand` tanpa latar), di desktop berupa pil putih melayang yang menimpa header 30 px. Label panjang punya versi pendek di HP (`.lbl-l` / `.lbl-s`).
-- **Isi** `main`: maks 1080 px, jarak antar kartu 12 px, di HP ditarik 42 px ke atas supaya chip pertama menimpa header, dan diberi ruang bawah 88 px agar tidak tertutup tab.
+- **Header ramping** `.top`: satu baris, `position: sticky`, gradien 165° dari `--brand-2` ke `--brand-deep`, tanpa sudut membulat, padding atas memakai `env(safe-area-inset-top)`. Isi berurutan: tombol menu (44 px, hanya < 900 px), judul bagian aktif `h1.top-h` (18 px/700, id `greetBig`, diisi `setTab` / `openTab`), baris kecil 12 px `.top-s` (tanggal data, lingkup/DT; membungkus di HP, satu baris di desktop), status data, tombol muat ulang 40 px. Tidak ada hero, pil tautan, atau sapaan besar di header. Teks putih di atas gradien 4,9:1 sampai 14,6:1.
+- **Navigasi samping `.side`** (dibuat `assets/nav.js`, satu daftar item untuk semua halaman; tambah KPI baru di sana). Tiga grup berjudul huruf kapital kecil: Great Sales (Skor, Weekly FOP, Banded, Assortment, Perfect Store, Toko, Ranking), Monitoring Harian (Ringkasan, Simulator, Low Hanging Fruit), Alat (Cek Stok, Kehadiran). Item = ikon SVG 18 px + label penuh, tinggi 44 px di HP / 40 px di desktop, radius `--r-s`, hover `--surface-2`. Item aktif: `aria-current="page"`, latar `--brand-soft`, teks `--brand`, garis kiri 3 px (kontras 4,8:1 sampai 4,9:1). Di Great Sales dan Monitoring Harian item bagian adalah tombol tab sungguhan (`data-tab` / `id="tab-ring|sim|fruit"` + `aria-controls`) sehingga `setTab` / `openTab` tetap bekerja; di halaman lain item yang sama berupa tautan (`great-sales.html#fop`, dst.). Item Ranking disembunyikan `gs.js` bila server tidak mengirim ranking.
+- **Sidebar tetap (>= 900 px)**: grid dua kolom `248px 1fr` pada `#appScreen`, sidebar `sticky` setinggi layar, tepi kanan `--line`. **Laci (< 900 px)**: sidebar `fixed` lebar `min(300px, 86vw)` bergeser dari kiri 220 ms, scrim `rgba(15,23,42,.45)` di belakangnya. Ditutup oleh pilihan item, ketuk scrim, tombol X, atau Esc. Saat dibuka fokus pindah ke item pertama, `aria-expanded` pada tombol menu, `body` tidak bisa digulir, Tab terkurung di laci; saat tertutup laci `inert` dan `visibility:hidden`, fokus kembali ke tombol menu. Gerakan mati untuk `prefers-reduced-motion`. Tidak ada lagi bar tab di bawah.
+- **Isi** `main`: lebar maks 1100 px di tengah ruang kanan, padding 16 px di HP dan 24 px di desktop, jarak antar kartu 12 px. Chip DT di baris sendiri paling atas. Tidak ada tarikan ke atas menimpa header. Penjelasan aturan yang panjang dibungkus `details.how` ("Cara baca") yang tertutup bawaan; informasi tidak dihapus.
 - **Status data** (titik + teks) di header: hijau berdenyut = terbaru, kuning berkedip = memperbarui, merah = gagal. Tombol `i` membuka penjelasan tiga warna.
 - **Login**: layar penuh bergradien, kartu putih radius 24 di tengah.
 - **Memuat**: bar progres + perkiraan detik dari rata-rata waktu muat sebelumnya (assets/boot.js). Layar login tidak pernah berkedip kalau kode sudah tersimpan.
@@ -58,7 +59,7 @@ Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya 
 - **Tag dan pil** (`.tag`, `.pill`, `.lv`): bulat penuh, 11 sampai 12 px/700, latar lembut dengan teks berwarna. `.tag.b` (biru, 10 px) dipakai sebagai penanda "Update mingguan" untuk angka yang diisi manual seminggu sekali (Rank, %DR).
 - **Tombol**: utama biru, `plain` biru muda, `danger` merah muda, `sm` bulat. Nonaktif = opacity .45.
 - **Kotak info**: `.banner` / `.notice` kuning, `.confirm` merah (konfirmasi inline), `.empty` untuk kosong (tulis apa yang harus dilakukan berikutnya).
-- **Toast**: pil gelap di atas tab bawah, hilang sendiri 2,2 detik, dipakai untuk hasil tindakan singkat.
+- **Toast**: pil gelap 24 px dari bawah layar, hilang sendiri 2,2 detik, dipakai untuk hasil tindakan singkat.
 - **Akordeon** `details.box`: ikon panah berputar 180° saat terbuka.
 - **Modal**: latar gelap .72, kotak radius 24, ditutup lewat tombol bulat atau ketuk di luar.
 
@@ -72,11 +73,11 @@ Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya 
 
 ## Perilaku
 
-- Tab terakhir yang dipakai diingat (per halaman).
+- Bagian terakhir yang dipakai diingat (per halaman); `great-sales.html#fop` atau `index.html#sim` membuka bagian itu langsung.
 - Salinan data terakhir disimpan di HP supaya layar langsung terisi; data baru menyusul dan status di header berubah. Kalau pengguna sudah mengisi sesuatu, layar tidak diganti diam-diam.
 - Gerakan dimatikan untuk `prefers-reduced-motion`.
 - Pencarian, filter, dan urutan memakai satu pola yang sama di semua daftar (lihat `mountList` di `assets/gs.js`).
-- Setiap halaman diuji di 390 px terang, 390 px gelap, dan 1100 px terang sebelum dirilis.
+- Setiap halaman diuji di 390 px terang, 390 px gelap (laci tertutup dan terbuka), dan 1200 px terang dan gelap sebelum dirilis. `tests/ui/nav.test.mjs` menguji laci dan sidebar.
 
 ## Daftar periksa fitur baru
 

@@ -684,7 +684,7 @@ if (typeof module !== 'undefined') {
   function renderView() {
     const all = PUSAT && VIEW === 'all';
     $('dsrSec').hidden = all;
-    $('tabsNav').hidden = all;
+    ['tab-sim', 'tab-fruit'].forEach(id => { $(id).hidden = all; });   // semua DT: hanya Ringkasan (per DT)
     $('saveHasilBtn').hidden = all;
     $('saveHasilMsg').hidden = true; $('saveHasilMsg').textContent = '';
     $('ovTitleTxt').textContent = all ? 'Per DT' : 'Semua DSR';
@@ -766,7 +766,6 @@ if (typeof module !== 'undefined') {
   document.addEventListener('change', e => { const sel = e.target.closest && e.target.closest('select[data-sortlist]'); if (sel) applySort($(sel.dataset.sortlist)); });
   $('ovLegend').innerHTML = window.MHUtil.stLegend();
 
-  function setBig(t) { const e = $('greetBig'); e.textContent = t; e.dataset.len = t.length > 26 ? 'xl' : t.length > 15 ? 'l' : ''; }
   function renderHeaderAll() {
     $('dtName').textContent = 'Semua DT';
     $('dtIcon').textContent = 'ALL';
@@ -776,7 +775,6 @@ if (typeof module !== 'undefined') {
     $('dtUpdated').textContent = tgl.length ? 'Data extract paling lama per ' + tgl[0] : '';
     const m0 = PUSAT.find(d => d.model);
     window.MHFresh.set({ info: window.MHFresh.status(tgl[0], { label: 'Extract DMS paling lama', libur: m0 && m0.model.libur }) });
-    setBig(bulan || 'Semua DT');
   }
 
   function renderAllDt() {
@@ -895,7 +893,6 @@ if (typeof module !== 'undefined') {
     const upd = tgl ? ('Data extract per ' + tgl) : '';
     $('dtUpdated').textContent = [upd, MODEL.hkRun + '/' + MODEL.hkTotal + ' HK'].filter(Boolean).join(' · ');
     window.MHFresh.set({ info: window.MHFresh.status(tgl, { label: 'Extract DMS', libur: MODEL.libur }) });
-    setBig(MODEL.bulan || 'Monitoring Harian');
   }
   function initialsOf(name) {
     const words = String(name || '').replace(/^(PT|CV)\.?\s+/i, '').trim().split(/\s+/).filter(Boolean);
@@ -908,11 +905,17 @@ if (typeof module !== 'undefined') {
   }
 
   /* tabs */
-  const tabs = () => [...document.querySelectorAll('nav.tabs [role=tab]')];
+  const tabs = () => [...document.querySelectorAll('#tabsNav button[aria-controls]')];
   function openTab(t) {
-    tabs().forEach(b => { const on = b === t; b.setAttribute('aria-selected', on); document.getElementById(b.getAttribute('aria-controls')).hidden = !on; });
+    tabs().forEach(b => {
+      const on = b === t;
+      if (on) { b.setAttribute('aria-current', 'page'); $('greetBig').textContent = b.textContent.trim(); } else b.removeAttribute('aria-current');
+      document.getElementById(b.getAttribute('aria-controls')).hidden = !on;
+    });
   }
-  document.addEventListener('click', e => { const t = e.target.closest('nav.tabs [role=tab]'); if (t) openTab(t); });
+  document.addEventListener('click', e => { const t = e.target.closest('#tabsNav button[aria-controls]'); if (t) openTab(t); });
+  /* #sim / #fruit dari halaman lain membuka bagian itu */
+  { const h = $('tab-' + (location.hash || '').slice(1)); if (h && h.getAttribute('aria-controls')) openTab(h); }
 
   function renderAll() { renderRingkasan(); renderSimulator(); renderFruit(); }
 

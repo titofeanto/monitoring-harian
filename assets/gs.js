@@ -213,7 +213,6 @@
     $('gsSub').textContent = 'AAM' + (DATA.scope ? ' · ' + DATA.scope.nama : ' · semua DT') + (live.monLive ? ' · FOP s.d. mg ' + live.summary.mon.week : live.fopWeek !== '' ? ' · FOP s.d. mg ' + live.fopWeek : '');
     $('gsUpdated').textContent = 'Data ' + tgl(live.tanggal);
     window.MHFresh.set({ info: window.MHFresh.status(live.tanggal, { label: 'Scorecard' }) });
-    const big = $('greetBig'); big.textContent = rank == null ? 'Rank –' : 'Rank ' + rank; big.dataset.len = '';
 
     if (DATA.dts && DATA.dts.length) {
       $('dtSec').hidden = false;
@@ -784,7 +783,9 @@
   function setTab(t) {
     if (!TABS.includes(t) || (t === 'ranking' && DATA && !DATA.ranking)) t = 'skor';   // server lama: tanpa tab Ranking
     TABS.forEach(k => { $('tab-' + k).hidden = k !== t; });
-    document.querySelectorAll('#tabsNav [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    document.querySelectorAll('#tabsNav [data-tab]').forEach(b => {
+      if (b.dataset.tab === t) { b.setAttribute('aria-current', 'page'); $('greetBig').textContent = b.textContent.trim(); } else b.removeAttribute('aria-current');
+    });
     try { localStorage.setItem('mh_gs_tab', t); } catch (e) { /* mode privat */ }
     window.scrollTo({ top: 0 });
   }

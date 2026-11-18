@@ -15,9 +15,15 @@ localStorage.setItem('mh_code', 'demo'); localStorage.removeItem('mh_gs_cache');
 const FX = '/tests/ui/fixtures/' + (new URLSearchParams(location.search).get('fx') || 'gs-live') + '.json';
 const of = window.fetch;
 window.fetch = (u, o) => String(u).includes('script.google.com') ? of(FX) : of(u, o);
-// ?click=<selector>: ketuk elemen itu sekali setelah halaman terisi (untuk memotret modal dsb.)
+// ?click=<selector>[|<selector>|key:Escape...]: ketuk elemen itu (berurutan) setelah halaman terisi, untuk memotret modal, laci menu dsb.
+// Langkah "key:Nama" mengirim tombol itu ke elemen yang sedang fokus.
 const CLICK = new URLSearchParams(location.search).get('click');
-if (CLICK) { let n = 0; const t = setInterval(() => { const el = document.querySelector(CLICK); if (el || ++n > 40) { clearInterval(t); if (el) el.click(); } }, 150); }
+if (CLICK) { const steps = CLICK.split('|'); let i = 0, n = 0; const t = setInterval(() => {
+  const st = steps[i]; if (st === undefined) { clearInterval(t); return; }
+  if (st.indexOf('key:') === 0) { const k = st.slice(4); (document.activeElement || document.body).dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })); i++; n = 0; return; }
+  const el = document.querySelector(st);
+  if (el && el.getClientRects().length) { el.click(); i++; n = 0; } else if (++n > 40) clearInterval(t);
+}, 200); }
 </script>`;
 
 // theme 'light' | 'dark' memaksa tema lewat penulisan ulang CSS (Chrome headless mengikuti tema sistem, bukan pengaturan blink).
