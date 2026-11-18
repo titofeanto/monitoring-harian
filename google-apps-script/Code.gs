@@ -554,7 +554,7 @@ const GS_ASRT_CH = [['SPM', 'LOCAL SUPERMARKET', 'ASRT_SPM'], ['MINIS', 'LOCAL M
 /** Parser angka sama dengan browser lama: koma dibuang, parseFloat, NaN jadi null. Bukan asrtNum_. */
 function gsNum_(v) { const n = typeof v === 'number' ? v : parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isNaN(n) ? null : n; }
 /** '2026-11-12' -> '12 Nov 2026'. */
-function gsTgl_(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? (+m[3]) + ' ' + GS_BULAN[+m[2]] + ' ' + m[1] : String(iso || ''); }
+function gsTgl_(iso) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m && GS_BULAN[+m[2]] ? (+m[3]) + ' ' + GS_BULAN[+m[2]] + ' ' + m[1] : String(iso || ''); }
 function gsLevel_(aktual, target) {
   const a = gsNum_(aktual), t = gsNum_(target);
   if (a == null || !t) return 'amber';
