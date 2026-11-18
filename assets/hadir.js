@@ -146,8 +146,10 @@
   }
   async function login(code, silent, noCache) {
     if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
-    const c = silent && !noCache ? readCache(code) : null;
-    if (c && c.data && c.data.mode === 'hadir') { enter(c.data, code); note('wait'); }
+    let c = silent && !noCache ? readCache(code) : null;
+    /* Salinan dari versi lama / bentuk lain bisa membuat enter() melempar. Jangan macet di "Memuat": buang salinan dan ambil dari jaringan. */
+    const dropBad = () => { c = null; DATA = null; try { localStorage.removeItem(CACHE_KEY); } catch (e) { /* mode privat */ } $('appScreen').hidden = true; $('loginScreen').hidden = false; };
+    if (c && c.data && c.data.mode === 'hadir') { try { enter(c.data, code); note('wait'); } catch (e) { dropBad(); } }
     try {
       const d = await fetchHadir(code);
       if (d.error === 'invalid_code') { problem('Kode akses salah.', silent, true); return false; }

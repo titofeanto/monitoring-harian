@@ -68,8 +68,14 @@
   async function login(code, silent, noCache) {
     if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
     const cached = silent && !noCache ? readCache(code) : null;
-    const shown = !!(cached && cached.mode === 'gs' && cached.live && cached.scorecard && cached.scorecard.length);   // salinan lama tanpa `live` tidak ditampilkan
-    if (shown) { enter(cached, code); refreshNote('Memperbarui data… (tampilan sementara dari ' + (cacheAt ? 'pukul ' + jam(cacheAt) : 'data tersimpan') + ')'); }
+    let shown = !!(cached && cached.mode === 'gs' && cached.live && cached.scorecard && cached.scorecard.length);   // salinan lama tanpa `live` tidak ditampilkan
+    if (shown) {
+      try { enter(cached, code); refreshNote('Memperbarui data… (tampilan sementara dari ' + (cacheAt ? 'pukul ' + jam(cacheAt) : 'data tersimpan') + ')'); }
+      catch (e) {   // salinan dari versi lama / bentuk lain: jangan macet di "Memuat", buang dan ambil dari jaringan
+        shown = false; DATA = null; try { localStorage.removeItem(CACHE_KEY); } catch (e2) { /* mode privat */ }
+        $('appScreen').hidden = true; $('loginScreen').hidden = false;
+      }
+    }
     try {
       const d = await fetchGs(code, VIEW);
       if (shown && d.error) refreshNote('Gagal memperbarui (' + (d.message || d.error) + '), ini data tersimpan.', true);
