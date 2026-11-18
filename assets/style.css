@@ -873,3 +873,8 @@ main .field+.field,main .field+.btn{margin-top:12px}
   .card-head .ch-t{flex:1 1 200px}
   .card-head>.tag,.card-head>.lv{margin-left:38px}
 }
+@media (max-width:560px){
+  .card-head>.tag+.tag,.card-head>.lv+.tag{margin-left:0}
+  .cs-filters{padding-inline:2px}
+  .cs-filters .chk{margin:0;padding:0 4px;min-height:44px;flex:none}
+}

@@ -320,7 +320,7 @@
       const tagTxt = !t ? '<span class="tag a">target belum diisi</span>' : `<span class="tag ${v >= 1 ? 'g' : v >= 0.8 ? 'a' : 'r'}">${pct(v)}</span>`;
       return `<div class="rk"><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span><div class="it-i"><div class="nm">${esc(d.dist_nama)}</div><div class="sk">${esc(c[2])} · ${nf(x.registered)} toko terdaftar</div></div>${tagTxt}</div>` +
         `<div class="rk-s four"><div class="${tone}"><small>Lines</small><b>${nf(x.lines)}</b><em>${t ? 'dari ' + nf(t) : 'tanpa target'}</em></div><div><small>Toko aktif</small><b>${nf(x.outlets)}</b><em>transaksi</em></div>` +
-        `<div><small>Per toko</small><b>${nf1(x.perOutlet)}</b><em>rata-rata kini</em></div><div class="${ref ? tone : ''}"><small>Acuan</small><b>${ref ? nf1(ref) : '-'}</b><em>per toko</em></div></div></div>`;
+        `<div><small>Per toko</small><b>${nf1(x.perOutlet)}</b><em>rata-rata</em></div><div class="${ref ? tone : ''}"><small>Acuan</small><b>${ref ? nf1(ref) : '-'}</b><em>per toko</em></div></div></div>`;
     }).join('')).join('');
     const refAll = {};
     ASRT_CH.forEach(c => { const reg = dts.reduce((s, d) => s + ((d.channels && d.channels[c[0]] && d.channels[c[0]].registered) || 0), 0); refAll[c[0]] = as[c[0]].target > 0 && reg > 0 ? as[c[0]].target / reg : null; });
