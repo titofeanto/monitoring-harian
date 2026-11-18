@@ -11,6 +11,7 @@ const PORT = 8780;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
 
 const STUB = `<script>
+window.__errs = []; window.addEventListener('error', e => window.__errs.push(String(e.message))); window.addEventListener('unhandledrejection', e => window.__errs.push('promise: ' + (e.reason && e.reason.message || e.reason))); { const ce = console.error; console.error = function () { window.__errs.push(Array.prototype.join.call(arguments, ' ')); return ce.apply(console, arguments); }; }
 localStorage.setItem('mh_code', 'demo'); localStorage.removeItem('mh_gs_cache'); localStorage.removeItem('mh_gs_tab');
 const FX = '/tests/ui/fixtures/' + (new URLSearchParams(location.search).get('fx') || 'gs-live') + '.json';
 const of = window.fetch;
@@ -37,6 +38,13 @@ export function startServer(port = PORT, theme = '') {
       const w = +url.searchParams.get('w') || 390, h = +url.searchParams.get('h') || 1800, u = url.searchParams.get('u') || '/';
       res.writeHead(200, { 'content-type': TYPES['.html'] });
       res.end('<!doctype html><meta charset="utf-8"><body style="margin:0;background:#888"><iframe src="' + u.replace(/"/g, '') + '" width="' + w + '" height="' + h + '" style="border:0;display:block"></iframe><script>setTimeout(function(){var f=document.querySelector("iframe");document.documentElement.setAttribute("data-sw",f.contentDocument.documentElement.scrollWidth+"/"+f.width)},3500)</scr' + 'ipt>');
+      return;
+    }
+    // Bungkus untuk pemeriksa tata letak (layout-audit.mjs): iframe selebar target + probe yang menulis hasil ke <script id="audit">.
+    if (url.pathname === '/__auditframe') {
+      const w = +url.searchParams.get('w') || 390, h = +url.searchParams.get('h') || 900, u = url.searchParams.get('u') || '/';
+      res.writeHead(200, { 'content-type': TYPES['.html'] });
+      res.end('<!doctype html><meta charset="utf-8"><body style="margin:0"><iframe src="' + u.replace(/"/g, '') + '" width="' + w + '" height="' + h + '" style="border:0;display:block"></iframe><script src="/tests/ui/audit-probe.js"></scr' + 'ipt>');
       return;
     }
     let rel = decodeURIComponent(url.pathname); if (rel === '/') rel = '/index.html';
