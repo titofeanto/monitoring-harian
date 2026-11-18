@@ -855,3 +855,16 @@ main .field+.field,main .field+.btn{margin-top:12px}
   .top-s>span{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none}
   .top-s>span:first-child{flex-shrink:0;max-width:100%}
 }
+
+/* ---------- petunjuk geser tabel padat (plan 027): bayangan tepi kanan/kiri yang hilang di ujung, murni CSS (gradien local + scroll) ---------- */
+:root{--edge:rgba(15,23,42,.24)}
+@media (prefers-color-scheme:dark){:root{--edge:rgba(0,0,0,.6)}}
+.scroll,.hd-wrap{
+  background:
+    linear-gradient(to right,var(--hs-bg) 30%,transparent) 0 0/40px 100% no-repeat local,
+    linear-gradient(to left,var(--hs-bg) 30%,transparent) 100% 0/40px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%,var(--edge),transparent) 0 0/14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%,var(--edge),transparent) 100% 0/14px 100% no-repeat scroll,
+    var(--hs-bg)}
+.scroll{--hs-bg:var(--surface-2)}
+.hd-wrap{--hs-bg:var(--surface)}
