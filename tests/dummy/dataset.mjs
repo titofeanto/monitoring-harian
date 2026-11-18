@@ -249,7 +249,7 @@ export function buildDummy({ seed = 2026 } = {}) {
   const nama = c => DT_DEFS.find(d => d.kode === c).nama;
   P.DAFTAR_DT = [['kode_akses', 'peran', 'dt_kode', 'nama_dt', 'sheet_id', 'aktif']].concat(registry.map(r => [r.kode_akses, r.peran, r.dt_kode, r.nama_dt, r.sheet_id, 'TRUE']));
   const config = [['key', 'value', 'keterangan'], ['remark_spm', 'LOCAL SPM', ''], ['remark_minis', 'TOP 1000 LOCAL MINIS, LOCAL MINIS', ''], ['fop_weekly', 3, ''], ['fop_biweekly', 2, ''],
-    ['banded_spm', 0.8, ''], ['banded_minis', 0.7, ''], ['rank_min_toko', 5, '']];
+    ['banded_spm', 0.8, ''], ['banded_minis', 0.7, ''], ['rank_min_toko', 8, '']];
   P.GS_CONFIG = config;
   P.GS_BANDED_SKU = [['tanggal', 'channel', 'sku_kode', 'sku_nama']];
   ['SPM', 'MINIS'].forEach(ch => cat.banded[ch].forEach(s => P.GS_BANDED_SKU.push([DATA_UNTIL, ch, s.code, s.name])));
@@ -322,7 +322,8 @@ export function buildDummy({ seed = 2026 } = {}) {
         const bulanKe = mi < 3 ? mi : mi - 3 + 3;   // 2025-10..12 = 0..2, 2026-01.. = 3..12
         if (s.hist === 'baru' && per < '2026-04') return;
         if (s.hist === 'lubang' && (per === '2025-11' || per === '2026-03' || per === '2026-06')) return;
-        const lines = Math.max(0, Math.round(s.skill * 0.55 + bulanKe * 0.18 + rngH.int(-2, 2)));
+        // Skala sama dengan lines bulan data (s.lines): bintang sudah jauh di atas Q4 2025, tertinggal belum mengejar.
+        const lines = Math.max(0, Math.round(s.lines * (prof === 'bintang' ? 0.7 : prof === 'sedang' ? 0.88 : 1.15) * (1 + (bulanKe - 1) * 0.01) + rngH.int(-1, 1)));
         P.GS_TREND_ASRT.push([def.kode, s.suffix, per, lines]);
         if (per >= '2026-08') { const a = agg[per + s.ch] = agg[per + s.ch] || { per, ch: s.ch, n: 0, lines: 0, reg: 0 }; a.n += lines > 0 ? 1 : 0; a.lines += lines; }
       });
@@ -379,6 +380,37 @@ export function buildDummy({ seed = 2026 } = {}) {
       P.KEHADIRAN.push([def.kode, sm.kode, '2026-11-' + pad(d), jam, pr.geo0.includes(d) ? 0 : 1, rngK.int(9, 20)]);
     });
   }));
+
+  // ----- Dua salesman kembar (101 dan 201): skor total ranking identik, untuk menguji peringkat bersama (plan 022) -----
+  // Tanpa memakai PRNG, jadi data lain tidak bergeser. FOP, Banded, dan Assortment sudah sama; di sini PS dan R2G disamakan:
+  // PS 3 Full + 3 Lite + 2 Not dari 8 toko; R2G: SS, E2E, E2S tercapai penuh, Pasti Untung 2 dari 4, Pasti Laku 1 dari 2.
+  const skuBp = {}; cat.skus.forEach(x => { skuBp[x.code] = x; });
+  [['D01', '101'], ['D02', '201']].forEach(([dk, smk]) => {
+    const def = DT_DEFS.find(d => d.kode === dk), g = gen[dk], T = dts[dk];
+    const mine = g.monitored.filter(x => x.sm === smk && x.weeks.length && !x.dual);
+    const all = new Set(g.monitored.filter(x => x.sm === smk).map(x => x.suffix));
+    // PS
+    const pat = [5, 5, 5, 4, 4, 4, 2, 2];
+    P.GS_PS = P.GS_PS.filter(r => !(r[2] === dk && all.has(r[4])));
+    mine.slice(0, pat.length).forEach((x, i) => {
+      const okN = pat[i], flags = [0, 1, 2, 3, 4].map(j => (j < okN ? 1 : 0));
+      P.GS_PS.push([DATA_UNTIL, BULAN, dk, def.nama, x.suffix, x.nama, KANAL[x.ch], okN === 5 ? 'PS FULL' : okN === 4 ? 'PS LITE' : 'NOT PERFECT', okN + '/5', ...flags.map(String), ...flags.map(f => (f ? 1 : 0.4))]);
+    });
+    // E2E dan E2S tercapai penuh
+    T.NGDMS_ASRT.forEach(r => { if (String(r[2]) === smk) { r[7] = r[5]; r[8] = r[6]; } });
+    // Target SS diturunkan supaya SS tercapai penuh
+    T.TARGET.forEach((r, i) => { if (i && String(r[1]) === smk && r[0] === BULAN) for (let c = 2; c <= 5; c++) r[c] = Math.round(r[c] * 0.4 / 1e5) * 1e5; });
+    // NORMS_SKU: baris salesman ini diganti dengan enam baris terkendali pada toko yang pernah membeli basepack itu
+    const bought = {};
+    g.dms.slice(1).forEach(r => { const k = r[4] + '|' + skuBp[r[7]].bp; bought[k] = (bought[k] || 0) + r[8]; });
+    const bpOf = suffix => Object.keys(bought).filter(k => k.startsWith(suffix + '|') && bought[k] > 0).map(k => k.split('|')[1]).sort()[0];
+    const buOfBp = code => cat.bps.find(b => b.code === code).bu;
+    T.NORMS_SKU = T.NORMS_SKU.filter((r, i) => !i || !all.has(String(r[1]).replace(/^B/i, '')));
+    [['Width', 1], ['NPD', 1], ['Width', 99999], ['NPD', 99999], ['Everbilled', 1], ['Redlines', 99999]].forEach(([tipe, soq], i) => {
+      const x = mine[i], bp = bpOf(x.suffix);
+      T.NORMS_SKU.push([tipe, x.suffix, bp, buOfBp(bp), soq]);
+    });
+  });
 
   const meta = { seed, catalog: { basepacks: cat.bps.length, skus: cat.skus.length, bandedSpm: cat.banded.SPM.length, bandedMinis: cat.banded.MINIS.length },
     dts: {}, salesmen: DT_DEFS.flatMap(d => d.sales.map(s => ({ kode: s.kode, nama: s.nama, dt: d.kode, profile: s.profile }))) };

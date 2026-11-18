@@ -14,7 +14,10 @@ const reg = [
 const sm = (kode, nama, n, weekly, extra = {}) => Object.assign({ kode, nama, tokoFop: n, fop: { n, weekly, pct: weekly / n, spmN: 2, spmWeekly: 1 },
   tokoBanded: n, banded: { n, hit: weekly, pct: weekly / n }, tokoAsrt: n, asrt: { toko: n, lines: n * 2, perToko: 2 },
   outlet_nama: 'TOKO RAHASIA', toko_kode: 'T1', sku: 'S1', omzet: 999 }, extra);
-const dtRes = (r, sales) => ({ dist_kode: r.dt_kode, dist_nama: r.nama_dt, stores: 9, bulan: '2026-11', tanggalData: '2026-11-17', catatan: {}, bu: { FOODS: { label: 'Foods', sales, belumTransaksi: 1 } } });
+// Atribusi total (plan 022): tiap salesman 10 toko dengan kode toko yang HARUS tidak bocor ('KODETOKO...').
+const totalOf = (r, sales) => ({ stores: sales.flatMap(s => Array.from({ length: 10 }, (_, i) => ({ o: 'KODETOKO' + r.dt_kode + s.kode + i, sm: s.kode, g: i % 2 ? 'SPM' : 'MINIS', wk: i < 7 ? 3 : 1, bh: i < 5 ? 1 : 0, ln: 4 }))),
+  names: Object.fromEntries(sales.map(s => [s.kode, s.nama])), inactive: {} });
+const dtRes = (r, sales) => ({ dist_kode: r.dt_kode, dist_nama: r.nama_dt, stores: 9, bulan: '2026-11', tanggalData: '2026-11-17', catatan: {}, bu: { FOODS: { label: 'Foods', sales, belumTransaksi: 1 } }, total: totalOf(r, sales) });
 const DATA = {
   DA: [sm('1', 'Ani', 10, 8), sm('2', 'Budi', 10, 6), sm('3', 'Cici', 3, 3)],     // Cici n<5: belum cukup
   DB: [sm('1', 'Dedi', 10, 8), sm('2', 'Eka', 10, 8), sm('3', 'Fani', 10, 5)],    // Dedi dan Eka nilai kembar 0.8 = Ani
@@ -28,6 +31,7 @@ function setup({ failDt = [] } = {}) {
     readRegistry_ = () => __reg;
     readObjs_ = () => [];
     readGsCfg_ = () => ({ rank_min_toko: 5 });
+    r2gForDt_ = r => ({ periode: '2026-11', dsr: { '1': { pct: 0.7, nKomp: 5, ss: { pct: 0.7, aktual: 123456789, target: 1 }, e2e: { pct: 0.7, a: 7, t: 10 }, e2s: { pct: 0.7, a: 7, t: 10 }, pastiUntung: { pct: 0.7, ach: 7, tot: 10 }, pastiLaku: { pct: 0.7, ach: 7, tot: 10 } } } });
     salesRankForDt_ = r => __fail.includes(r.dt_kode) ? { dist_kode: r.dt_kode, dist_nama: r.nama_dt, error: 'Error: rahasia sheet ' + r.sheet_id } : __dtRes(r, __data[r.dt_kode]);
   `, ctx);
   return ctx;
@@ -53,13 +57,31 @@ test('b. tidak ada bidang terlarang di JSON respons', () => {
   const keys = keysDeep(out);
   ['outlet', 'outlet_nama', 'outlet_kode', 'toko_kode', 'toko_nama', 'sku', 'omzet', 'kode_akses'].forEach(k => assert.ok(!keys.has(k), 'bidang terlarang: ' + k));
   const txt = JSON.stringify(out);
-  assert.ok(!/kodeA|kodeB|kodeP|TOKO RAHASIA/.test(txt));
+  assert.ok(!/kodeA|kodeB|kodeP|TOKO RAHASIA|KODETOKO|123456789/.test(txt));
   // bidang baris sesuai daftar yang diizinkan
   const allowed = new Set(['rank', 'rankDt', 'kode', 'nama', 'dt_kode', 'dt_nama', 'n', 'nilai', 'weekly', 'spm', 'hit', 'lines', 'toko']);
   out.bu.FOODS.fop.concat(out.bu.FOODS.belumCukup.fop).forEach(r => Object.keys(r).forEach(k => assert.ok(allowed.has(k), 'bidang tak terduga: ' + k)));
   // rankPublicRow_ sendiri membuang apa pun selebihnya
   const row = plain(setup().rankPublicRow_({ rank: 1, rankDt: 1, kode: '1', nama: 'X', dt_kode: 'D', dt_nama: 'DT', n: 5, nilai: 1, outlet_nama: 'T', sku: 'S', omzet: 1, kode_akses: 'k', hit: 3 }));
   assert.deepEqual(Object.keys(row).sort(), ['dt_kode', 'dt_nama', 'hit', 'kode', 'n', 'nama', 'nilai', 'rank', 'rankDt']);
+});
+
+test('b2. skor total: hanya bidang aman, tanpa kode toko, SKU, omzet', () => {
+  const out = call(setup(), 'kodeA'), t = out.total;
+  assert.ok(t && t.rows.length > 0);
+  assert.deepEqual(Object.keys(t).sort(), ['aktif', 'belumCukup', 'bobot', 'rows']);
+  const rowAllowed = new Set(['rank', 'rankDt', 'kode', 'nama', 'dt_kode', 'dt_nama', 'n', 'skor', 'kpi']);
+  const kpiAllowed = new Set(['pct', 'skor', 'bobot', 'tanpaData', 'n', 'full', 'lite', 'weekly', 'target', 'hit', 'lines', 'tokoNaik', 'komponen']);
+  t.rows.concat(t.belumCukup).forEach(r => { Object.keys(r).forEach(k => assert.ok(rowAllowed.has(k), 'bidang baris tak terduga: ' + k)); Object.values(r.kpi).forEach(x => Object.keys(x).forEach(k => assert.ok(kpiAllowed.has(k), 'bidang KPI tak terduga: ' + k))); });
+  // R2G: komponen hanya pct dan hitungan a/t; nilai rupiah SS tidak ikut
+  const k1 = t.rows.find(r => r.kode === '1').kpi.r2g.komponen;
+  assert.deepEqual(Object.keys(k1.ss), ['pct']); assert.deepEqual(Object.keys(k1.e2e).sort(), ['a', 'pct', 't']);
+  const keys = keysDeep(t); ['outlet', 'outlet_nama', 'o', 'sm', 'sku', 'omzet', 'aktual', 'gsv', 'kode_akses'].forEach(k => assert.ok(!keys.has(k), 'bidang terlarang: ' + k));
+  // rankPublicRow_ menyaring baris total
+  const row = plain(setup().rankPublicRow_({ rank: 1, rankDt: 1, kode: '1', nama: 'X', dt_kode: 'D', dt_nama: 'DT', n: 9, skor: 80, outlet_nama: 'T', omzet: 1,
+    kpi: { ps: { pct: 0.5, capaian: 0.5, skor: 50, bobot: 10, tanpaData: false, n: 3, detail: { full: 1, lite: 1, outlet: 'RAHASIA' } } } }));
+  assert.deepEqual(Object.keys(row).sort(), ['dt_kode', 'dt_nama', 'kode', 'kpi', 'n', 'nama', 'rank', 'rankDt', 'skor']);
+  assert.deepEqual(Object.keys(row.kpi.ps).sort(), ['bobot', 'full', 'lite', 'n', 'pct', 'skor', 'tanpaData']);
 });
 
 test('c. rankDt benar untuk dua DT dengan nilai kembar', () => {
