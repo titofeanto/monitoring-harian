@@ -484,7 +484,7 @@
     document.querySelectorAll('#dtChips [data-dt]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     S.shown = CFG.page; build(); render();
   });
-  $('loginForm').addEventListener('submit', e => { e.preventDefault(); $('loginErr').textContent = ''; login($('codeInput').value.trim()); });
+  $('loginForm').addEventListener('submit', e => { e.preventDefault(); const code = $('codeInput').value.trim(); if (!code) { $('loginErr').textContent = 'Isi kode akses dulu.'; return; } $('loginErr').textContent = ''; login(code); });
   $('logoutBtn').addEventListener('click', () => { try { localStorage.removeItem(LS_CODE); localStorage.removeItem(CACHE_KEY); } catch (e) { /* mode privat */ } location.reload(); });
   $('refreshBtn').addEventListener('click', () => {
     const b = $('refreshBtn'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
