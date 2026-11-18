@@ -736,13 +736,20 @@ if (typeof module !== 'undefined') {
   }
   const tone = v => !isFinite(v) ? '' : v >= 1 ? 'okc' : v >= 0.8 ? 'amb' : 'neg';
   /* Kartu satu DSR (atau satu DT): ikon status, nama, skor dan insentif, lalu tiga angka capaian. */
+  const buRows = bu => M.BU.filter(b => bu[b] && (bu[b].t || bu[b].a)).map(b => ({ name: M.BU_LONG[b], t: bu[b].t, a: bu[b].a }));
   function dsrCard(o) {
     const ic = o.band === 'GREEN' ? ['ok', 'check'] : o.band === 'AMBER' ? ['warn', 'warn'] : o.band === 'RED' ? ['neg', 'down'] : ['plus', 'chart'];
     const tag = o.band ? `<span class="tag ${o.band === 'GREEN' ? 'g' : o.band === 'AMBER' ? 'a' : 'r'}">${o.band}</span>` : (o.tagHtml || '');
-    const cell = (label, v, sub) => `<div class="${tone(v)}"><small>${label}</small><b>${pct(v)}</b><em>${sub || ' '}</em>${window.MHUtil.stIcon(window.MHUtil.stOf(tone(v)))}</div>`;
+    /* Baris cincin per KPI: persen = capaian yang sudah dihitung (ss/as/eco); angka besar = aktual; Target dan Sisa dari target yang sama. */
+    const U = window.MHUtil, uid = 'dsr-' + String(o.nama).replace(/[^a-z0-9]/gi, '') + '-';
+    const row = (key, label, v, a, t, f, bu) => {
+      const tn = U.toneOf(v, tone(v)), det = (bu || []).map(x => { const pv = x.t ? x.a / x.t : NaN; return U.barItem({ name: x.name, p: pv, tone: U.toneOf(pv, tone(pv)), sisa: f(Math.max(0, x.t - x.a)), left: f(x.a), right: f(x.t) }); }).join('');
+      return U.kpiRow({ id: uid + key, name: label, icon: U.stIcon(tn, false), p: v, tone: tn, big: f(a), target: t ? f(t) : '', sisa: t ? f(Math.max(0, t - a)) : '', detail: det });
+    };
+    const cells = row('ss', 'SS', o.ss, o.ssA, o.ssT, rp, o.ssBu) + row('as', 'Assortment', o.as, o.asA, o.asT, x => idn1.format(x)) + row('eco', 'ECO', o.eco, o.ecoA, o.ecoT, x => idn.format(x));
     const sk = ` data-nm="${M.esc(String(o.nama).toLowerCase())}" data-ss="${isFinite(o.ss) ? o.ss : ''}" data-as="${isFinite(o.as) ? o.as : ''}" data-eco="${isFinite(o.eco) ? o.eco : ''}"${o.pin ? ' data-pin="1"' : ''}`;
     return `<div class="rk${o.cur ? ' is-cur' : ''}"${sk}${o.attr || ''}><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span><div class="it-i"><div class="nm">${M.esc(o.nama)}</div><div class="sk">${o.sub}</div></div>${tag}</div>
-      <div class="rk-s">${cell('SS', o.ss, o.ssSub)}${cell('Assortment', o.as, o.asSub)}${cell('ECO', o.eco, o.ecoSub)}</div></div>`;
+      <div class="kpi-list dsr-k">${cells}</div></div>`;
   }
 
   /* Urut: di atas daftar kartu DSR/DT. Hanya mengurutkan ulang kartu yang sudah ada di layar (angka tidak dihitung ulang);
@@ -930,8 +937,8 @@ if (typeof module !== 'undefined') {
     /* Total DT: dasar perhitungan insentif DSS (supervisor), dilihat dari pencapaian total sales-nya, bukan per DSR. */
     $('tOverview').innerHTML = MODEL.dsrList.map((d, i) => { const c = calcs[i];
         return dsrCard({ nama: d.nama, band: c.band, cur: i === CUR, attr: ` data-i="${i}" role="button" tabindex="0"`, sub: `Skor ${Math.round(c.score)} · insentif ${rpFullLocal(c.total)}`,
-          ss: c.ach.ss, ssSub: rp(d.ss.aktual), as: c.ach.asrt, asSub: idn1.format(d.asrt.aktual) + '/' + idn1.format(d.asrt.target), eco: c.ach.eco, ecoSub: d.eco.tx + '/' + d.eco.pjp }); }).join('')
-      + dsrCard({ nama: 'Total DT', pin: true, sub: `${MODEL.dsrList.length} DSR · insentif ${rpFullLocal(incT)}`, tagHtml: '<span class="tag a">DSS</span>', ss: achOf(ssA, ssT), ssSub: rp(ssA), as: achOf(asA, asT), asSub: idn1.format(asA) + '/' + idn1.format(asT), eco: achOf(ecoT, ecoP), ecoSub: ecoT + '/' + ecoP });
+          ss: c.ach.ss, ssA: d.ss.aktual, ssT: d.ss.target, ssBu: buRows(d.ss.bu), as: c.ach.asrt, asA: d.asrt.aktual, asT: d.asrt.target, eco: c.ach.eco, ecoA: d.eco.tx, ecoT: d.eco.pjp }); }).join('')
+      + dsrCard({ nama: 'Total DT', pin: true, sub: `${MODEL.dsrList.length} DSR · insentif ${rpFullLocal(incT)}`, tagHtml: '<span class="tag a">DSS</span>', ss: achOf(ssA, ssT), ssA, ssT, ssBu: buRows(Object.fromEntries(M.BU.map(b => [b, { t: MODEL.dsrList.reduce((s, d) => s + d.ss.bu[b].t, 0), a: MODEL.dsrList.reduce((s, d) => s + d.ss.bu[b].a, 0) }]))), as: achOf(asA, asT), asA, asT, eco: achOf(ecoT, ecoP), ecoA: ecoT, ecoT: ecoP });
     document.querySelectorAll('#tOverview [data-i]').forEach(b => { const go = () => { CUR = +b.dataset.i; document.querySelectorAll('#dsrChips .chip').forEach(x => x.setAttribute('aria-pressed', x.dataset.i === b.dataset.i)); renderAll(); }; b.onclick = go; b.onkeydown = e => { if (e.key === 'Enter') go(); }; });
     applySort($('tOverview'));
 

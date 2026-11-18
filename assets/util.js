@@ -71,5 +71,40 @@
   /** Medali hanya untuk rank server 1-3 dan paling banyak 5 baris pertama (ord = urutan baris dari 0); rank kembar sama-sama bermedali. */
   const isMedal = (rank, ord) => rank >= 1 && rank <= 3 && ord < 5;
 
-  window.MHUtil = { esc, isMedal, stIcon, stOf, stLegend, numOf, sortTable };
+  /* ---- Baris KPI sederhana (cincin persen + angka besar + rincian buka-tutup). Hanya presentasi: persen berasal dari
+     server atau aktual/target yang sudah ada; cincin dibatasi 0-100 untuk gambar, label teks memakai angka asli dibulatkan.
+     Warna: kelas okc/amb/neg atau level server bila ada; bila tidak ada, hijau bila >= 100% selain itu merah (aturan tampilan saja). ---- */
+  const RING_R = 42, RING_C = 2 * Math.PI * RING_R;
+  const toneOf = (p, cls) => { if (!isFinite(p)) return ''; return stOf(cls) || (p >= 1 ? 'ok' : 'bad'); };
+  const pctInt = p => Math.round(p * 100);
+  const ring = (p, tone, name) => {
+    if (typeof p !== 'number' || !isFinite(p)) return '';
+    const n = pctInt(p), dash = Math.max(0, Math.min(1, p)) * RING_C;
+    return `<svg class="ring" data-tone="${tone || ''}" viewBox="0 0 100 100" role="img" aria-label="${esc(name)}: ${n}%"><circle class="rg-t" cx="50" cy="50" r="${RING_R}"/>` +
+      `<circle class="rg-f" cx="50" cy="50" r="${RING_R}" stroke-dasharray="${dash.toFixed(1)} ${RING_C.toFixed(1)}" transform="rotate(-90 50 50)"/><text class="rg-x" x="50" y="50" dy=".35em" text-anchor="middle">${n}%</text></svg>`;
+  };
+  const barThin = (p, tone) => `<div class="bar-thin" data-tone="${tone || ''}" aria-hidden="true"><i style="width:${(isFinite(p) ? Math.max(0, Math.min(1, p)) * 100 : 0).toFixed(0)}%"></i></div>`;
+  /** Item rincian: nama + (persen) | Sisa Target; bar tipis; angka capaian | angka target. */
+  const barItem = o => `<div class="bar-item"><div class="bi-h"><b>${esc(o.name)}${isFinite(o.p) ? ` <span class="bi-p">(${pctInt(o.p)}%)</span>` : ''}</b>${o.sisa ? `<span class="bi-s">Sisa Target: ${esc(o.sisa)}</span>` : ''}</div>` +
+    (isFinite(o.p) ? barThin(o.p, o.tone) : '') + `<div class="bi-f"><span>${esc(o.left)}</span><span>${esc(o.right)}</span></div></div>`;
+  const OPEN = {};
+  const CHEV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  /** o: {id, name, icon (html ikon status), p (pecahan, NaN = tanpa target: tanpa cincin dan panah), tone, big, target, sisa, detail (html)} */
+  const kpiRow = o => {
+    const has = typeof o.p === 'number' && isFinite(o.p), exp = !!(o.detail && has && OPEN[o.id]), det = o.detail && has;
+    return `<div class="kpi-row${has ? '' : ' no-ring'}" data-tone="${has ? o.tone || '' : ''}"><div class="kr-main">${ring(o.p, o.tone, o.name)}` +
+      `<div class="kr-body"><div class="kpi-name">${o.icon || ''}<span>${o.name}</span></div><div class="kpi-big">${o.big}</div>` +
+      `<div class="kpi-meta">${o.target ? `<span>Target ${o.target}</span>` : ''}${o.sisa ? `<span>Sisa Target ${o.sisa}</span>` : ''}</div></div>` +
+      (det ? `<button type="button" class="kpi-toggle" data-kt="${esc(o.id)}" aria-expanded="${exp}" aria-controls="kd-${esc(o.id)}" aria-label="Rincian ${esc(String(o.name).replace(/<[^>]*>/g, ''))}">${CHEV}</button>` : '') + '</div>' +
+      (det ? `<div class="kpi-detail" id="kd-${esc(o.id)}"${exp ? '' : ' hidden'}>${o.detail}</div>` : '') + '</div>';
+  };
+  if (typeof document !== 'undefined') document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button.kpi-toggle'); if (!b) return;
+    e.stopPropagation();
+    const d = document.getElementById(b.getAttribute('aria-controls')); if (!d) return;
+    const open = b.getAttribute('aria-expanded') !== 'true';
+    b.setAttribute('aria-expanded', String(open)); d.hidden = !open; OPEN[b.dataset.kt] = open;
+  }, true);
+
+  window.MHUtil = { esc, isMedal, stIcon, stOf, stLegend, numOf, sortTable, toneOf, ring, barThin, barItem, kpiRow };
 })();

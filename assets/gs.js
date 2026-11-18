@@ -208,6 +208,26 @@
     if (cfg.st) decorate($('ls-' + id));
   }
 
+  /* Baris KPI Skor: persen cincin = aktual/target (hanya gambar); warna dari level server. Rincian = poin dan catatan yang sudah ada. */
+  const LV_TONE = { green: 'ok', amber: 'mid', red: 'bad' };
+  function kpiRowOf(k) {
+    const has = k.target > 0 && k.aktual != null, p = has ? k.aktual / k.target : NaN, tone = LV_TONE[k.level] || U.toneOf(p, '');
+    const lost = k.hilang > 0.05;
+    const det = barItemPoin(k) + (k.catatan ? `<p class="hint">${esc(k.catatan)}</p>` : '');
+    return U.kpiRow({ id: 'sk-' + k.kpi, name: esc(k.label) + (k.weekly ? ' ' + wkTag : ''), icon: U.stIcon(tone, false), p, tone, big: pct(k.aktual),
+      target: has ? pct(k.target) : '', sisa: has ? pct(Math.max(0, k.target - k.aktual)) : '', detail: det });
+  }
+  /** Satu baris cincin ringkasan di atas tab (persen = aktual/target server, hanya gambar). */
+  function topRing(k, id, name, detail) {
+    if (!k) return '';
+    const has = k.target > 0 && k.aktual != null, p = has ? k.aktual / k.target : NaN, tone = LV_TONE[k.level] || U.toneOf(p, '');
+    return `<div class="kpi-list" style="margin:4px 0 18px">` + U.kpiRow({ id, name: esc(name), icon: U.stIcon(tone, false), p, tone, big: pct(k.aktual), target: has ? pct(k.target) : '', sisa: has ? pct(Math.max(0, k.target - k.aktual)) : '', detail: detail || '' }) + '</div>';
+  }
+  function barItemPoin(k) {
+    const pp = k.bobot > 0 && k.poin != null ? k.poin / k.bobot : NaN;
+    return U.barItem({ name: 'Poin', p: pp, tone: LV_TONE[k.level] || U.toneOf(pp, ''), sisa: k.hilang > 0.05 ? k.hilang.toFixed(1).replace('.', ',') : '', left: k.poin == null ? '-' : k.poin.toFixed(1).replace('.', ','), right: String(k.bobot) });
+  }
+
   function render() {
     const live = DATA.live, rank = live.rank, prevRank = live.prevRank, scoreShown = live.scoreShown;
     $('gsSub').textContent = 'AAM' + (DATA.scope ? ' · ' + DATA.scope.nama : ' · semua DT') + (live.monLive ? ' · FOP s.d. mg ' + live.summary.mon.week : live.fopWeek !== '' ? ' · FOP s.d. mg ' + live.fopWeek : '');
@@ -224,18 +244,15 @@
     const gain = kp.reduce((s, k) => s + k.hilang, 0);
     const delta = prevRank == null || rank == null ? 'belum ada pembanding' : rank < prevRank ? `<span class="delta-up">▲ naik ${prevRank - rank} dari ${prevRank}</span>` : rank > prevRank ? `<span class="delta-down">▼ turun ${rank - prevRank} dari ${prevRank}</span>` : 'tetap';
     const pctScore = scoreShown == null ? 0 : Math.max(0, Math.min(100, scoreShown));
-    $('heroCard').innerHTML = `<div class="card-head"><span class="ci">${svg('trophy')}</span><div class="ch-t"><h2>Skor Great Sales</h2><p class="ch-s">Data ${tgl(live.tanggal)}</p></div></div>` +
-      `<div class="hero-units"><div><b>${rank == null ? '-' : rank}</b><span>Rank nasional</span>${wkTag}</div><div><b>${scoreShown == null ? '-' : scoreShown.toFixed(2).replace('.', ',')}</b><span>Score</span></div><div><b>${gain.toFixed(1).replace('.', ',')}</b><span>Poin dikejar</span></div></div>` +
-      `<div class="bar"><i style="width:${pctScore}%"></i></div><div class="bar-meta"><span>${delta}</span><span>${live.recalculated ? (live.summary.mon ? 'PS, Assortment, FOP, Banded, %DR dihitung ulang' : 'PS dan Assortment dihitung ulang') : 'dari 100'}</span></div>`;
+    const hc = $('heroCard'); hc.className = 'soft-card';
+    hc.innerHTML = `<div><div class="nm" style="font-size:15px;font-weight:700">Skor Great Sales</div><div class="muted" style="font-size:13px">Data ${tgl(live.tanggal)}</div></div>` +
+      `<div class="sc-score"><b>${scoreShown == null ? '-' : scoreShown.toFixed(2).replace('.', ',')}</b><span>dari 100 ${wkTag}</span></div>` +
+      `<div class="sc-units"><div><b>${rank == null ? '-' : rank}</b>Rank nasional</div><div><b>${gain.toFixed(1).replace('.', ',')}</b>Poin dikejar</div></div>` +
+      `<div>${U.barThin(pctScore / 100, '')}<div class="bar-meta" style="margin-top:0"><span>${delta}</span><span>${live.recalculated ? (live.summary.mon ? 'PS, Assortment, FOP, Banded, %DR dihitung ulang' : 'PS dan Assortment dihitung ulang') : 'dari 100'}</span></div></div>`;
 
-    $('tKpi').innerHTML = U.stLegend() + kp.map(k => {
-      const l = k.level, ic = lvIcon(l), v = k.target && k.aktual != null ? Math.max(0, Math.min(1, k.aktual / k.target)) : 0;
-      const lost = k.hilang > 0.05;
-      return `<div class="rk"><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span><div class="it-i"><div class="nm">${esc(k.label)}${k.weekly ? ' ' + wkTag : ''}</div><div class="sk">${esc(k.catatan)}</div></div><span class="tag ${l === 'green' ? 'g' : l === 'amber' ? 'a' : 'r'}">${lost ? '-' + k.hilang.toFixed(1) : '✓'}</span></div>` +
-        `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${(v * 100).toFixed(0)}%"></i></div>` +
-        `<div class="rk-s"><div class="${l === 'green' ? 'okc' : l === 'amber' ? 'amb' : 'neg'}"><small>Aktual</small><b>${pct(k.aktual)}</b></div><div><small>Target</small><b>${pct(k.target)}</b></div><div><small>Poin</small><b>${k.poin == null ? '-' : k.poin.toFixed(1)}<span class="muted" style="font-weight:600;font-size:11px"> / ${k.bobot}</span></b></div></div></div>`;
-    }).join('');
-    decorate($('tKpi'));
+    if ($('tLegend')) $('tLegend').innerHTML = U.stLegend();
+    $('tKpi').className = 'kpi-list';
+    $('tKpi').innerHTML = kp.map(kpiRowOf).join('');
 
     renderFop('secFopSpm', 'fopSpm', 'LOCAL SUPERMARKET', 'Weekly FOP Supermarket (SPM)', kp.find(k => k.kpi === 'FOP_SPM'));
     renderFop('secFopMinis', 'fopMinis', 'LOCAL MINIS', 'Weekly FOP Local Minis', kp.find(k => k.kpi === 'FOP_MINIS'));
@@ -281,9 +298,11 @@
       const a = as[c[0]], k = kp.find(x => x.kpi === c[3]);
       const reg = dts.reduce((s, d) => s + ((d.channels && d.channels[c[0]] && d.channels[c[0]].registered) || 0), 0);
       const ref = a.target > 0 && reg > 0 ? a.target / reg : null;
-      return `<div class="kpi"><div class="l">${esc(c[2])}</div><div class="v">${a.pct == null ? '-' : pct(a.pct)}</div>` +
-        `<div class="s">${nf(a.lines)} lines${a.target ? ' dari ' + nf(a.target) : ', target belum diisi'}${k ? ' · poin ' + (k.poin == null ? '-' : k.poin.toFixed(1)) + '/' + k.bobot : ''}</div>` +
-        `<div class="s"><b>${nf1(a.perOutlet)}</b> base pack per toko aktif${ref ? ` · acuan <b>${nf1(ref)}</b> per toko` : ''}</div></div>`;
+      const p = a.pct == null || !(a.target > 0) ? NaN : a.pct, tone = (k && LV_TONE[k.level]) || U.toneOf(p, '');
+      const det = dts.map(d => { const x = d.channels && d.channels[c[0]]; if (!x) return ''; const t = tgtOf(d, c), v = t ? x.lines / t : NaN;
+        return U.barItem({ name: d.dist_nama, p: v, tone: U.toneOf(v, ''), sisa: t ? nf(Math.max(0, t - x.lines)) : '', left: nf(x.lines) + ' lines', right: t ? 'Target ' + nf(t) : 'tanpa target' }); }).join('') +
+        `<p class="hint"><b>${nf1(a.perOutlet)}</b> base pack per toko aktif${ref ? ` · acuan <b>${nf1(ref)}</b> per toko` : ''}${k ? ' · poin ' + (k.poin == null ? '-' : k.poin.toFixed(1)) + '/' + k.bobot : ''}</p>`;
+      return U.kpiRow({ id: 'as-' + c[0], name: esc(c[2]), icon: U.stIcon(tone, false), p, tone, big: nf(a.lines) + ' lines', target: a.target ? nf(a.target) + ' lines' : '', sisa: a.target ? nf(Math.max(0, a.target - a.lines)) + ' lines' : '', detail: det });
     }).join('');
     const cards = dts.map(d => ASRT_CH.map(c => {
       const x = d.channels && d.channels[c[0]];
@@ -308,7 +327,7 @@
     }).join('');
     $('secAsrt').innerHTML = `<div class="card">${ciTitle('box', 'Assortment per channel', '', first.tanggalData ? 's.d. ' + esc(tgl(first.tanggalData)) : '')}` +
       `<details class="how"><summary>Cara baca</summary><p class="hint">Dari Extract DMS${first.tanggalData ? ' s.d. ' + esc(tgl(first.tanggalData)) : ''}. Satu line = satu base pack di satu toko, dihitung kalau qty bersih bulan ini minimal ${DATA.asrt.moq} pcs. Base pack yang sama di toko yang sama hanya dihitung sekali, jadi tambah assortment dengan menjual base pack baru. Acuan per toko = target dibagi toko terdaftar di Outlet Master.${noTarget ? ' Target belum diisi untuk sebagian channel, jadi persennya belum muncul.' : ''}</p></details>` +
-      `<div class="kpis">${head}</div></div>` +
+      `<div class="kpi-list">${head}</div></div>` +
       (cards ? `<div class="card">${ciTitle('store', 'Per DT dan channel')}<div class="rk-list">${cards}</div></div>` : '') + low;
   }
 
@@ -387,9 +406,10 @@
     el.innerHTML = ciTitle('cal', esc(title), (k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '') + (isSpm && live ? ` <span class="tag r">WAJIB ${fopNeed()}x</span>` : ''), done + ' dari ' + rows.length + ' toko sudah WEEKLY') +
       (live ? monNote() + `<details class="how"><summary>Cara baca</summary><p class="hint">${done} dari ${rows.length} toko monitoring sudah WEEKLY (order di ${fopNeed()} minggu atau lebih bulan ini). Dihitung dari Extract DMS sampai ${tgl(ms.tanggal)}, minggu ke-${ms.week}. Aturan: ${fopNeed()} minggu = WEEKLY, ${num(DATA.mon.cfg.fop_biweekly) || 2} = BIWEEKLY, 1 = MONTHLY.</p></details>`
         : `<p class="hint">${done} dari ${rows.length} toko aktif sudah WEEKLY di file. Sisanya perlu order ${fopNeed()}x bulan ini, mulai dari yang paling dekat.</p>`) +
+      topRing(k, 'top-' + key, title, '') +
       (hasRisk ? wajibBox(rows, isSpm) : '') +
       mountList(key, {
-        st: true, rows, empty: 'Belum ada toko.',
+        listCls: 'lega', st: true, rows, empty: 'Belum ada toko.',
         more: [['order', 'Order terbanyak', (a, b) => b.orders - a.orders || String(a.outlet_nama).localeCompare(b.outlet_nama)], ['orderlo', 'Order tersedikit', (a, b) => a.orders - b.orders || String(a.outlet_nama).localeCompare(b.outlet_nama)]],
         defaultF: hasRisk ? (rows.some(o => o.risk === 'KRITIS') ? 'kritis' : 'minggu') : 'belum',
         chips: hasRisk ? [['kritis', 'Kritis'], ['minggu', 'Belum order mg ini'], ['gagal', 'Tidak bisa WEEKLY'], ['weekly', 'WEEKLY'], ['semua', 'Semua']]
@@ -422,13 +442,15 @@
     const comp = (o, p) => { const f = String(o[p[0]]); const sc = o['s_' + p[0]]; return `<div class="${f === '1' ? 'okc' : f === '0' ? 'neg' : ''}"><small>${p[1]}</small><b>${f === '1' ? '✓' : f === '0' ? '✗' : '–'}</b><em>${sc === '' || sc == null ? ' ' : Math.round(num(sc) * 100) + '%'}</em></div>`; };
     $('secPs').innerHTML = `<div class="card">${ciTitle('store', 'Perfect Stores', k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '', 'Data ' + esc(tgl(sm.tanggal)))}` +
       `<details class="how"><summary>Cara baca</summary><p class="hint">Data ${esc(tgl(sm.tanggal))}, update mingguan. Status Full atau Lite mengikuti hasil HO di file.</p></details>` +
-      `<div class="hero-units" style="margin-top:0;border-top:0;padding-top:0"><div><b>${sm.perfect}</b><span>Perfect</span></div><div><b>${sm.full} · ${sm.lite}</b><span>Full · Lite</span></div><div><b>${sm.target}</b><span>Target</span></div></div>` +
-      `<div class="bar"><i style="width:${Math.min(100, v * 100).toFixed(0)}%"></i></div><div class="bar-meta"><span>${need ? `Kurang <b>${need}</b> toko lagi` : 'Target tercapai'}</span><b>${pct(v)}</b></div>` +
+      topRing(k, 'top-ps', 'Perfect Stores', '') +
+      `<div class="soft-card"><div class="bar-item"><div class="bi-h"><b>Perfect Store <span class="bi-p">(${sm.perfect}/${sm.target})</span></b><span class="bi-s">${need ? 'Sisa ' + need + ' Toko' : 'Target tercapai'}</span></div>` +
+      `<div class="bar-thin" data-tone="${v >= 1 ? 'ok' : 'bad'}" aria-hidden="true"><i style="width:${Math.min(100, (sm.target ? sm.full / sm.target : 0) * 100).toFixed(0)}%"></i><i class="alt" style="width:${Math.max(0, Math.min(100 - Math.min(100, (sm.target ? sm.full / sm.target : 0) * 100), (sm.target ? sm.lite / sm.target : 0) * 100)).toFixed(0)}%"></i></div>` +
+      `<div class="bi-lg"><span>Full ${sm.full}</span><span class="alt">Lite ${sm.lite}</span></div></div></div>` +
       `<p class="hint" style="margin-top:10px">Belum perfect paling sering kurang: ${esc(missTxt || '-')}.</p></div>` +
       (dtRows ? `<div class="card">${ciTitle('store', 'Per DT')}<div class="rk-list">${dtRows}</div></div>` : '') +
       `<div class="card">${ciTitle('store', 'Daftar toko')}` + mountList('ps', {
         more: [['miss', 'Paling banyak kurang', (a, b) => b.miss.length - a.miss.length || String(a.outlet_nama).localeCompare(b.outlet_nama)]],
-        rows, defaultF: 'belum', empty: 'Belum ada toko.',
+        rows, defaultF: 'belum', empty: 'Belum ada toko.', listCls: 'lega',
         chips: [['belum', 'Belum perfect'], ['perfect', 'Perfect'], ...PS_PARTS.map(p => ['k' + p[0], 'Kurang ' + p[1]]), ['semua', 'Semua']],
         test: (f, o) => f === 'semua' || (f === 'belum' && !isPerfect(o)) || (f === 'perfect' && isPerfect(o)) || (f.startsWith('k') && f !== 'k' && !isPerfect(o) && String(o[f.slice(1)]) === '0'),
         hay: o => (o.outlet_nama + ' ' + o.dist_nama + ' ' + o.channel).toLowerCase(),
@@ -469,6 +491,13 @@
     const groups = [['SPM', 'Supermarket (SPM)', kSpm, num(cfg.banded_spm) || 0.8], ['MINIS', 'Local Minis', kMinis, num(cfg.banded_minis) || 0.7]];   // SPM dulu: channel wajib
     $('secBanded').innerHTML = ciTitle('box', 'Banded', '', 'EVB ' + esc(ms.qLabel)) + monNote() +
       `<details class="how"><summary>Cara baca</summary><p class="hint">EVB ${esc(ms.qLabel)}: toko tercapai kalau SKU banded channel-nya yang pernah dibeli sepanjang kuartal ini minimal ${Math.round((num(cfg.banded_spm) || 0.8) * 100)}% (Supermarket) atau ${Math.round((num(cfg.banded_minis) || 0.7) * 100)}% (Local Minis). Bulan yang terhitung: ${esc(ms.qMonths.map(bulanLbl).join(', '))}; bulan lalu diambil dari rekap yang tersimpan, bulan berjalan dari Extract DMS sampai ${tgl(ms.tanggal)}. Hanya toko ber-REMARK monitoring. Ini hitungan sendiri, bukan angka HO.</p></details>` +
+      '<div class="kpi-list" style="margin:4px 0 18px">' + groups.map(g => {
+        const rows = monStores(g[0]), hit = rows.filter(o => o.bHit).length, k = g[2];
+        const det = rows.length ? U.barItem({ name: 'Toko tercapai', p: hit / rows.length, tone: U.toneOf(hit / rows.length, ''), sisa: nf(rows.length - hit) + ' toko', left: nf(hit) + ' toko', right: nf(rows.length) + ' toko' }) : '';
+        if (!k) return '';
+        const has = k.target > 0 && k.aktual != null, p = has ? k.aktual / k.target : NaN, tone = LV_TONE[k.level] || U.toneOf(p, '');
+        return U.kpiRow({ id: 'bd-top-' + g[0], name: esc(g[1]) + (g[0] === 'SPM' ? ' wajib' : ''), icon: U.stIcon(tone, false), p, tone, big: pct(k.aktual), target: has ? pct(k.target) : '', sisa: has ? pct(Math.max(0, k.target - k.aktual)) : '', detail: det });
+      }).join('') + '</div>' +
       groups.map(g => `<div class="card" style="margin-top:10px"><h3 style="margin:0 0 6px">${esc(g[1])} ${g[2] ? `<span class="lv ${g[2].level}">${pct(g[2].aktual)} / target ${pct(g[2].target)}</span>` : ''}</h3><div id="bd-${g[0]}"></div></div>`).join('');
     BND = {};
     groups.forEach(g => {
@@ -488,7 +517,7 @@
       const summary = `<div class="hero-units"><div><b>${hit}/${rows.length}</b><span>Tercapai</span></div><div><b>${minSku}<small class="muted" style="font-weight:600;font-size:12px"> dari ${tot}</small></b><span>Ambang SKU</span></div><div><b>${rows.length - hit}</b><span>Kurang toko</span></div></div>` +
         `<div class="bar"><i style="width:${pctHit}%"></i></div><div class="bar-meta"><span>EVB ${esc(ms.qLabel)}</span><span>${pctHit}% toko tercapai</span></div>`;
       const skuList = () => mountList('bsku' + ch, {
-        st: true, more: [['sudah', 'Paling banyak sudah', (a, b) => b.bought - a.bought || (a.sku_kode < b.sku_kode ? -1 : 1)]], rows: skus, defaultF: 'kurang', empty: 'Belum ada SKU banded.', unit: 'SKU', ph: 'Cari nama atau kode SKU',
+        listCls: 'lega', st: true, more: [['sudah', 'Paling banyak sudah', (a, b) => b.bought - a.bought || (a.sku_kode < b.sku_kode ? -1 : 1)]], rows: skus, defaultF: 'kurang', empty: 'Belum ada SKU banded.', unit: 'SKU', ph: 'Cari nama atau kode SKU',
         chips: [['kurang', 'Paling banyak belum'], ['semua', 'Semua SKU']],
         test: (f, b) => f === 'semua' || b.bought < b.total,
         hay: b => (b.sku_nama + ' ' + b.sku_kode).toLowerCase(),
@@ -504,7 +533,7 @@
         },
       });
       const tokoList = () => mountList('bnd' + ch, {
-        st: true, more: [['sku', 'SKU terbanyak sudah', (a, b) => b.bBought - a.bBought || String(a.outlet_nama).localeCompare(b.outlet_nama)], ['kurang', 'Kurang SKU terbanyak', (a, b) => need(b) - need(a) || String(a.outlet_nama).localeCompare(b.outlet_nama)]],
+        listCls: 'lega', st: true, more: [['sku', 'SKU terbanyak sudah', (a, b) => b.bBought - a.bBought || String(a.outlet_nama).localeCompare(b.outlet_nama)], ['kurang', 'Kurang SKU terbanyak', (a, b) => need(b) - need(a) || String(a.outlet_nama).localeCompare(b.outlet_nama)]],
         rows, defaultF: 'belum', empty: 'Belum ada toko.',
         chips: [['belum', 'Belum tercapai'], ['dekat', 'Tinggal 1-2 SKU'], ['hit', 'Tercapai'], ['semua', 'Semua']],
         test: (f, o) => f === 'semua' || (f === 'belum' && !o.bHit) || (f === 'hit' && !!o.bHit) || (f === 'dekat' && !o.bHit && need(o) <= 2),

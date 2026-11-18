@@ -71,6 +71,19 @@ Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya 
 - **Panel peringkat** (tab Ranking): daftar bernomor `.rkn-list`; medali SVG (`aria-label` "Peringkat n") dan latar `--warn-bg` hanya untuk baris ber-rank server 1-3, maksimal 5 baris (`MHUtil.isMedal`); nilai kembar pada rank sama mendapat medali sama, rank 4 ke atas memakai nomor biasa. Penjelasan aturan (hint) dan kartu "Kirim pengingat" dilipat dalam `details` tertutup; nama tebal, keterangan "{n} dari {m} toko ...", nilai persen di kanan (`.rk-val`). Di layar 900 px ke atas kontrol di kolom kiri dan panel di kolom kanan (`.rk-layout`).
 - **Tombol aksi utama `.btn.main`**: lime dengan tepi `--lime-edge`, teks navy, satu per layar (kirim WhatsApp, simpan hasil).
 
+## Baris KPI sederhana (cincin persen)
+
+Tujuan: sekali lihat tahu posisi, rincian hanya bila diketuk. Hanya tampilan yang meniru aplikasi contoh; tanpa teks, logo, atau data darinya. Dipakai di Great Sales (Skor, FOP, Banded, Assortment, Perfect Store) dan Monitoring Harian (Ringkasan).
+
+- **`.kpi-row`** dibuat `MHUtil.kpiRow`: grid cincin | isi | panah. Cincin `.ring` 90 px, garis 9 px, jejak `--line`, isi hijau/oranye/merah, persen tebal di tengah (`role="img"`, `aria-label` "{nama}: {persen}%"). Isi: ikon status `.st` + nama 15 px/700, angka capaian 26 px/800, lalu `Target N` dan `Sisa Target N` 13 px abu. Jarak antar baris 28 px (`.kpi-list`), tanpa bingkai.
+- **Panah `.kpi-toggle`**: bulat 44 px, `aria-expanded` + `aria-controls`, chevron berputar. Rincian `.kpi-detail` tertutup (`hidden`) dengan garis putus-putus; status buka diingat selama halaman terbuka walau data dimuat ulang.
+- **Rincian `.bar-item`** (`MHUtil.barItem`): nama + (persen) tebal | `Sisa Target`; **bar tipis `.bar-thin`** 10 px bulat penuh; angka capaian kiri, target kanan.
+- **KPI tanpa target** (target 0 atau kosong): tanpa cincin dan tanpa panah, hanya nama, angka besar, dan Target bila ada.
+- **Kartu putih lembut `.soft-card`**: radius 24, bayangan tipis; untuk skor Great Sales dan ringkasan Perfect Store (persen tebal kiri, `Sisa N Toko` kanan, bar dua warna Full/Lite, legenda kecil).
+- **Daftar lega `.rk-list.lega`**: baris tanpa latar kartu, pemisah putus-putus (FOP, Banded, Perfect Store).
+- **Aturan warna (tampilan saja, tanpa ambang bisnis baru)**: bila server memberi level (`green/amber/red`) atau kelas `okc/amb/neg`, itu yang dipakai (`MHUtil.toneOf`). Bila tidak ada klasifikasi untuk KPI itu, hijau hanya bila persen >= 100, selain itu merah.
+- **Persen cincin bukan rumus KPI baru**: nilai server, atau aktual/target yang sudah ada. Cincin dibatasi 0-100 untuk gambar; teks di tengah memakai angka asli dibulatkan, dan angka sebenarnya selalu tampil sebagai teks. Gerakan isi cincin mati untuk `prefers-reduced-motion`. Tidak ada teks di bawah 12 px.
+
 ## Perilaku
 
 - Bagian terakhir yang dipakai diingat (per halaman); `great-sales.html#fop` atau `index.html#sim` membuka bagian itu langsung.
