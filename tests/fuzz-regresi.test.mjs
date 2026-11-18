@@ -49,3 +49,8 @@ test('HARGA_PL: harga bukan angka (abc, #N/A, kolom hilang) menjadi null, bukan 
   const ok = call(setCol('h_new', 12500), { view: 'stok', code: ACCESS.pusat });
   assert.equal(ok.harga[0].hNew, 12500);
 });
+
+test('GS_TOKO tanpa kolom outlet_kode: monitoring tidak memuat toko berkode "undefined"', () => {
+  const o = call(renameHeader('GS_TOKO', 'outlet_kode'), { view: 'gs', code: ACCESS.pusat });
+  noBad(o, 'GS_TOKO.outlet_kode');
+});

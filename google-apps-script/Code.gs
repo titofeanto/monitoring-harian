@@ -1637,7 +1637,7 @@ function computeMon_(dms, stores, bandedSku, cfg, hist) {
   const need = Math.max(1, Math.round(cfg.fop_weekly)), mid = Math.max(1, Math.round(cfg.fop_biweekly));
   const skusOf = g => bandedSku.filter(b => b.channel === g);
   monitored.forEach(m => {
-    const o = String(m.s.outlet_kode).trim();
+    const o = str_(m.s.outlet_kode).trim();
     const ws = Object.keys(wk[o] || {}).filter(w => wk[o][w] > 0).map(Number);
     const n = ws.length;
     const list = skusOf(m.g), month = list.filter(b => ((sku[o] || {})[b.sku_kode] || 0) > 0);
