@@ -145,3 +145,10 @@ Hal yang sengaja tidak mengikuti ambang, dicatat satu per satu:
 6. Target sentuh minimal sesuai ukuran di atas, tidak ada geser horizontal di 390 px (kecuali tabel padat di `.scroll`).
 7. Teks bahasa Indonesia sederhana, tanpa singkatan yang tidak dikenal tim.
 8. Versi aset (`?v=`) dinaikkan di HTML supaya HP tidak memakai CSS lama.
+
+## Aturan tambahan (plan 029)
+- `.card-head` di <= 560 px boleh membungkus: pil (`.tag`/`.lv`) pindah ke baris sendiri di bawah judul; judul maksimal dua baris.
+- Nama di `.it-i .nm` membungkus maksimal dua baris (line-clamp), bukan ellipsis satu baris.
+- Tile ringkasan 5 dan 7 memakai grid 6/12 kolom dengan span agar baris terakhir penuh; 2, 3, 4, 6 sudah tanpa slot kosong.
+- Daftar `.lega` dua kolom (>= 1200 px): garis pemisah item kedua dari terakhir disembunyikan.
+- Label kecil di grid empat kolom (Assortment) dipendekkan ("rata-rata") agar maksimal dua baris.
