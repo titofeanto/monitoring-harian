@@ -128,9 +128,20 @@ html.has-code .boot{display:block}
 
 /* ---------- navigasi samping (assets/nav.js): sidebar tetap di >= 900 px, laci geser di bawahnya ---------- */
 .side{position:fixed;left:0;top:0;bottom:0;z-index:50;width:min(300px,86vw);overflow-y:auto;overscroll-behavior:contain;background:var(--surface);border-right:1px solid var(--line);
-  padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-100%);visibility:hidden;box-shadow:var(--shadow);
+  padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;transform:translateX(-100%);visibility:hidden;box-shadow:var(--shadow);
   transition:transform .22s ease,visibility 0s linear .22s}
 .side.open{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+.side>*{flex:none}
+.side-foot{margin-top:auto;position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom,0px));display:grid;gap:8px;padding:12px 0 calc(16px + env(safe-area-inset-bottom,0px));margin-bottom:calc(-16px - env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line)}
+.side-acc{display:flex;align-items:center;gap:12px;padding:0 12px;min-height:32px;color:var(--ink-2);font-size:13px;font-weight:600}
+.side-acc svg.i,.side-out svg.i{width:18px;height:18px;flex:none}
+.side-out{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:var(--r-s);background:var(--minus-bg);color:var(--minus);font:inherit;font-size:14px;font-weight:700;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+dialog.dlg-confirm{width:min(360px,calc(100vw - 32px));margin:auto;padding:20px;border:1px solid var(--line);border-radius:20px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+dialog.dlg-confirm::backdrop{background:rgba(0,0,0,.6)}
+dialog.dlg-confirm h2{margin:0 0 8px;font-size:17px}
+dialog.dlg-confirm p{margin:0 0 16px;font-size:14px;line-height:1.5;color:var(--ink-2)}
+.dlg-act{display:flex;gap:10px;justify-content:flex-end}
+.dlg-act .btn{min-height:44px}
 .side-brand{display:flex;align-items:center;gap:12px;padding:4px 4px 14px;min-width:0}
 .side-bt{flex:1;min-width:0;display:grid}
 .side-bt b{font-size:15px;font-weight:700;line-height:1.2}
@@ -411,7 +422,7 @@ details.box[open]>summary::after{transform:rotate(180deg)}
 
 /* ---------- layar sentuh dan cetak ---------- */
 @media (pointer:coarse){.chip,.chips button,.sortsel select,.rst{min-height:34px}.btn.sm{min-height:36px}}
-@media print{.side,.nav-scrim,.menu-btn,.btn,.chip,.top .hdr-btn{display:none}.top{background:none;color:#000;position:static;box-shadow:none}}
+@media print{dialog.dlg-confirm,.side,.nav-scrim,.menu-btn,.btn,.chip,.top .hdr-btn{display:none}.top{background:none;color:#000;position:static;box-shadow:none}}
 
 /* ---------- tambahan ---------- */
 .login-box form{display:grid;gap:12px}

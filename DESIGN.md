@@ -60,6 +60,8 @@ Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya 
 - **Tombol**: utama biru, `plain` biru muda, `danger` merah muda, `sm` bulat. Nonaktif = opacity .45.
 - **Kotak info**: `.banner` / `.notice` kuning, `.confirm` merah (konfirmasi inline), `.empty` untuk kosong (tulis apa yang harus dilakukan berikutnya).
 - **Toast**: pil gelap 24 px dari bawah layar, hilang sendiri 2,2 detik, dipakai untuk hasil tindakan singkat.
+- **Dasar sidebar `.side-foot`** (dibuat `nav.js`): menempel di dasar laci/sidebar (`position:sticky`, tetap terlihat walau menu panjang), garis atas `--line`, baris "Akun" 13 px dan tombol `.side-out` "Ganti akun / Keluar" (tinggi 44 px, latar `--minus-bg`, teks `--minus`). Tombol ini membuka dialog konfirmasi, tidak langsung keluar.
+- **Dialog konfirmasi `dialog.dlg-confirm`**: `<dialog>` asli (bukan `window.confirm`), judul "Keluar dari akun ini?", penjelasan, tombol `Batal` (fokus awal) dan `Keluar` (`.btn.danger`, id `logoutBtn` sehingga handler logout tiap halaman tetap satu-satunya yang menghapus kode dan salinan data). Esc dan ketuk latar = batal; fokus kembali ke tombol pemicu.
 - **Akordeon** `details.box`: ikon panah berputar 180° saat terbuka.
 - **Modal**: latar gelap .72, kotak radius 24, ditutup lewat tombol bulat atau ketuk di luar.
 

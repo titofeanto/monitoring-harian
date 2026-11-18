@@ -17,6 +17,8 @@
     sim: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
     target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12h.01"/>',
     user: '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 11l2 2 4-4"/>',
+    me: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    out: '<path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/>',
   };
   /* [kunci, label, ikon, halaman (untuk tombol tab) atau berkas tujuan] */
   const GROUPS = [
@@ -39,7 +41,30 @@
   nav.setAttribute('aria-label', 'Navigasi utama');
   nav.innerHTML = `<div class="side-brand"><span class="mark" aria-hidden="true">MH</span><div class="side-bt"><b>Monitoring Harian</b><small>KPI dan alat tim</small></div>` +
     `<button type="button" class="side-x" id="navClose" aria-label="Tutup menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>` +
-    GROUPS.map((g, gi) => `<div class="side-g" role="group" aria-labelledby="sg${gi}"><div class="side-gt" id="sg${gi}">${g.t}</div>${g.items.map(it => item(g, it)).join('')}</div>`).join('');
+    GROUPS.map((g, gi) => `<div class="side-g" role="group" aria-labelledby="sg${gi}"><div class="side-gt" id="sg${gi}">${g.t}</div>${g.items.map(it => item(g, it)).join('')}</div>`).join('') +
+    `<div class="side-foot"><div class="side-acc">${ico('me')}<span>Akun</span></div>` +
+    `<button type="button" class="side-out" id="sideLogout">${ico('out')}<span>Ganti akun / Keluar</span></button></div>`;
+
+  /* Dialog konfirmasi keluar. Tombol "Keluar" memakai id logoutBtn supaya handler logout tiap halaman (gs.js, app.js, stok.js, hadir.js)
+     tetap satu-satunya tempat yang menghapus kode dan salinan data; di sini dialog hanya ditutup lebih dulu. */
+  const dlg = document.createElement('dialog');
+  dlg.className = 'dlg-confirm'; dlg.id = 'logoutDlg';
+  dlg.setAttribute('aria-labelledby', 'logoutTtl');
+  dlg.innerHTML = '<h2 id="logoutTtl">Keluar dari akun ini?</h2>' +
+    '<p>Kode akses dan salinan data di HP ini akan dihapus. Anda perlu memasukkan kode lagi untuk masuk.</p>' +
+    '<div class="dlg-act"><button type="button" class="btn plain" id="logoutCancel">Batal</button><button type="button" class="btn danger" id="logoutBtn">Keluar</button></div>';
+  document.body.appendChild(dlg);
+  const outBtn = document.getElementById('sideLogout');
+  const closeDlg = () => { if (dlg.open) dlg.close(); outBtn.focus(); };
+  outBtn.addEventListener('click', () => {
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    document.getElementById('logoutCancel').focus();
+  });
+  document.getElementById('logoutCancel').addEventListener('click', closeDlg);
+  document.getElementById('logoutBtn').addEventListener('click', () => { if (dlg.open) dlg.close(); });
+  dlg.addEventListener('click', e => { if (e.target === dlg) closeDlg(); });
+  dlg.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeDlg(); } });
+  dlg.addEventListener('cancel', e => { e.preventDefault(); closeDlg(); });
 
   const menuBtn = document.getElementById('menuBtn');
   const scrim = document.createElement('div');
@@ -67,7 +92,7 @@
   document.getElementById('navClose').addEventListener('click', () => setOpen(false, true));
   nav.addEventListener('click', e => { if (e.target.closest('.side-i')) setOpen(false, true); });
   document.addEventListener('keydown', e => {
-    if (!open) return;
+    if (!open || dlg.open) return;
     if (e.key === 'Escape') { setOpen(false, true); return; }
     if (e.key === 'Tab') {   // fokus tetap di dalam laci
       const f = [...nav.querySelectorAll('button, a')].filter(x => !x.hidden && x.offsetParent !== null);
