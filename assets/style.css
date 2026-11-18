@@ -866,3 +866,10 @@ main .field+.field,main .field+.btn{margin-top:12px}
     var(--hs-bg)}
 .scroll{--hs-bg:var(--surface-2)}
 .hd-wrap{--hs-bg:var(--surface)}
+
+/* ---------- plan 029: judul kartu maksimal dua baris di HP; pil pindah ke baris sendiri bila sempit ---------- */
+@media (max-width:560px){
+  .card-head{flex-wrap:wrap;row-gap:6px}
+  .card-head .ch-t{flex:1 1 200px}
+  .card-head>.tag,.card-head>.lv{margin-left:38px}
+}
