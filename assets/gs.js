@@ -164,18 +164,34 @@
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   };
   const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
-  const ciTitle = (icon, title, extra) => `<h2><span class="ci">${svg(icon)}</span>${title}${extra || ''}</h2>`;
+  /* Header kartu biru (.card-head): ikon bulat, judul, subjudul kecil (hanya fakta yang sudah tampil), pil status di kanan. */
+  const ciTitle = (icon, title, extra, sub) => `<div class="card-head"><span class="ci">${svg(icon)}</span><div class="ch-t"><h2>${title}</h2>${sub ? `<p class="ch-s">${sub}</p>` : ''}</div>${extra || ''}</div>`;
+  const U = window.MHUtil;
+  /* Ikon status .st pada sel yang SUDAH punya klasifikasi okc/amb/neg dari data; sel tanpa kelas tidak diberi ikon. */
+  function decorate(el) {
+    if (!el) return;
+    el.querySelectorAll('.rk-s>div').forEach(d => {
+      if (d.querySelector('.st')) return;
+      const k = U.stOf(['okc', 'amb', 'neg'].find(c => d.classList.contains(c)) || '');
+      if (k) d.insertAdjacentHTML('beforeend', U.stIcon(k));
+    });
+  }
   const lvIcon = l => l === 'green' ? ['ok', 'check'] : l === 'amber' ? ['warn', 'warn'] : ['neg', 'down'];
 
   /* ---- daftar dengan cari, filter, jumlah: satu pola untuk FOP dan Perfect Store ---- */
   const LISTS = {};
   const LST = {};   // id -> {q, f}
+  const nameOfRow = r => r.outlet_nama || r.nama || r.sku_nama || '';
   function mountList(id, cfg) {
     LISTS[id] = cfg;
-    const st = LST[id] = LST[id] || { q: '', f: cfg.defaultF };
+    /* Urut: urutan awal (cfg.sort) + nama + pilihan khusus daftar; hanya mengurutkan baris yang sudah dimuat. */
+    cfg.sorts = [['', 'Prioritas (bawaan)', cfg.sort], ['nama', 'Nama A-Z', (a, b) => String(nameOfRow(a)).localeCompare(String(nameOfRow(b)), 'id')]].concat(cfg.more || []);
+    const st = LST[id] = LST[id] || { q: '', f: cfg.defaultF, s: '' };
+    if (!cfg.sorts.some(x => x[0] === st.s)) st.s = '';
     if (!cfg.chips.some(c => c[0] === st.f)) st.f = cfg.defaultF;
     return `<div class="tb" id="tb-${id}"><label class="sbox">${svg('search')}<input type="search" data-q="${id}" placeholder="${esc(cfg.ph || 'Cari nama toko atau distributor')}" autocomplete="off" value="${esc(st.q)}"><button type="button" class="clr" data-clr="${id}" aria-label="Hapus pencarian" ${st.q ? '' : 'hidden'}>${svg('x')}</button></label>` +
-      `<div class="chips" id="ch-${id}" role="group" aria-label="Filter"></div><div class="tb-meta"><span id="mt-${id}"></span></div></div><div id="ls-${id}"></div>`;
+      (cfg.st ? U.stLegend() : '') +
+      `<div class="chips" id="ch-${id}" role="group" aria-label="Filter"></div><div class="tb-meta"><span id="mt-${id}"></span><label class="sortsel">Urut: <select data-sort="${id}" aria-label="Urutkan daftar">${cfg.sorts.map(x => `<option value="${esc(x[0])}"${x[0] === st.s ? ' selected' : ''}>${esc(x[1])}</option>`).join('')}</select></label></div></div><div id="ls-${id}"></div>`;
   }
   function fillList(id) {
     const cfg = LISTS[id], st = LST[id]; if (!cfg || !$('ls-' + id)) return;
@@ -184,11 +200,12 @@
     const cnt = {}; cfg.chips.forEach(c => { cnt[c[0]] = base.filter(r => cfg.test(c[0], r)).length; });
     if (q && !cnt[st.f] && st.f !== cfg.defaultF) st.f = cfg.defaultF;
     $('ch-' + id).innerHTML = cfg.chips.map(c => `<button type="button" data-ch="${id}" data-f="${c[0]}" aria-pressed="${st.f === c[0]}"${cnt[c[0]] ? '' : ' class="z"'}>${esc(c[1])} <b>${nf(cnt[c[0]])}</b></button>`).join('');
-    const list = base.filter(r => cfg.test(st.f, r)).sort(cfg.sort);
+    const list = base.filter(r => cfg.test(st.f, r)).sort((cfg.sorts.find(x => x[0] === st.s) || cfg.sorts[0])[2]);
     $('mt-' + id).textContent = list.length === cfg.rows.length ? nf(cfg.rows.length) + ' ' + (cfg.unit || 'toko') : nf(list.length) + ' dari ' + nf(cfg.rows.length) + ' ' + (cfg.unit || 'toko');
     const shown = list.slice(0, st.limit || 60);
     $('ls-' + id).innerHTML = !cfg.rows.length ? `<div class="empty">${cfg.empty}</div>` : !list.length ? `<div class="empty">Tidak ada ${cfg.unit || 'toko'} yang cocok. <button type="button" class="lnk" data-reset="${id}">Hapus pencarian dan filter</button></div>`
-      : `<div class="rk-list">${shown.map(cfg.row).join('')}</div>` + (list.length > shown.length ? `<button type="button" class="btn plain more" data-more="${id}">Tampilkan lebih banyak (${nf(list.length - shown.length)} lagi)</button>` : '');
+      : `<div class="rk-list${cfg.listCls ? ' ' + cfg.listCls : ''}">${shown.map(cfg.row).join('')}</div>` + (list.length > shown.length ? `<button type="button" class="btn plain more" data-more="${id}">Tampilkan lebih banyak (${nf(list.length - shown.length)} lagi)</button>` : '');
+    if (cfg.st) decorate($('ls-' + id));
   }
 
   function render() {
@@ -208,17 +225,18 @@
     const gain = kp.reduce((s, k) => s + k.hilang, 0);
     const delta = prevRank == null || rank == null ? 'belum ada pembanding' : rank < prevRank ? `<span class="delta-up">▲ naik ${prevRank - rank} dari ${prevRank}</span>` : rank > prevRank ? `<span class="delta-down">▼ turun ${rank - prevRank} dari ${prevRank}</span>` : 'tetap';
     const pctScore = scoreShown == null ? 0 : Math.max(0, Math.min(100, scoreShown));
-    $('heroCard').innerHTML = `<div class="hero-h"><span class="hero-ico">${svg('trophy')}</span><span class="hero-k">Skor Great Sales</span><span class="hero-s">${tgl(live.tanggal)}</span></div>` +
+    $('heroCard').innerHTML = `<div class="card-head"><span class="ci">${svg('trophy')}</span><div class="ch-t"><h2>Skor Great Sales</h2><p class="ch-s">Data ${tgl(live.tanggal)}</p></div></div>` +
       `<div class="hero-units"><div><b>${rank == null ? '-' : rank}</b><span>Rank nasional</span>${wkTag}</div><div><b>${scoreShown == null ? '-' : scoreShown.toFixed(2).replace('.', ',')}</b><span>Score</span></div><div><b>${gain.toFixed(1).replace('.', ',')}</b><span>Poin dikejar</span></div></div>` +
       `<div class="bar"><i style="width:${pctScore}%"></i></div><div class="bar-meta"><span>${delta}</span><span>${live.recalculated ? (live.summary.mon ? 'PS, Assortment, FOP, Banded, %DR dihitung ulang' : 'PS dan Assortment dihitung ulang') : 'dari 100'}</span></div>`;
 
-    $('tKpi').innerHTML = kp.map(k => {
+    $('tKpi').innerHTML = U.stLegend() + kp.map(k => {
       const l = k.level, ic = lvIcon(l), v = k.target && k.aktual != null ? Math.max(0, Math.min(1, k.aktual / k.target)) : 0;
       const lost = k.hilang > 0.05;
       return `<div class="rk"><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span><div class="it-i"><div class="nm">${esc(k.label)}${k.weekly ? ' ' + wkTag : ''}</div><div class="sk">${esc(k.catatan)}</div></div><span class="tag ${l === 'green' ? 'g' : l === 'amber' ? 'a' : 'r'}">${lost ? '-' + k.hilang.toFixed(1) : '✓'}</span></div>` +
         `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${(v * 100).toFixed(0)}%"></i></div>` +
         `<div class="rk-s"><div class="${l === 'green' ? 'okc' : l === 'amber' ? 'amb' : 'neg'}"><small>Aktual</small><b>${pct(k.aktual)}</b></div><div><small>Target</small><b>${pct(k.target)}</b></div><div><small>Poin</small><b>${k.poin == null ? '-' : k.poin.toFixed(1)}<span class="muted" style="font-weight:600;font-size:11px"> / ${k.bobot}</span></b></div></div></div>`;
     }).join('');
+    decorate($('tKpi'));
 
     renderFop('secFopSpm', 'fopSpm', 'LOCAL SUPERMARKET', 'Weekly FOP Supermarket (SPM)', kp.find(k => k.kpi === 'FOP_SPM'));
     renderFop('secFopMinis', 'fopMinis', 'LOCAL MINIS', 'Weekly FOP Local Minis', kp.find(k => k.kpi === 'FOP_MINIS'));
@@ -289,7 +307,7 @@
       return items.length ? `<details class="box"><summary>Toko ${esc(c[2])} dengan base pack paling sedikit</summary><div class="rk-list" style="margin-top:10px">` +
         items.slice(0, 10).map(o => `<div class="rk"><div class="rk-h"><span class="si ${ref && o.lines >= ref ? 'ok' : 'neg'}">${svg(ref && o.lines >= ref ? 'check' : 'down')}</span><div class="it-i"><div class="nm">${esc(o.nama)}</div><div class="sk">${esc(o.dt)}</div></div><b class="num">${o.lines}${ref ? ` <span class="muted" style="font-weight:600;font-size:11px">/ ${nf1(ref)}</span>` : ''}</b></div></div>`).join('') + '</div></details>' : '';
     }).join('');
-    $('secAsrt').innerHTML = `<div class="card">${ciTitle('box', 'Assortment per channel')}` +
+    $('secAsrt').innerHTML = `<div class="card">${ciTitle('box', 'Assortment per channel', '', first.tanggalData ? 's.d. ' + esc(tgl(first.tanggalData)) : '')}` +
       `<p class="hint">Dari Extract DMS${first.tanggalData ? ' s.d. ' + esc(tgl(first.tanggalData)) : ''}. Satu line = satu base pack di satu toko, dihitung kalau qty bersih bulan ini minimal ${DATA.asrt.moq} pcs. Base pack yang sama di toko yang sama hanya dihitung sekali, jadi tambah assortment dengan menjual base pack baru. Acuan per toko = target dibagi toko terdaftar di Outlet Master.${noTarget ? ' Target belum diisi untuk sebagian channel, jadi persennya belum muncul.' : ''}</p>` +
       `<div class="kpis">${head}</div></div>` +
       (cards ? `<div class="card">${ciTitle('store', 'Per DT dan channel')}<div class="rk-list">${cards}</div></div>` : '') + low;
@@ -340,6 +358,7 @@
     const ic = o.risk === 'AMAN' ? ['ok', 'check'] : o.risk === 'BIASA' ? ['warn', 'warn'] : o.risk === 'KRITIS' ? ['neg', 'warn'] : ['neg', 'down'];
     return `<div class="rk"><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span>` +
       `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)} · ${esc(o.status || '-')}</div></div><span class="tag ${o.weekNow ? 'g' : 'r'}">${o.weekNow ? 'order mg ini' : 'belum mg ini'}</span></div>` +
+      `<div class="rk-s two"><div class="${riskTone(o.risk)}"><small>Order bulan ini</small><b>${o.orders}/${fopNeed()}</b><em>${esc(o.status || '-')}</em></div><div class="${o.weekNow ? 'okc' : 'neg'}"><small>Minggu ini</small><b>${o.weekNow ? 'Sudah' : 'Belum'}</b><em>order</em></div></div>` +
       weekStrip(o) + weekNote(o) + detailBtn(o.outlet_kode, o.g) + '</div>';
   }
   /** Ringkasan wajib di atas daftar: jumlah toko per risiko dan target sebulan. */
@@ -366,12 +385,13 @@
     if (!rows.length) { el.innerHTML = ciTitle('cal', esc(title)) + monNote() + '<div class="empty">Belum ada data toko. Upload daftar toko monitoring di tool upload.</div>'; return; }
     const done = rows.filter(o => o.status === 'WEEKLY').length, live = MON_G[channel] && monLive(), ms = live ? DATA.live.summary.mon : null;
     const hasRisk = rows.some(o => o.risk !== undefined), isSpm = channel === 'LOCAL SUPERMARKET';   // server lama: tampilan dan filter lama
-    el.innerHTML = ciTitle('cal', esc(title), (k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '') + (isSpm && live ? ` <span class="tag r">WAJIB ${fopNeed()}x</span>` : '')) +
+    el.innerHTML = ciTitle('cal', esc(title), (k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '') + (isSpm && live ? ` <span class="tag r">WAJIB ${fopNeed()}x</span>` : ''), done + ' dari ' + rows.length + ' toko sudah WEEKLY') +
       (live ? monNote() + `<p class="hint">${done} dari ${rows.length} toko monitoring sudah WEEKLY (order di ${fopNeed()} minggu atau lebih bulan ini). Dihitung dari Extract DMS sampai ${tgl(ms.tanggal)}, minggu ke-${ms.week}. Aturan: ${fopNeed()} minggu = WEEKLY, ${num(DATA.mon.cfg.fop_biweekly) || 2} = BIWEEKLY, 1 = MONTHLY.</p>`
         : `<p class="hint">${done} dari ${rows.length} toko aktif sudah WEEKLY di file. Sisanya perlu order ${fopNeed()}x bulan ini, mulai dari yang paling dekat.</p>`) +
       (hasRisk ? wajibBox(rows, isSpm) : '') +
       mountList(key, {
-        rows, empty: 'Belum ada toko.',
+        st: true, rows, empty: 'Belum ada toko.',
+        more: [['order', 'Order terbanyak', (a, b) => b.orders - a.orders || String(a.outlet_nama).localeCompare(b.outlet_nama)], ['orderlo', 'Order tersedikit', (a, b) => a.orders - b.orders || String(a.outlet_nama).localeCompare(b.outlet_nama)]],
         defaultF: hasRisk ? (rows.some(o => o.risk === 'KRITIS') ? 'kritis' : 'minggu') : 'belum',
         chips: hasRisk ? [['kritis', 'Kritis'], ['minggu', 'Belum order mg ini'], ['gagal', 'Tidak bisa WEEKLY'], ['weekly', 'WEEKLY'], ['semua', 'Semua']]
           : [['belum', 'Belum WEEKLY'], ['minggu', 'Belum order mg ini'], ['weekly', 'WEEKLY'], ['semua', 'Semua']],
@@ -401,13 +421,14 @@
     const missTxt = Object.keys(miss).sort((a, b) => miss[b] - miss[a]).map(m => `${m} (${miss[m]} toko)`).join(', ');
     const rows = st.map(o => Object.assign({}, o, { miss: psMissing(o) }));
     const comp = (o, p) => { const f = String(o[p[0]]); const sc = o['s_' + p[0]]; return `<div class="${f === '1' ? 'okc' : f === '0' ? 'neg' : ''}"><small>${p[1]}</small><b>${f === '1' ? '✓' : f === '0' ? '✗' : '–'}</b><em>${sc === '' || sc == null ? ' ' : Math.round(num(sc) * 100) + '%'}</em></div>`; };
-    $('secPs').innerHTML = `<div class="card">${ciTitle('store', 'Perfect Stores', k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '')}` +
+    $('secPs').innerHTML = `<div class="card">${ciTitle('store', 'Perfect Stores', k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '', 'Data ' + esc(tgl(sm.tanggal)))}` +
       `<p class="hint">Data ${esc(tgl(sm.tanggal))}, update mingguan. Status Full atau Lite mengikuti hasil HO di file.</p>` +
       `<div class="hero-units" style="margin-top:0;border-top:0;padding-top:0"><div><b>${sm.perfect}</b><span>Perfect</span></div><div><b>${sm.full} · ${sm.lite}</b><span>Full · Lite</span></div><div><b>${sm.target}</b><span>Target</span></div></div>` +
       `<div class="bar"><i style="width:${Math.min(100, v * 100).toFixed(0)}%"></i></div><div class="bar-meta"><span>${need ? `Kurang <b>${need}</b> toko lagi` : 'Target tercapai'}</span><b>${pct(v)}</b></div>` +
       `<p class="hint" style="margin-top:10px">Belum perfect paling sering kurang: ${esc(missTxt || '-')}.</p></div>` +
       (dtRows ? `<div class="card">${ciTitle('store', 'Per DT')}<div class="rk-list">${dtRows}</div></div>` : '') +
       `<div class="card">${ciTitle('store', 'Daftar toko')}` + mountList('ps', {
+        more: [['miss', 'Paling banyak kurang', (a, b) => b.miss.length - a.miss.length || String(a.outlet_nama).localeCompare(b.outlet_nama)]],
         rows, defaultF: 'belum', empty: 'Belum ada toko.',
         chips: [['belum', 'Belum perfect'], ['perfect', 'Perfect'], ...PS_PARTS.map(p => ['k' + p[0], 'Kurang ' + p[1]]), ['semua', 'Semua']],
         test: (f, o) => f === 'semua' || (f === 'belum' && !isPerfect(o)) || (f === 'perfect' && isPerfect(o)) || (f.startsWith('k') && f !== 'k' && !isPerfect(o) && String(o[f.slice(1)]) === '0'),
@@ -447,7 +468,7 @@
     const cfg = DATA.mon.cfg, ms = DATA.live.summary.mon;
     const names = {}; (DATA.mon.bandedSku || []).forEach(b => { names[b.sku_kode] = b.sku_nama; });
     const groups = [['SPM', 'Supermarket (SPM)', kSpm, num(cfg.banded_spm) || 0.8], ['MINIS', 'Local Minis', kMinis, num(cfg.banded_minis) || 0.7]];   // SPM dulu: channel wajib
-    $('secBanded').innerHTML = ciTitle('box', 'Banded') + monNote() +
+    $('secBanded').innerHTML = ciTitle('box', 'Banded', '', 'EVB ' + esc(ms.qLabel)) + monNote() +
       `<p class="hint">EVB ${esc(ms.qLabel)}: toko tercapai kalau SKU banded channel-nya yang pernah dibeli sepanjang kuartal ini minimal ${Math.round((num(cfg.banded_spm) || 0.8) * 100)}% (Supermarket) atau ${Math.round((num(cfg.banded_minis) || 0.7) * 100)}% (Local Minis). Bulan yang terhitung: ${esc(ms.qMonths.map(bulanLbl).join(', '))}; bulan lalu diambil dari rekap yang tersimpan, bulan berjalan dari Extract DMS sampai ${tgl(ms.tanggal)}. Hanya toko ber-REMARK monitoring. Ini hitungan sendiri, bukan angka HO.</p>` +
       groups.map(g => `<div class="card" style="margin-top:10px"><h3 style="margin:0 0 6px">${esc(g[1])} ${g[2] ? `<span class="lv ${g[2].level}">${pct(g[2].aktual)} / target ${pct(g[2].target)}</span>` : ''}</h3><div id="bd-${g[0]}"></div></div>`).join('');
     BND = {};
@@ -468,7 +489,7 @@
       const summary = `<div class="hero-units"><div><b>${hit}/${rows.length}</b><span>Tercapai</span></div><div><b>${minSku}<small class="muted" style="font-weight:600;font-size:12px"> dari ${tot}</small></b><span>Ambang SKU</span></div><div><b>${rows.length - hit}</b><span>Kurang toko</span></div></div>` +
         `<div class="bar"><i style="width:${pctHit}%"></i></div><div class="bar-meta"><span>EVB ${esc(ms.qLabel)}</span><span>${pctHit}% toko tercapai</span></div>`;
       const skuList = () => mountList('bsku' + ch, {
-        rows: skus, defaultF: 'kurang', empty: 'Belum ada SKU banded.', unit: 'SKU', ph: 'Cari nama atau kode SKU',
+        st: true, more: [['sudah', 'Paling banyak sudah', (a, b) => b.bought - a.bought || (a.sku_kode < b.sku_kode ? -1 : 1)]], rows: skus, defaultF: 'kurang', empty: 'Belum ada SKU banded.', unit: 'SKU', ph: 'Cari nama atau kode SKU',
         chips: [['kurang', 'Paling banyak belum'], ['semua', 'Semua SKU']],
         test: (f, b) => f === 'semua' || b.bought < b.total,
         hay: b => (b.sku_nama + ' ' + b.sku_kode).toLowerCase(),
@@ -484,6 +505,7 @@
         },
       });
       const tokoList = () => mountList('bnd' + ch, {
+        st: true, more: [['sku', 'SKU terbanyak sudah', (a, b) => b.bBought - a.bBought || String(a.outlet_nama).localeCompare(b.outlet_nama)], ['kurang', 'Kurang SKU terbanyak', (a, b) => need(b) - need(a) || String(a.outlet_nama).localeCompare(b.outlet_nama)]],
         rows, defaultF: 'belum', empty: 'Belum ada toko.',
         chips: [['belum', 'Belum tercapai'], ['dekat', 'Tinggal 1-2 SKU'], ['hit', 'Tercapai'], ['semua', 'Semua']],
         test: (f, o) => f === 'semua' || (f === 'belum' && !o.bHit) || (f === 'hit' && !!o.bHit) || (f === 'dekat' && !o.bHit && need(o) <= 2),
@@ -495,7 +517,7 @@
           return `<div class="rk"><div class="rk-h"><span class="si ${ok ? 'ok' : near ? 'warn' : 'neg'}">${svg(ok ? 'check' : near ? 'warn' : 'down')}</span>` +
             `<div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)} · ${esc(o.remark)}</div></div><span class="tag ${ok ? 'g' : near ? 'a' : 'r'}">${ok ? 'Tercapai' : 'Kurang ' + need(o) + ' SKU'}</span></div>` +
             `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${(v * 100).toFixed(0)}%"></i></div>` +
-            `<div class="bar-meta"><span>${o.bBought} dari ${minSku} SKU</span><span>Bulan ini ${o.bMonth} · ${o.bShare == null ? '-' : Math.round(o.bShare * 100) + '%'}</span></div>` + detailBtn(o.outlet_kode, ch) +
+            `<div class="rk-s two"><div class="${ok ? 'okc' : near ? 'amb' : 'neg'}"><small>SKU sudah dibeli</small><b>${o.bBought} / ${minSku}</b><em>${ok ? 'tercapai' : 'kurang ' + need(o) + ' SKU'}</em></div><div><small>Bulan ini</small><b>${o.bMonth}</b><em>${o.bShare == null ? '-' : Math.round(o.bShare * 100) + '% dari SKU'}</em></div></div>` + detailBtn(o.outlet_kode, ch) +
             (miss.length ? `<div class="skc">${miss.slice(0, 3).map(k => `<span title="${esc(k)}">${esc(names[k] || k)}</span>`).join('')}${miss.length > 3 ? `<button type="button" data-skmore="1">+${miss.length - 3}</button>` : ''}</div>` +
               `<details class="box skm" style="margin-top:8px"><summary><span>Belum dibeli (${miss.length} SKU)</span></summary><ul class="sku-list">${miss.map(k => `<li>${esc(k)} ${esc(names[k] || '')}</li>`).join('')}</ul></details>` : '') + '</div>';
         },
@@ -552,9 +574,10 @@
   function renderToko() {
     const el = $('secToko'); if (!el) return;
     STORES = tokoCards();
-    el.innerHTML = ciTitle('store', 'Toko monitoring') + (monLive() ? monNote() : '') +
+    el.innerHTML = ciTitle('store', 'Toko monitoring', '', nf(STORES.length) + ' toko') + (monLive() ? monNote() : '') +
       '<p class="hint">Semua toko monitoring SPM dan Minis dalam satu daftar: order mingguan, Banded, dan Perfect Store. Ketuk toko untuk melihat detailnya.</p>' +
       mountList('toko', {
+        st: true, more: [['order', 'Order terbanyak', (a, b) => b.fop.weeks - a.fop.weeks || String(a.nama).localeCompare(b.nama)], ['banded', 'Banded terbanyak', (a, b) => b.banded.bBought - a.banded.bBought || String(a.nama).localeCompare(b.nama)]],
         rows: STORES, empty: 'Belum ada data toko monitoring. Upload daftar toko dan Extract DMS di tool upload.',
         defaultF: 'perlu',
         chips: [['perlu', 'Perlu tindakan'], ['spm', 'SPM'], ['minis', 'Minis'], ['semua', 'Semua']],
@@ -576,6 +599,9 @@
     return { bu: bu, ranked: ranked, low: low, top: ranked.length ? ranked[0].nilai : 0 };
   }
   const rkValue = r => RK.kpi === 'asrt' ? nf1(r.nilai) + ' lines/toko' : pct(r.nilai);
+  const rkVal = r => RK.kpi === 'asrt' ? nf1(r.nilai) + '<small>lines/toko</small>' : pct(r.nilai);
+  /** Keterangan kecil di bawah nama: angka yang sudah ada di DATA.ranking. */
+  const rkSub = r => RK.kpi === 'fop' ? nf(r.weekly) + ' dari ' + nf(r.n) + ' toko WEEKLY' : RK.kpi === 'banded' ? nf(r.hit) + ' dari ' + nf(r.n) + ' toko tercapai' : nf(r.toko) + ' dari ' + nf(r.n) + ' toko aktif';
   /** Dua angka pendukung per baris; label dan angka apa adanya dari server. */
   function rkStats(r) {
     const cell = (l, v, cls) => `<div${cls ? ` class="${cls}"` : ''}><small>${l}</small><b>${v}</b></div>`;
@@ -583,21 +609,22 @@
     if (RK.kpi === 'banded') return cell('Tercapai', r.hit + '/' + r.n) + cell('Toko', nf(r.n));
     return cell('Lines', nf(r.lines)) + cell('Toko aktif', nf(r.toko));
   }
-  const rkTone = n => n === 1 ? 'ok' : n === 2 ? 'warn' : n === 3 ? 'plus' : 'off';
+  /** Lencana medali untuk peringkat 1-3 (emas, perak, perunggu). */
+  const medal = n => `<svg class="medal g${n}" viewBox="0 0 34 34" role="img" aria-label="Peringkat ${n}"><path class="m-rb" d="M9 1h7l2 9h-7zM25 1h-7l-2 9h7z"/><circle class="m-bg" cx="17" cy="21" r="12"/><text x="17" y="25.5">${n}</text></svg>`;
   function rkRow(r, top) {
-    const w = top > 0 ? Math.max(2, Math.min(100, r.nilai / top * 100)) : 0;
-    return `<div class="rk"><div class="rk-h"><span class="si rkn ${rkTone(r.rank)}" aria-label="Peringkat ${r.rank}">${r.rank}</span><div class="it-i"><div class="nm">${esc(r.nama)}</div><div class="sk">${esc(r.dt_nama)} · ${nf(r.n)} toko</div></div><span class="tag b lg">${rkValue(r)}</span></div>` +
+    const w = top > 0 ? Math.max(2, Math.min(100, r.nilai / top * 100)) : 0, pod = r.ord < 3 && r.rank <= 3;   // tiga baris teratas; seri tetap memakai nomor peringkat dari server
+    return `<div class="rk${pod ? ' pod' : ''}"><div class="rk-h">${pod ? medal(r.rank) : `<span class="si rkn off" aria-label="Peringkat ${r.rank}">${r.rank}</span>`}<div class="it-i"><div class="nm">${esc(r.nama)}</div><div class="sk">${esc(r.dt_nama)} · ${rkSub(r)}</div></div><span class="rk-val">${rkVal(r)}</span></div>` +
       `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${w.toFixed(0)}%"></i></div><div class="rk-s two">${rkStats(r)}</div></div>`;
   }
   function rkLowRow(r) {
-    return `<div class="rk"><div class="rk-h"><span class="si rkn off" aria-hidden="true">–</span><div class="it-i"><div class="nm">${esc(r.nama)}</div><div class="sk">${esc(r.dt_nama)} · ${nf(r.n)} toko</div></div><span class="tag b lg">${rkValue(r)}</span></div></div>`;
+    return `<div class="rk"><div class="rk-h"><span class="si rkn off" aria-hidden="true">–</span><div class="it-i"><div class="nm">${esc(r.nama)}</div><div class="sk">${esc(r.dt_nama)} · ${nf(r.n)} toko</div></div><span class="rk-val">${rkVal(r)}</span></div></div>`;
   }
   function renderRanking() {
     const el = $('secRanking'), rk = DATA.ranking; if (!el) return;
     const navBtn = document.querySelector('#tabsNav [data-tab="ranking"]');
     if (navBtn) navBtn.hidden = !rk;    // server lama tanpa ranking: tab disembunyikan
     if (!rk) { if (!$('tab-ranking').hidden) setTab('skor'); el.innerHTML = ''; return; }
-    const title = ciTitle('trophy', 'Ranking sales');
+    const title = ciTitle('trophy', 'Ranking sales', '', 'Data DMS s.d. ' + esc(tgl(rk.tanggalData)));
     const buKeys = Object.keys(rkBus());
     if (!buKeys.length) { el.innerHTML = title + '<div class="empty">Belum ada data ranking. Upload Extract DMS dan daftar toko monitoring di tool upload.</div>'; return; }
     const bd = rkBoard(), bus = rkBus();
@@ -609,20 +636,22 @@
     const failed = (rk.perDt || []).filter(d => d.status === 'error').map(d => d.dist_nama);
     if (failed.length) notes.push('Ranking belum bisa dihitung untuk ' + failed.join(', ') + '.');
     const what = RK.kpi === 'fop' ? 'Persen toko yang WEEKLY (order di ' + (DATA.mon && DATA.mon.cfg ? fopNeed() : 3) + ' minggu atau lebih bulan ini).' : RK.kpi === 'banded' ? 'Persen toko yang tercapai Banded kuartal ini, hanya SKU banded BU ini.' : 'Rata-rata lines (base pack) per toko aktif di BU ini, minimal ' + ((DATA.asrt && DATA.asrt.moq) || 3) + ' pcs per base pack.';
-    el.innerHTML = title + `<p class="hint">Peringkat salesman per BU, dari toko yang dilayani bulan ini. Dihitung dari Extract DMS sampai ${esc(tgl(rk.tanggalData))}. ${what} Minimal ${nf(rk.minToko)} toko untuk dapat peringkat.</p>` +
-      `<div class="chips" id="rkBu" role="group" aria-label="Pilih BU">${buChips}</div><div class="chips" id="rkKpi" role="group" aria-label="Pilih KPI" style="margin-top:8px">${kpiChips}</div>` +
-      (notes.length ? `<div class="notice" style="margin-top:10px">${notes.map(esc).join('<br>')}</div>` : '') +
-      '<div style="margin-top:10px">' + mountList('rk', {
-        rows: bd.ranked, ph: 'Cari nama atau kode salesman', unit: 'salesman', empty: 'Belum ada salesman yang cukup toko untuk diberi peringkat di KPI ini.',
+    el.innerHTML = title + '<div class="rk-layout"><div class="rk-side">' +
+      `<p class="hint" style="margin:0">Peringkat salesman per BU, dari toko yang dilayani bulan ini. Dihitung dari Extract DMS sampai ${esc(tgl(rk.tanggalData))}. ${what} Minimal ${nf(rk.minToko)} toko untuk dapat peringkat.</p>` +
+      `<div class="chips" id="rkBu" role="group" aria-label="Pilih BU">${buChips}</div><div class="chips" id="rkKpi" role="group" aria-label="Pilih KPI">${kpiChips}</div>` +
+      (notes.length ? `<div class="notice">${notes.map(esc).join('<br>')}</div>` : '') +
+      (bd.low.length ? `<details class="box"><summary><span>Belum cukup toko (kurang dari ${nf(rk.minToko)}) · ${nf(bd.low.length)}</span></summary><div class="rk-list" style="margin-top:10px">${bd.low.slice(0, 60).map(rkLowRow).join('')}</div>` +
+        (bd.low.length > 60 ? `<p class="hint" style="margin-top:8px">Menampilkan 60 dari ${nf(bd.low.length)}.</p>` : '') + '</details>' : '') +
+      `<div class="row"><button type="button" class="btn main ic" data-rkwa>Kirim ke WhatsApp</button><button type="button" class="btn plain ic" data-rkcopy>Salin teks</button></div></div>` +
+      '<div class="rk-panel">' + mountList('rk', {
+        rows: bd.ranked, ph: 'Cari nama atau kode salesman', unit: 'salesman', empty: 'Belum ada salesman yang cukup toko untuk diberi peringkat di KPI ini.', listCls: 'rkn-list',
         defaultF: 'semua', chips: [['semua', 'Semua'], ['top', '10 teratas']],
         test: (f, r) => f === 'semua' || r.rank <= 10,
         hay: r => (r.nama + ' ' + r.kode + ' ' + r.dt_nama).toLowerCase(),
         sort: (a, b) => a.ord - b.ord,
+        more: [['nilai', 'Nilai terendah', (a, b) => a.nilai - b.nilai || a.ord - b.ord]],
         row: r => rkRow(r, bd.top),
-      }) + '</div>' +
-      (bd.low.length ? `<details class="box" style="margin-top:10px"><summary><span>Belum cukup toko (kurang dari ${nf(rk.minToko)}) · ${nf(bd.low.length)}</span></summary><div class="rk-list" style="margin-top:10px">${bd.low.slice(0, 60).map(rkLowRow).join('')}</div>` +
-        (bd.low.length > 60 ? `<p class="hint" style="margin-top:8px">Menampilkan 60 dari ${nf(bd.low.length)}.</p>` : '') + '</details>' : '') +
-      `<div class="row" style="margin-top:12px"><button type="button" class="btn ic" data-rkwa>Kirim ke WhatsApp</button><button type="button" class="btn plain ic" data-rkcopy>Salin teks</button></div>`;
+      }) + '</div></div>';
   }
   /** Teks 5 teratas BU dan KPI yang sedang dibuka, untuk grup WhatsApp. */
   function rankText() {
@@ -761,6 +790,7 @@
   }
   $('tabsNav').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
   document.addEventListener('input', e => { const id = e.target.getAttribute && e.target.getAttribute('data-q'); if (!id) return; LST[id].q = e.target.value; LST[id].limit = 60; $('tb-' + id).querySelector('.clr').hidden = !e.target.value; fillList(id); });
+  document.addEventListener('change', e => { const id = e.target.getAttribute && e.target.getAttribute('data-sort'); if (!id) return; LST[id].s = e.target.value; LST[id].limit = 60; fillList(id); });
   document.addEventListener('click', e => {
     const st = e.target.closest('[data-store]'); if (st) { openStore(st.dataset.store, st.dataset.g); return; }
     const c = e.target.closest('[data-ch]'); if (c) { LST[c.dataset.ch].f = c.dataset.f; LST[c.dataset.ch].limit = 60; fillList(c.dataset.ch); return; }

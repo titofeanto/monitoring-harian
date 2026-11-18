@@ -14,7 +14,7 @@
   const jam = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + '.' + String(d.getMinutes()).padStart(2, '0'); };
 
   let DATA = null, CODE = '', DT = '', ITEMS = [], HASJUAL = false, CNT = {}, JREC = {}, JL = -1, JB = 0;
-  const S = { mode: 'harga', f: 'naik', ana: 'semua', win: '13', dem: 'total', q: '', brand: '', only: true, shown: CFG.page };
+  const S = { mode: 'harga', f: 'naik', ana: 'semua', win: '13', dem: 'total', q: '', brand: '', only: true, sort: 'def', shown: CFG.page };
   const fmt1 = n => (Math.round(n * 10) / 10).toString().replace('.', ',');
   /* urutan = prioritas order: habis dan kritis dulu */
   const ANA = { habis: ['Habis', 'r', 0], kritis: ['Kritis', 'r', 1], menipis: ['Menipis', 'a', 2], tidakada: ['Tidak ada di laporan', '', 3], slow: ['Tanpa penjualan', 'b', 4], aman: ['Aman', 'g', 5] };
@@ -202,7 +202,14 @@
       '<div class="cs-cov"><span class="tag ' + a[1] + '">' + a[0] + '</span></div></article>';
   }
 
+  /* Urutan pilihan pengguna: hanya mengurutkan ulang daftar yang sudah dihitung; 'def' = urutan bawaan tiap mode. */
   function filtered() {
+    const r = filtered0();
+    const by = { nama: (a, b) => String(a.nama).localeCompare(String(b.nama), 'id'), stokhi: (a, b) => (b.tot || 0) - (a.tot || 0), stoklo: (a, b) => (a.tot || 0) - (b.tot || 0),
+      naik: (a, b) => (b.pct || 0) - (a.pct || 0), cover: (a, b) => (a.cover == null ? 1e9 : a.cover) - (b.cover == null ? 1e9 : b.cover) }[S.sort];
+    return by ? r.slice().sort((a, b) => by(a, b) || String(a.nama).localeCompare(String(b.nama), 'id')) : r;
+  }
+  function filtered0() {
     const q = S.q.trim().toLowerCase();
     const qb = /^\d{6,}$/.test(q) ? bcKey(q) : null;
     if (S.mode === 'HM') return hmFiltered();
@@ -291,6 +298,7 @@
       $('csDemC').textContent = 'Khusus ' + S.mode;
     }
     $('csCount').textContent = r.length + ' produk' + (S.q ? ' untuk "' + S.q + '"' : '');
+    if ($('csHeadSub')) $('csHeadSub').textContent = $('csCount').textContent;
     $('csList').innerHTML = r.length ? r.slice(0, S.shown).map(hm ? cardHm : ana ? cardAna : card).join('') : '<div class="card empty">' + (ana && !hm && !S.q && !pool().length ? 'Belum ada daftar SKU ' + S.mode + '.' : 'Produk tidak ditemukan.') + '</div>';
     $('csMore').hidden = r.length <= S.shown;
     $('csExport').disabled = !r.length;
@@ -447,6 +455,7 @@
   $('csQ').addEventListener('input', e => { clearTimeout(t); t = setTimeout(() => { S.q = e.target.value; S.shown = CFG.page; render(); }, 150); });
   $('csQ').addEventListener('keydown', e => { if (e.key === 'Enter') { S.q = e.target.value; S.shown = CFG.page; render(); e.target.select(); } }); // scanner USB/Bluetooth
   $('csBrand').addEventListener('change', e => { S.brand = e.target.value; S.shown = CFG.page; render(); });
+  $('csSort').addEventListener('change', e => { S.sort = e.target.value; S.shown = CFG.page; render(); });
   $('csOnly').addEventListener('change', e => { S.only = e.target.checked; S.shown = CFG.page; render(); });
   $('csMode').addEventListener('click', e => {
     const b = e.target.closest('[data-m]'); if (!b) return;

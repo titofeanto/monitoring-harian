@@ -12,8 +12,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Monitoring">
 <title>Monitoring Harian</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=202611031000">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css?v=202611181000">
 <script src="assets/boot.js?v=202611031000"></script>
 </head>
 <body>
@@ -95,7 +95,9 @@
     <!-- RINGKASAN -->
     <section class="tab" id="p-ring" role="tabpanel" aria-labelledby="tab-ring">
       <div class="card">
-        <h2 id="ovTitle"><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span><span id="ovTitleTxt">Semua DSR</span></h2>
+        <div class="card-head"><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span><div class="ch-t"><h2 id="ovTitle"><span id="ovTitleTxt">Semua DSR</span></h2></div></div>
+        <div id="ovLegend"></div>
+        <div class="tb-meta"><span></span><label class="sortsel">Urut: <select data-sortlist="tOverview" aria-label="Urutkan daftar"><option value="">Bawaan</option><option value="nama">Nama A-Z</option><option value="ssh">SS tertinggi</option><option value="ssl">SS terendah</option><option value="asl">Assortment terendah</option><option value="ecol">ECO terendah</option></select></label></div>
         <div class="rk-list" id="tOverview"></div>
       </div>
       <button type="button" id="ringIssuesBtn" class="issues-btn" hidden></button>
@@ -106,7 +108,7 @@
     <section class="tab" id="p-sim" role="tabpanel" aria-labelledby="tab-sim" hidden>
       <div class="kpis" id="simKpis"></div>
       <div class="card">
-        <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></span>Simulator</h2>
+        <div class="card-head"><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></span><div class="ch-t"><h2>Simulator</h2></div></div>
         <p class="hint">Geser untuk mencoba, atau pakai tombol "Coba" di tab Peluang. Ini perkiraan di atas pencapaian sekarang.</p>
         <div id="simControls"></div>
       </div>
@@ -116,17 +118,17 @@
     <!-- LOW HANGING FRUIT -->
     <section class="tab" id="p-fruit" role="tabpanel" aria-labelledby="tab-fruit" hidden>
       <div class="card">
-        <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12h.01"/></svg></span>Langkah termurah</h2>
+        <div class="card-head"><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12h.01"/></svg></span><div class="ch-t"><h2>Langkah termurah</h2></div></div>
         <p class="hint">Menuju insentif lebih besar, diurutkan dari tambahan insentif per 1% target, paling murah dulu.</p>
         <div id="steps"></div>
       </div>
       <div class="card">
-        <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>SKU yang nyaris capai</h2>
+        <div class="card-head"><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><div class="ch-t"><h2>SKU yang nyaris capai</h2></div></div>
         <p class="hint">SKU Fokus, NPD Regular, dan NPD Thematic yang tinggal sedikit lagi. Centang untuk memasukkannya ke simulator.</p>
         <div class="scroll"><table id="tLines"></table></div>
       </div>
       <div class="card">
-        <h2><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>Toko PJP belum transaksi</h2>
+        <div class="card-head"><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><div class="ch-t"><h2>Toko PJP belum transaksi</h2></div></div>
         <div class="tb" id="belumTb" hidden>
           <label class="sbox"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input type="search" id="belumQ" placeholder="Cari nama toko atau channel" autocomplete="off"><button type="button" class="clr" id="belumClr" aria-label="Hapus pencarian" hidden><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></label>
           <div class="tb-meta"><span id="belumMeta"></span></div>
@@ -141,7 +143,7 @@
       <p class="hint" id="loginAs">Masuk dengan kode akses tim</p>
       <div data-install hidden style="margin-bottom:10px"></div>
       <div class="row">
-        <button type="button" class="btn" id="saveHasilBtn" hidden>Simpan hasil ke Sheet</button>
+        <button type="button" class="btn main" id="saveHasilBtn" hidden>Simpan hasil ke Sheet</button>
         <button type="button" class="btn danger" id="logoutBtn">Ganti / Keluar</button>
       </div>
       <p class="hint" id="saveHasilMsg" style="margin:10px 0 0" hidden></p>
@@ -164,9 +166,9 @@
 
 <script src="assets/config.js?v=202610311000"></script>
 <script src="assets/pwa.js?v=1"></script>
-<script src="assets/util.js?v=1"></script>
+<script src="assets/util.js?v=2"></script>
 <script src="assets/status-banner.js?v=3"></script>
 <script src="assets/fresh.js?v=202611172000"></script>
-<script src="assets/app.js?v=202611172000"></script>
+<script src="assets/app.js?v=202611181000"></script>
 </body>
 </html>

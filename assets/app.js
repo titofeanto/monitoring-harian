@@ -731,7 +731,7 @@ if (typeof module !== 'undefined') {
     return html.split(/(?=<h2)/).filter(Boolean).map(chunk => {
       if (!chunk.startsWith('<h2')) return chunk;
       const title = (chunk.match(/<h2[^>]*>([\s\S]*?)<\/h2>/) || [, ''])[1].replace(/<[^>]+>/g, '');
-      return '<section class="card">' + chunk.replace(/<h2[^>]*>/, m => m + '<span class="ci">' + svg(pick(title)) + '</span>') + '</section>';
+      return '<section class="card">' + chunk.replace(/<h2[^>]*>([\s\S]*?)<\/h2>/, (m, t) => '<div class="card-head"><span class="ci">' + svg(pick(title)) + '</span><div class="ch-t"><h2>' + t + '</h2></div></div>') + '</section>';
     }).join('');
   }
   const tone = v => !isFinite(v) ? '' : v >= 1 ? 'okc' : v >= 0.8 ? 'amb' : 'neg';
@@ -739,10 +739,32 @@ if (typeof module !== 'undefined') {
   function dsrCard(o) {
     const ic = o.band === 'GREEN' ? ['ok', 'check'] : o.band === 'AMBER' ? ['warn', 'warn'] : o.band === 'RED' ? ['neg', 'down'] : ['plus', 'chart'];
     const tag = o.band ? `<span class="tag ${o.band === 'GREEN' ? 'g' : o.band === 'AMBER' ? 'a' : 'r'}">${o.band}</span>` : (o.tagHtml || '');
-    const cell = (label, v, sub) => `<div class="${tone(v)}"><small>${label}</small><b>${pct(v)}</b><em>${sub || ' '}</em></div>`;
-    return `<div class="rk${o.cur ? ' is-cur' : ''}"${o.attr || ''}><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span><div class="it-i"><div class="nm">${M.esc(o.nama)}</div><div class="sk">${o.sub}</div></div>${tag}</div>
+    const cell = (label, v, sub) => `<div class="${tone(v)}"><small>${label}</small><b>${pct(v)}</b><em>${sub || ' '}</em>${window.MHUtil.stIcon(window.MHUtil.stOf(tone(v)))}</div>`;
+    const sk = ` data-nm="${M.esc(String(o.nama).toLowerCase())}" data-ss="${isFinite(o.ss) ? o.ss : ''}" data-as="${isFinite(o.as) ? o.as : ''}" data-eco="${isFinite(o.eco) ? o.eco : ''}"${o.pin ? ' data-pin="1"' : ''}`;
+    return `<div class="rk${o.cur ? ' is-cur' : ''}"${sk}${o.attr || ''}><div class="rk-h"><span class="si ${ic[0]}">${svg(ic[1])}</span><div class="it-i"><div class="nm">${M.esc(o.nama)}</div><div class="sk">${o.sub}</div></div>${tag}</div>
       <div class="rk-s">${cell('SS', o.ss, o.ssSub)}${cell('Assortment', o.as, o.asSub)}${cell('ECO', o.eco, o.ecoSub)}</div></div>`;
   }
+
+  /* Urut: di atas daftar kartu DSR/DT. Hanya mengurutkan ulang kartu yang sudah ada di layar (angka tidak dihitung ulang);
+     kartu total (data-pin) tetap di bawah, "Bawaan" mengembalikan urutan awal. */
+  const SORTS = { '': null, nama: ['nm', 1], ssh: ['ss', -1], ssl: ['ss', 1], asl: ['as', 1], ecol: ['eco', 1] };
+  const sortBar = id => `<div class="tb-meta"><span></span><label class="sortsel">Urut: <select data-sortlist="${id}" aria-label="Urutkan daftar"><option value="">Bawaan</option><option value="nama">Nama A-Z</option><option value="ssh">SS tertinggi</option><option value="ssl">SS terendah</option><option value="asl">Assortment terendah</option><option value="ecol">ECO terendah</option></select></label></div>`;
+  function applySort(list) {
+    if (!list) return;
+    const sel = document.querySelector(`select[data-sortlist="${list.id}"]`), sp = SORTS[sel ? sel.value : ''];
+    const cards = [...list.children].filter(c => c.classList.contains('rk'));
+    cards.forEach((c, i) => { if (c.dataset.o == null) c.dataset.o = i; });
+    const body = cards.filter(c => !c.dataset.pin), pinned = cards.filter(c => c.dataset.pin);
+    body.sort((a, b) => {
+      if (!sp) return a.dataset.o - b.dataset.o;
+      const x = a.dataset[sp[0]], y = b.dataset[sp[0]];
+      const c = sp[0] === 'nm' ? x.localeCompare(y, 'id') : ((x === '') - (y === '') || sp[1] * (parseFloat(x) - parseFloat(y)));
+      return c || a.dataset.o - b.dataset.o;
+    });
+    body.concat(pinned).forEach(c => list.appendChild(c));
+  }
+  document.addEventListener('change', e => { const sel = e.target.closest && e.target.closest('select[data-sortlist]'); if (sel) applySort($(sel.dataset.sortlist)); });
+  $('ovLegend').innerHTML = window.MHUtil.stLegend();
 
   function setBig(t) { const e = $('greetBig'); e.textContent = t; e.dataset.len = t.length > 26 ? 'xl' : t.length > 15 ? 'l' : ''; }
   function renderHeaderAll() {
@@ -781,7 +803,8 @@ if (typeof module !== 'undefined') {
         : dsrCard({ nama: r.d.nama, attr: ` data-dt="${r.i}" role="button" tabindex="0"`,
             sub: `${r.nDsr} DSR · timegone ${pct(r.tf)} · ${M.rpFull(r.inc)}${r.warn ? ' · ada data perlu dicek' : ''}`,
             tagHtml: band(r), ss: ach(r.ssA, r.ssT), ssSub: rp(r.ssA), as: ach(r.asA, r.asT), asSub: idn1.format(r.asA) + '/' + idn1.format(r.asT), eco: ach(r.ecoT, r.ecoP), ecoSub: r.ecoT + '/' + r.ecoP })).join('')
-      + dsrCard({ nama: 'Total semua DT', cur: true, sub: `${T.nDsr} DSR · insentif ${M.rpFull(T.inc)}`, ss: ach(T.ssA, T.ssT), ssSub: rp(T.ssA), as: ach(T.asA, T.asT), asSub: idn1.format(T.asA) + '/' + idn1.format(T.asT), eco: ach(T.ecoT, T.ecoP), ecoSub: T.ecoT + '/' + T.ecoP });
+      + dsrCard({ nama: 'Total semua DT', cur: true, pin: true, sub: `${T.nDsr} DSR · insentif ${M.rpFull(T.inc)}`, ss: ach(T.ssA, T.ssT), ssSub: rp(T.ssA), as: ach(T.asA, T.asT), asSub: idn1.format(T.asA) + '/' + idn1.format(T.asT), eco: ach(T.ecoT, T.ecoP), ecoSub: T.ecoT + '/' + T.ecoP });
+    applySort($('tOverview'));
     document.querySelectorAll('#tOverview [data-dt]').forEach(b => { const go = () => document.querySelector(`#dtChips .chip[data-k="${b.dataset.dt}"]`).click(); b.onclick = go; b.onkeydown = e => { if (e.key === 'Enter') go(); }; });
 
     const W = rows.filter(r => r.err || r.warn);
@@ -794,7 +817,8 @@ if (typeof module !== 'undefined') {
         <div class="kpi"><div class="l">Capaian SS</div><div class="v">${pct(ach(T.ssA, T.ssT))}</div><div class="s">Kurang ${rp(Math.max(0, T.ssT - T.ssA))}</div></div>
         <div class="kpi"><div class="l">Insentif total</div><div class="v">${rp(T.inc)}</div><div class="s">${T.nDsr} DSR</div></div></div>`
       + wrapCards(omsetHarianAllDt(ok))
-      + `<section class="card"><h2><span class="ci">${svg('chart')}</span>Semua DSR</h2><div class="rk-list">${allCards.join('')}</div></section>`;
+      + `<section class="card"><div class="card-head"><span class="ci">${svg('chart')}</span><div class="ch-t"><h2>Semua DSR</h2><p class="ch-s">${allCards.length} DSR dari ${ok.length} DT</p></div></div>${window.MHUtil.stLegend()}${sortBar('allDsrList')}<div class="rk-list" id="allDsrList">${allCards.join('')}</div></section>`;
+    applySort($('allDsrList'));
   }
 
   /* Omset s.d. kemarin vs omset tanggal terbaru, per DT (mode Semua DT) + total. */
@@ -904,8 +928,9 @@ if (typeof module !== 'undefined') {
     $('tOverview').innerHTML = MODEL.dsrList.map((d, i) => { const c = calcs[i];
         return dsrCard({ nama: d.nama, band: c.band, cur: i === CUR, attr: ` data-i="${i}" role="button" tabindex="0"`, sub: `Skor ${Math.round(c.score)} · insentif ${rpFullLocal(c.total)}`,
           ss: c.ach.ss, ssSub: rp(d.ss.aktual), as: c.ach.asrt, asSub: idn1.format(d.asrt.aktual) + '/' + idn1.format(d.asrt.target), eco: c.ach.eco, ecoSub: d.eco.tx + '/' + d.eco.pjp }); }).join('')
-      + dsrCard({ nama: 'Total DT', sub: `${MODEL.dsrList.length} DSR · insentif ${rpFullLocal(incT)}`, tagHtml: '<span class="tag a">DSS</span>', ss: achOf(ssA, ssT), ssSub: rp(ssA), as: achOf(asA, asT), asSub: idn1.format(asA) + '/' + idn1.format(asT), eco: achOf(ecoT, ecoP), ecoSub: ecoT + '/' + ecoP });
+      + dsrCard({ nama: 'Total DT', pin: true, sub: `${MODEL.dsrList.length} DSR · insentif ${rpFullLocal(incT)}`, tagHtml: '<span class="tag a">DSS</span>', ss: achOf(ssA, ssT), ssSub: rp(ssA), as: achOf(asA, asT), asSub: idn1.format(asA) + '/' + idn1.format(asT), eco: achOf(ecoT, ecoP), ecoSub: ecoT + '/' + ecoP });
     document.querySelectorAll('#tOverview [data-i]').forEach(b => { const go = () => { CUR = +b.dataset.i; document.querySelectorAll('#dsrChips .chip').forEach(x => x.setAttribute('aria-pressed', x.dataset.i === b.dataset.i)); renderAll(); }; b.onclick = go; b.onkeydown = e => { if (e.key === 'Enter') go(); }; });
+    applySort($('tOverview'));
 
     showIssues(MODEL.warn, MODEL.note);
 

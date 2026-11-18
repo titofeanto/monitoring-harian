@@ -1,6 +1,6 @@
 # Sistem tampilan Monitoring Harian
 
-Acuan: aplikasi Stok Opname (https://ulisonik.github.io/stok-opname/), dipelajari dari tampilan dan UI/UX-nya saja. Fungsi aplikasi itu tidak ikut dipakai. Semua halaman (Monitoring Harian, KPI Great Sales, tool upload) memakai sistem yang sama. Kerjakan fitur baru dengan ketelitian yang sama: tiap rasio, ukuran, dan perilaku di bawah ini disengaja.
+Acuan: aplikasi Stok Opname dan Radar Sonik (https://ulisonik.github.io/radar-sonik/), dipelajari dari tampilan dan UI/UX-nya saja (tanpa menyalin kode, teks, atau data). Fungsi aplikasi itu tidak ikut dipakai. Semua halaman (Monitoring Harian, KPI Great Sales, tool upload) memakai sistem yang sama. Kerjakan fitur baru dengan ketelitian yang sama: tiap rasio, ukuran, dan perilaku di bawah ini disengaja.
 
 ## Prinsip
 
@@ -15,22 +15,26 @@ Acuan: aplikasi Stok Opname (https://ulisonik.github.io/stok-opname/), dipelajar
 
 | Token | Terang | Gelap | Dipakai untuk |
 |---|---|---|---|
-| `--bg` | #EAF2FA | #0B1220 | latar halaman |
-| `--surface` | #FFFFFF | #141E33 | kartu |
-| `--surface-2` | #F2F7FC | #1B2742 | isi kartu, isian, baris |
-| `--line` | #DCE7F2 | #27375A | garis pemisah |
-| `--ink` / `--ink-2` | #0F1B33 / #5C6F86 | #E8EEF9 / #9AAAC6 | teks utama / pendukung |
-| `--brand` | #1769C8 | #3B8BEB | aksi, tab aktif |
-| `--brand-2`, `--brand-deep` | #2B86E0, #0B3A8F | | gradien header |
-| `--cyan` | #19B5E0 | #27C3EC | ujung gradien ikon dan bar |
-| `--ok` / `--ok-bg` | #14804F / #DDF6E8 | #6CC592 / #16382B | tercapai |
-| `--warn-ink` / `--warn-bg` | #6B5200 / #FFF3C4 | #F2D878 / #3A3110 | perlu perhatian |
-| `--minus` / `--minus-bg` | #C0392B / #FBE4E0 | #F08068 / #3A211B | kurang, bahaya |
+| `--bg` | #EEF6FC | #0A1424 | latar halaman |
+| `--surface` | #FFFFFF | #12203A | kartu |
+| `--surface-2` | #F3F9FD | #192A4A | isi kartu, isian, baris |
+| `--line` | #D4E8F6 | #27406A | garis pemisah |
+| `--ink` / `--ink-2` | #0F172A / #5A6777 | #E8F1FB / #9FB4D0 | teks utama / pendukung |
+| `--brand` | #176DA6 | #4AA9E8 | aksi, tab aktif |
+| `--brand-2`, `--brand-deep` | #1B76B3, #0F3F66 | #1A5F8F, #0B2A47 | gradien header halaman |
+| `--head-1`, `--head-2` | #176DA6, #135A8C | #1A5F8F, #164E78 | gradien `.card-head`; putih di atasnya 5,6:1 sampai 8,8:1 |
+| `--cyan` | #30A0E5 | #4AA9E8 | ujung gradien ikon dan bar |
+| `--ok` / `--ok-bg` | #12724A / #DDF6E8 | #6CC592 / #16382B | tercapai |
+| `--warn-ink` / `--warn-bg` | #8A4708 / #FDEBD3 | #F2D878 / #3A3110 | perlu perhatian |
+| `--minus` / `--minus-bg` | #B83829 / #F8DED7 | #F59A86 / #3C2220 | kurang, bahaya |
+| `--gold`, `--silver`, `--bronze` | #E0A800, #9AA5B1, #B8743A | sama | lencana medali peringkat |
+| `--lime`, `--lime-edge`, `--lime-ink` | #D9F25A, #C3DF33, #0F172A | sama | tombol aksi utama `.btn.main` |
+| `--amber-t` | #A3560A | #F5C26B | teks nada "hampir" |
 | `--tint-1..4` | biru, hijau, oranye, cyan muda | versi gelap | latar 4 tile ringkasan |
 
 Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya pasangan gelap.
 
-- Font **Inter** 400 sampai 800. Dasar 14 px, judul bagian 16 px/700, angka tile 24 px/800, label 11 sampai 12 px/600.
+- Font **Geist** 400 sampai 700 (Google Fonts; tanpa jaringan jatuh ke system-ui). Dasar 14 px, judul bagian 16 px/700, angka tile 24 px/800, label 11 sampai 12 px/600.
 - Radius: kartu 16, elemen dalam 11, chip dan tag bulat penuh (999), tile 14, header bawah 24.
 - Bayangan: kartu `0 2px 10px rgba(15,60,130,.07)`, elemen mengambang `0 8px 28px rgba(15,60,130,.12)`.
 - Ukuran sentuh: tombol 44 px, chip 34 px, tombol ikon 40 px, kolom cari 42 px, sakelar 46x28.
@@ -57,6 +61,14 @@ Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya 
 - **Toast**: pil gelap di atas tab bawah, hilang sendiri 2,2 detik, dipakai untuk hasil tindakan singkat.
 - **Akordeon** `details.box`: ikon panah berputar 180° saat terbuka.
 - **Modal**: latar gelap .72, kotak radius 24, ditutup lewat tombol bulat atau ketuk di luar.
+
+## Komponen gaya Radar Sonik
+
+- **Header kartu `.card-head`**: latar gradien `--head-1` ke `--head-2`, keluar dari padding kartu (sudut atas ikut kartu), ikon bulat 28 px (`.ci`, SVG, bukan emoji), judul 15 px/700 putih (`h2`), subjudul 11,5 px (`.ch-s`) hanya berisi fakta yang sudah tampil (kosongkan bila tidak ada), pil status di kanan selalu putih. Dipakai di semua kartu isi (Great Sales lewat `ciTitle`, Monitoring Harian lewat `wrapCards`, Cek Stok, Kehadiran). Kartu Akun tetap polos.
+- **Ikon status `.st`** (18 px): `bad` silang, `mid` jam, `ok` centang; `role="img"` + `aria-label` "Belum capai" / "Hampir" / "Tercapai", jadi tidak bergantung warna. Dibuat oleh `MHUtil.stIcon`. Hanya dipasang pada sel yang SUDAH punya klasifikasi dari data (kelas `okc`/`amb`/`neg`, atau level hijau/kuning/merah); jangan membuat ambang baru. Legenda `MHUtil.stLegend()` ("Arti ikon:") ditaruh di atas daftar yang memakainya.
+- **Urut**: setiap daftar punya pemilih "Urut:" (`select`, urutan awal = "Bawaan"); tabel padat (`.scroll table`) otomatis dapat judul kolom berupa tombol dengan `aria-sort` (klik: naik, turun, awal) lewat `assets/util.js`; kolom pertama lengket di kiri. Semua hanya mengurutkan baris yang sudah dimuat. Tabel yang tidak boleh urut diberi class `nosort`. Sel angka dua baris: angka utama tebal, keterangan kecil abu.
+- **Panel peringkat** (tab Ranking): daftar bernomor `.rkn-list`; tiga baris teratas memakai medali SVG (`aria-label` "Peringkat n") dan latar `--warn-bg`; nama tebal, keterangan "{n} dari {m} toko ...", nilai persen di kanan (`.rk-val`). Di layar 900 px ke atas kontrol di kolom kiri dan panel di kolom kanan (`.rk-layout`).
+- **Tombol aksi utama `.btn.main`**: lime dengan tepi `--lime-edge`, teks navy, satu per layar (kirim WhatsApp, simpan hasil).
 
 ## Perilaku
 

@@ -94,7 +94,12 @@
       '<div class="k r"><b>' + (bad + abs) + '</b><span>Merah (' + bad + ' terlambat atau geo 0, ' + abs + ' tidak hadir)</span></div>';
     let list = V.sales.slice();
     if (S.f === 'merah') list = list.filter(s => s.bad + s.abs > 0);
-    list.sort((a, b) => (a.pct == null ? 2 : a.pct) - (b.pct == null ? 2 : b.pct) || a.id.localeCompare(b.id));
+    // urutan di browser pada baris yang sudah dimuat; bawaan = % hijau terendah dulu
+    const so = $('hdSort') ? $('hdSort').value : 'pct';
+    list.sort(so === 'id' ? (a, b) => a.id.localeCompare(b.id)
+      : so === 'pcthi' ? (a, b) => (b.pct == null ? -1 : b.pct) - (a.pct == null ? -1 : a.pct) || a.id.localeCompare(b.id)
+      : (a, b) => (a.pct == null ? 2 : a.pct) - (b.pct == null ? 2 : b.pct) || a.id.localeCompare(b.id));
+    if ($('hdSub')) $('hdSub').textContent = ($('hdMonth').selectedOptions[0] ? $('hdMonth').selectedOptions[0].text + ' · ' : '') + list.length + ' salesman';
     let h = '<table class="hd"><thead><tr><th class="nm">Salesman</th><th class="pc">% hijau</th>' + V.days.map(dy => '<th class="' + (dy.libur ? 'lib' : '') + '"><span>' + dy.d + '</span><small>' + HARI[dow(dy.iso)] + '</small></th>').join('') + '</tr></thead><tbody>';
     list.forEach(s => {
       h += '<tr><th class="nm"><b>' + esc(s.id) + '</b>' + (s.nama ? '<span>' + esc(s.nama) + '</span>' : '') + '</th><td class="pc ' + (s.pct == null ? '' : s.pct >= 0.9 ? 'g' : s.pct >= 0.7 ? 'a' : 'r') + '">' + (s.pct == null ? '–' : Math.round(s.pct * 100) + '%') + '</td>';
@@ -159,6 +164,7 @@
   }
 
   $('hdMonth').addEventListener('change', e => { MONTH = e.target.value; render(); });
+  $('hdSort').addEventListener('change', render);
   $('hdFilter').addEventListener('click', e => {
     const b = e.target.closest('[data-f]'); if (!b) return;
     S.f = b.dataset.f; document.querySelectorAll('#hdFilter [data-f]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); render();

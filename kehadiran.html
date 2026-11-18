@@ -12,8 +12,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Monitoring">
 <title>Kehadiran Salesman</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=202611031000">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css?v=202611181000">
 <script src="assets/boot.js?v=202611031000"></script>
 </head>
 <body>
@@ -82,6 +82,7 @@
     <div class="card">
       <div class="hd-top">
         <div class="f"><label for="hdMonth">Bulan</label><select id="hdMonth"></select></div>
+        <div class="f"><label for="hdSort">Urut</label><select id="hdSort"><option value="pct">% hijau terendah (bawaan)</option><option value="pcthi">% hijau tertinggi</option><option value="id">Salesman A-Z</option></select></div>
         <div class="chips" id="hdFilter" role="group" aria-label="Tampilkan">
           <button type="button" data-f="semua" aria-pressed="true">Semua</button>
           <button type="button" data-f="merah" aria-pressed="false">Ada merah</button>
@@ -91,7 +92,7 @@
     </div>
     <div class="hd-kpis" id="hdKpis"></div>
     <div class="card">
-      <div class="hd-bar"><h2>Kunjungan pertama per hari</h2><button class="btn plain" id="hdCsv" type="button">Unduh CSV</button></div>
+      <div class="card-head"><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 11l2 2 4-4"/></svg></span><div class="ch-t"><h2>Kunjungan pertama per hari</h2><p class="ch-s" id="hdSub"></p></div><button class="btn plain sm" id="hdCsv" type="button">Unduh CSV</button></div>
       <div class="hd-wrap" id="hdWrap"></div>
       <p class="hint" id="hdNote" style="margin:10px 0 0"></p>
     </div>
@@ -108,9 +109,9 @@
 
 <script src="assets/config.js?v=202610311300"></script>
 <script src="assets/pwa.js?v=1"></script>
-<script src="assets/util.js?v=1"></script>
+<script src="assets/util.js?v=2"></script>
 <script src="assets/status-banner.js?v=3"></script>
 <script src="assets/fresh.js?v=202611172000"></script>
-<script src="assets/hadir.js?v=202611172000"></script>
+<script src="assets/hadir.js?v=202611181000"></script>
 </body>
 </html>

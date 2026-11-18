@@ -12,8 +12,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Monitoring">
 <title>Cek Stok &amp; Harga Naik</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="assets/style.css?v=202611031000">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/style.css?v=202611181000">
 <script src="assets/boot.js?v=202611031000"></script>
 </head>
 <body>
@@ -87,6 +87,7 @@
     <div id="bedah" class="bd" hidden></div>
 
     <div class="card" id="csCard">
+      <div class="card-head"><span class="ci"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg></span><div class="ch-t"><h2>Daftar stok</h2><p class="ch-s" id="csHeadSub"></p></div></div>
       <div class="chips" id="csMode" role="group" aria-label="Jenis analisa" style="margin-bottom:10px">
         <button type="button" data-m="harga" aria-pressed="true">Harga &amp; stok</button>
         <button type="button" data-m="SAT" aria-pressed="false">SAT (Alfamart)</button>
@@ -116,7 +117,7 @@
         <select id="csBrand" aria-label="Filter brand"><option value="">Semua brand</option></select>
         <label class="chk" id="csOnlyW"><input id="csOnly" type="checkbox" checked> Hanya yang ada stok</label>
       </div>
-      <div class="cs-bar"><span id="csCount" class="muted"></span><button class="btn ic" id="csExport" type="button">Export Excel</button></div>
+      <div class="cs-bar"><span id="csCount" class="muted"></span><label class="sortsel">Urut: <select id="csSort" aria-label="Urutkan daftar"><option value="def">Bawaan</option><option value="nama">Nama A-Z</option><option value="stokhi">Stok terbanyak</option><option value="stoklo">Stok tersedikit</option><option value="naik">Harga naik terbesar</option><option value="cover">Cover terendah</option></select></label><button class="btn ic" id="csExport" type="button">Export Excel</button></div>
     </div>
 
     <div id="csList"></div>
@@ -136,11 +137,11 @@
 
 <script src="assets/config.js?v=202610311300"></script>
 <script src="assets/pwa.js?v=1"></script>
-<script src="assets/util.js?v=1"></script>
+<script src="assets/util.js?v=2"></script>
 <script src="assets/status-banner.js?v=3"></script>
 <script src="assets/fresh.js?v=202611172000"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-<script src="assets/stok.js?v=202611172000"></script>
+<script src="assets/stok.js?v=202611181000"></script>
 <script src="assets/bedah-stok.js?v=1"></script>
 </body>
 </html>
