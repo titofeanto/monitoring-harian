@@ -851,9 +851,7 @@ main .field+.field,main .field+.btn{margin-top:12px}
   .menu-btn{order:0}
   .sync-wrap{order:2}
   .hdr-btn{order:3}
-  .top-s{order:4;flex:0 0 100%;flex-wrap:nowrap;overflow:hidden;margin-top:-4px}
-  .top-s>span{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none}
-  .top-s>span:first-child{flex-shrink:0;max-width:100%}
+  .top-s{order:4;flex:0 0 100%;margin-top:-4px}
 }
 
 /* ---------- petunjuk geser tabel padat (plan 027): bayangan tepi kanan/kiri yang hilang di ujung, murni CSS (gradien local + scroll) ---------- */

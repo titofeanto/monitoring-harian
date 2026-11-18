@@ -48,7 +48,7 @@
           var base = null, grads = null;
           for (var i = 0; i < chain.length; i++) {
             var b = rgba(chain[i].backgroundColor);
-            if (chain[i].backgroundImage && chain[i].backgroundImage !== 'none' && chain[i].backgroundImage.indexOf('gradient') >= 0) { grads = (chain[i].backgroundImage.match(/rgba?\([^)]*\)/g) || []).map(rgba); break; }
+            if (chain[i].backgroundImage && chain[i].backgroundImage !== 'none' && chain[i].backgroundImage.indexOf('gradient') >= 0) { var gs = (chain[i].backgroundImage.match(/rgba?\([^)]*\)/g) || []).map(rgba).filter(function (g) { return g[3] >= 1; }); if (gs.length) { grads = gs; break; } } /* gradien hanya dengan titik transparan (bayangan tepi tabel) bukan latar teks: pakai warna latar */
             if (b[3] > 0) { base = base ? over(base, b) : b; if (b[3] >= 1) break; }
           }
           var tc = rgba(cs.color); tc[3] *= op;
@@ -64,6 +64,10 @@
       out.side = { shown: shown, menuBtn: !!(mb && vis(mb)), ok: W >= 900 ? shown && !(mb && vis(mb)) : !shown && !!(mb && vis(mb)) }; }
     var top = d.querySelector('.top'); if (top) out.headFrac = Math.round(top.getBoundingClientRect().height / w.innerHeight * 100) / 100;
     var main = d.querySelector('main'); if (main) { var mr = main.getBoundingClientRect(); out.main = { w: Math.round(mr.width), l: Math.round(mr.left) }; }
+    function ncols(el) { return el && vis(el) ? w.getComputedStyle(el).gridTemplateColumns.split(' ').length : 0; }
+    var rkl = d.querySelector('.rk-list:not(.rkn-list)'), csl = d.querySelector('#csList');
+    out.grid = { rk: ncols(rkl), cs: csl && csl.children.length ? ncols(csl) : 0, tiles: [] };
+    d.querySelectorAll('.kpis,.tiles').forEach(function (g) { if (vis(g) && !inertOrHidden(g)) { var n = ncols(g); out.grid.tiles.push({ cols: n, kids: g.children.length, empty: n > g.children.length && g.children.length > 0 }); } });
     out.errs = (w.__errs || []).slice(0, 5);
     var s = document.createElement('script'); s.type = 'application/json'; s.id = 'audit'; s.textContent = JSON.stringify(out).replace(/</g, '\\u003c'); document.body.appendChild(s);
   }

@@ -35,14 +35,14 @@ Acuan: aplikasi Stok Opname dan Radar Sonik (https://ulisonik.github.io/radar-so
 
 Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya pasangan gelap.
 
-- Font **Geist** 400 sampai 700 (Google Fonts; tanpa jaringan jatuh ke system-ui). Dasar 14 px, judul bagian 16 px/700, angka tile 24 px/800, label 11 sampai 12 px/600.
+- Font **Geist** 400 sampai 700 (Google Fonts; tanpa jaringan jatuh ke system-ui). Dasar 14 px, judul bagian 16 px/700, angka tile 24 px/800, label 12 px/600 (tidak ada teks informatif di bawah 12 px).
 - Radius: kartu 16, elemen dalam 11, chip dan tag bulat penuh (999), tile 14, laci/sidebar 0 (menempel di tepi).
 - Bayangan: kartu `0 2px 10px rgba(15,60,130,.07)`, elemen mengambang `0 8px 28px rgba(15,60,130,.12)`.
-- Ukuran sentuh: tombol 44 px, chip 34 px, tombol ikon 40 px, kolom cari 42 px, sakelar 46x28.
+- Ukuran sentuh (plan 027): di lebar < 1100 px atau layar sentuh semua tombol, chip, `select`, `input`, tombol urut tabel (`th-b`), tombol ikon header, kolom cari dan geser (`range`) minimal 44 px (kolom cari 48 px); chip memakai tinggi nyata 44 px, bukan pseudo-elemen, supaya terukur. Di >= 1100 px (penunjuk mouse) boleh lebih ringkas: chip 34 px, tombol ikon 40 px, kolom cari 42 px, sakelar 46x28. Teks minimum 12 px untuk semua teks yang membawa informasi (`small`, `em`, tag, `.wk`, label); pembeda "kosong" memakai bentuk (garis putus-putus), bukan opasitas.
 
 ## Kerangka halaman
 
-- **Header ramping** `.top`: satu baris, `position: sticky`, gradien 165° dari `--brand-2` ke `--brand-deep`, tanpa sudut membulat, padding atas memakai `env(safe-area-inset-top)`. Isi berurutan: tombol menu (44 px, hanya < 900 px), judul bagian aktif `h1.top-h` (18 px/700, id `greetBig`, diisi `setTab` / `openTab`), baris kecil 12 px `.top-s` (tanggal data, lingkup/DT; membungkus di HP, satu baris di desktop), status data, tombol muat ulang 40 px. Tidak ada hero, pil tautan, atau sapaan besar di header. Teks putih di atas gradien 4,9:1 sampai 14,6:1.
+- **Header ramping** `.top`: satu baris, `position: sticky`, gradien 165° dari `--brand-2` ke `--brand-deep`, tanpa sudut membulat, padding atas memakai `env(safe-area-inset-top)`. Isi berurutan: tombol menu (44 px, hanya < 900 px), judul bagian aktif `h1.top-h` (18 px/700, id `greetBig`, diisi `setTab` / `openTab`), baris kecil 12 px `.top-s` (tanggal data, lingkup/DT; di HP baris sendiri di bawah judul, boleh membungkus, header <= 110 px di 390 px; satu baris di desktop). Judul tab Low Hanging Fruit di header ringkas "Peluang" (`HDR_SHORT` di `app.js`), nama panjang tetap di menu dan kartu, status data, tombol muat ulang 40 px. Tidak ada hero, pil tautan, atau sapaan besar di header. Teks putih di atas gradien 4,9:1 sampai 14,6:1.
 - **Navigasi samping `.side`** (dibuat `assets/nav.js`, satu daftar item untuk semua halaman; tambah KPI baru di sana). Empat grup berjudul huruf kapital kecil: Umum (Ranking, tautan ke `ranking.html`, terlihat di semua halaman), Great Sales (Skor, Weekly FOP, Banded, Assortment, Perfect Store, Toko), Monitoring Harian (Ringkasan, Simulator, Low Hanging Fruit), Alat (Cek Stok, Kehadiran). Item = ikon SVG 18 px + label penuh, tinggi 44 px di HP / 40 px di desktop, radius `--r-s`, hover `--surface-2`. Item aktif: `aria-current="page"`, latar `--brand-soft`, teks `--brand`, garis kiri 3 px (kontras 4,8:1 sampai 4,9:1). Di Great Sales dan Monitoring Harian item bagian adalah tombol tab sungguhan (`data-tab` / `id="tab-ring|sim|fruit"` + `aria-controls`) sehingga `setTab` / `openTab` tetap bekerja; di halaman lain item yang sama berupa tautan (`great-sales.html#fop`, dst.).
 - **Sidebar tetap (>= 900 px)**: grid dua kolom `248px 1fr` pada `#appScreen`, sidebar `sticky` setinggi layar, tepi kanan `--line`. **Laci (< 900 px)**: sidebar `fixed` lebar `min(300px, 86vw)` bergeser dari kiri 220 ms, scrim `rgba(15,23,42,.45)` di belakangnya. Ditutup oleh pilihan item, ketuk scrim, tombol X, atau Esc. Saat dibuka fokus pindah ke item pertama, `aria-expanded` pada tombol menu, `body` tidak bisa digulir, Tab terkurung di laci; saat tertutup laci `inert` dan `visibility:hidden`, fokus kembali ke tombol menu. Gerakan mati untuk `prefers-reduced-motion`. Tidak ada lagi bar tab di bawah.
 - **Isi** `main`: lebar maks 1100 px di tengah ruang kanan, padding 16 px di HP dan 24 px di desktop, jarak antar kartu 12 px. Chip DT di baris sendiri paling atas. Tidak ada tarikan ke atas menimpa header. Penjelasan aturan yang panjang dibungkus `details.how` ("Cara baca") yang tertutup bawaan; informasi tidak dihapus.
@@ -55,10 +55,10 @@ Mode gelap otomatis lewat `prefers-color-scheme`. Setiap warna baru wajib punya 
 
 - **Kartu `.card`** dengan judul `h2` + chip ikon 28 px (`.ci`). Teks bantu `.hint` 13 px di bawah judul.
 - **Hero `.hero`**: ikon bulat bergradien, judul, tiga angka dengan garis pemisah vertikal (`.hero-units`), bar progres 8 px bergradien, meta di bawah bar.
-- **Tile `.kpi` / `.tile`**: 2 kolom di HP, 4 di desktop, latar tint bergantian. Label 12 px/700, angka 24 px/800 berwarna, keterangan 11,5 px. Jumlah ganjil: tile terakhir melebar penuh di HP.
-- **Kartu data `.rk`**: kepala (ikon status bulat 34 px, nama 14 px/600 maks 2 baris, keterangan 12 px, tag di kanan), lalu garis, lalu 2 sampai 5 kolom angka dipisah garis vertikal (`.rk-s`, `.two`, `.four`, `.five`): label 11 px, angka 16 px/800, keterangan 11 px. Warna angka mengikuti nada: `okc` hijau, `amb` oranye, `neg` merah.
+- **Tile `.kpi` / `.tile`**: 2 kolom di HP, 4 di desktop, latar tint bergantian. Label 12 px/700, angka 24 px/800 berwarna, keterangan 12 px. Tile ringkasan di >= 761 px: jumlah kolom mengikuti jumlah tile (2, 3, 6 tile), tidak ada slot kosong. Jumlah ganjil: tile terakhir melebar penuh di HP.
+- **Kartu data `.rk`**: kepala (ikon status bulat 34 px, nama 14 px/600 maks 2 baris, keterangan 12 px, tag di kanan), lalu garis, lalu 2 sampai 5 kolom angka dipisah garis vertikal (`.rk-s`, `.two`, `.four`, `.five`): label 12 px, angka 16 px/800, keterangan 12 px. Warna angka mengikuti nada: `okc` hijau, `amb` oranye, `neg` merah.
 - **Toolbar daftar**: kolom cari 42 px dengan tombol hapus bulat, baris chip filter (geser horizontal, tiap chip memuat jumlah, chip kosong diredupkan), baris meta (jumlah kanan). Filter bawaan = yang perlu ditindak. Kalau pencarian membuat filter kosong, filter kembali ke bawaan. Daftar dibatasi 60 baris dengan tombol "Tampilkan lebih banyak (N lagi)".
-- **Tag dan pil** (`.tag`, `.pill`, `.lv`): bulat penuh, 11 sampai 12 px/700, latar lembut dengan teks berwarna. `.tag.b` (biru, 10 px) dipakai sebagai penanda "Update mingguan" untuk angka yang diisi manual seminggu sekali (Rank, %DR).
+- **Tag dan pil** (`.tag`, `.pill`, `.lv`): bulat penuh, 12 px/700, latar lembut dengan teks berwarna. `.tag.b` (biru, 12 px) dipakai sebagai penanda "Update mingguan" untuk angka yang diisi manual seminggu sekali (Rank, %DR).
 - **Tombol**: utama biru, `plain` biru muda, `danger` merah muda, `sm` bulat. Nonaktif = opacity .45.
 - **Kotak info**: `.banner` / `.notice` kuning, `.confirm` merah (konfirmasi inline), `.empty` untuk kosong (tulis apa yang harus dilakukan berikutnya).
 - **Toast**: pil gelap 24 px dari bawah layar, hilang sendiri 2,2 detik, dipakai untuk hasil tindakan singkat.
@@ -121,7 +121,19 @@ Diperiksa otomatis oleh `node tests/ui/layout-audit.mjs` (semua halaman x 8 leba
 | Laptop | 1280 | - | tetap 248 px | maks 1100, di tengah |
 | Layar lebar | 1536 | - | tetap 248 px | maks 1100, tidak meregang |
 
-Aturan kolom per breakpoint: < 900 px sidebar laci dan satu kolom; >= 900 px sidebar tetap; grid dua kolom hanya bila ada panel pendamping (Ranking >= 1200 px: daftar + panel detail; Ringkasan Monitoring Harian: kartu DSR dua kolom); `.kpi-list` di dalam kartu dibatasi 620 px dari 768 px supaya panah tidak jauh dari isinya; blok harga Cek Stok dan filter brand dibatasi 420 px. Tidak boleh ada gulir mendatar halaman pada seluruh matriks (tabel padat menggulir di dalam `.scroll`). Ambang audit: sentuh >= 44 px (HP/tablet, kecuali chip 34 px dan tombol ikon 40 px yang disengaja di atas), teks >= 12 px, kontras >= 4,5:1 (chip kosong `.z` sengaja diredupkan).
+Aturan kolom per breakpoint: < 900 px sidebar laci dan satu kolom; >= 900 px sidebar tetap; grid dua kolom hanya bila ada panel pendamping (Ranking >= 1200 px: daftar + panel detail; Ringkasan Monitoring Harian: kartu DSR dua kolom); `.kpi-list` di dalam kartu dibatasi 620 px dari 768 px supaya panah tidak jauh dari isinya; blok harga Cek Stok dan filter brand dibatasi 420 px. Tidak boleh ada gulir mendatar halaman pada seluruh matriks (tabel padat menggulir di dalam `.scroll`, dengan bayangan tepi kiri/kanan murni CSS yang hilang di ujung dan kolom pertama lengket). Ambang audit: sentuh >= 44 px (<= 1024 px), teks >= 12 px, kontras >= 4,5:1. Hasil audit setelah plan 027: nol temuan sentuh, teks, kontras, gulir mendatar.
+
+**Grid layar lebar (plan 027)**: `.rk-list` (kecuali `.rkn-list` Ranking) dan `#csList` (Cek Stok): satu kolom di HP; 768-1199 px satu kolom maks 720 px; >= 1200 px dua kolom `repeat(2,minmax(0,1fr))` jarak 16 px (daftar lega `.lega` jarak kolom 32 px). Ranking tetap tata letak daftar + panel detail.
+
+### Pengecualian terukur
+
+Hal yang sengaja tidak mengikuti ambang, dicatat satu per satu:
+
+1. **Penunjuk mouse >= 1100 px**: chip 34 px, tombol ikon 40 px, kolom cari 42 px tidak diaudit (audit sentuh hanya <= 1024 px); mouse tidak butuh 44 px dan raksasa di desktop terlihat janggal.
+2. **Ellipsis nama salesman di panel Ranking >= 1280 px** (`.it-i .nm`, 4 temuan di `rank-kpi`): nama panjang dipotong satu baris, nama lengkap ada di lembar detail dan teks WhatsApp.
+3. **Panah urut `th .th-a::before`**: glyph dekoratif (12 px, opasitas .4 saat belum diurutkan); status urut dibawa `aria-sort`.
+4. **Sel libur `.hd td.lib`** (Kehadiran): opasitas .6 pada sel tanpa teks informasi; arti ada di legenda.
+5. **Tile 4, 5 atau lebih dari 6 buah** di >= 761 px tetap 4 kolom (belum ada contoh 5 tile); tile sisa tidak diisi.
 
 ## Daftar periksa fitur baru
 
