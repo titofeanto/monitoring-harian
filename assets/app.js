@@ -913,10 +913,11 @@ if (typeof module !== 'undefined') {
 
   /* tabs */
   const tabs = () => [...document.querySelectorAll('#tabsNav button[aria-controls]')];
+  const HDR_SHORT = { 'tab-fruit': 'Peluang' }; /* judul header ringkas; nama panjang "Low Hanging Fruit" tetap di menu dan di dalam halaman */
   function openTab(t) {
     tabs().forEach(b => {
       const on = b === t;
-      if (on) { b.setAttribute('aria-current', 'page'); $('greetBig').textContent = b.textContent.trim(); } else b.removeAttribute('aria-current');
+      if (on) { b.setAttribute('aria-current', 'page'); $('greetBig').textContent = HDR_SHORT[b.id] || b.textContent.trim(); } else b.removeAttribute('aria-current');
       document.getElementById(b.getAttribute('aria-controls')).hidden = !on;
     });
   }
