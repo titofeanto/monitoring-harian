@@ -776,10 +776,12 @@
   $('storeModalClose').addEventListener('click', closeStore);
   $('storeModal').addEventListener('click', e => { if (e.target.id === 'storeModal') closeStore(); });
   window.MHFresh.bind();
+  let refreshing = false;   // satu permintaan segarkan sekaligus: klik berulang tidak menumpuk permintaan ke Apps Script
   $('refreshBtn').addEventListener('click', () => {
+    if (refreshing) return; refreshing = true;
     const b = $('refreshBtn'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
     refreshNote('Memperbarui data…');
-    login(CODE, true, true).then(ok => { if (ok) toast('Data diperbarui'); });
+    login(CODE, true, true).then(ok => { if (ok) toast('Data diperbarui'); }).finally(() => { refreshing = false; });
   });
   /* #fop dst dari halaman Cek Stok membuka tab itu; tanpa hash, tab terakhir dibuka. Ranking pindah ke halaman sendiri. */
   const hashTab = (location.hash || '').replace('#', '');

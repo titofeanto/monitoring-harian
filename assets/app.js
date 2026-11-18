@@ -1113,10 +1113,12 @@ if (typeof module !== 'undefined') {
   $('belumQ').addEventListener('input', e => { BELUM.q = e.target.value; renderBelum(); });
   $('belumClr').addEventListener('click', () => { BELUM.q = ''; $('belumQ').value = ''; renderBelum(); $('belumQ').focus(); });
 
+  let refreshing = false;   // satu permintaan segarkan sekaligus: klik berulang tidak menumpuk permintaan ke Apps Script
   $('refreshBtn').addEventListener('click', () => {
+    if (refreshing) return; refreshing = true;
     const b = $('refreshBtn'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
     refreshNote('Memperbarui data…');
-    tryLogin(AUTH_CODE, true, true).then(ok => { if (ok) toast('Data diperbarui'); });
+    tryLogin(AUTH_CODE, true, true).then(ok => { if (ok) toast('Data diperbarui'); }).finally(() => { refreshing = false; });
   });
   window.MHFresh.bind();
 
