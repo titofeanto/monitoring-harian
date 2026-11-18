@@ -177,7 +177,7 @@ dialog.dlg-confirm p{margin:0 0 16px;font-size:14px;line-height:1.5;color:var(--
 .side-bt{flex:1;min-width:0;display:grid}
 .side-bt b{font-size:15px;font-weight:700;line-height:1.2}
 .side-bt small{font-size:12px;color:var(--ink-2)}
-.side-logo{width:28px;height:28px;flex:none;display:block}
+.side-logo{width:28px;height:28px;flex:none;display:block;border-radius:7px;box-shadow:0 0 0 1px var(--line)}
 .side-x{width:44px;height:44px;margin:-4px -6px -4px 0;border:0;border-radius:12px;background:transparent;color:var(--ink-2);display:grid;place-items:center;cursor:pointer;flex:none;padding:0}
 .side-g{display:grid;gap:2px;padding:10px 0 6px;border-top:1px solid var(--line)}
 .side-brand+.side-g{border-top:0}

@@ -40,7 +40,7 @@
     return `<a class="side-i" href="${href}"${it[3] && it[0] === page ? ' aria-current="page"' : ''}>${inner}</a>`;
   };
   const APP = window.MH_APP_NAME || 'Jendela Jasper', TAG = window.MH_APP_TAGLINE || 'Monitoring Pencapaian Sales Harian';
-  const LOGO = '<svg class="side-logo" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><rect width="512" height="512" rx="112" fill="#001F5B"/><g transform="translate(256 256) scale(1.04) translate(-230 -253)"><path d="M160 285V146A90 90 0 0 1 340 146V340A110 110 0 0 1 120 340V322H178V340A52 52 0 0 0 282 340V146A43 43 0 0 0 196 146V255Z" fill="#FFFFFF"/><path d="M239 146L275 110M239 146V96M239 146L203 110M196 146H282" stroke="#FFFFFF" stroke-width="18" fill="none"/><rect x="219" y="190" width="40" height="52" fill="#F8991C"/></g></svg>';
+  const LOGO = '<img class="side-logo" src="assets/brand/ikon-monogram-56.png?v=33" srcset="assets/brand/ikon-monogram-56.png?v=33 1x, assets/brand/ikon-monogram-112.png?v=33 2x" width="28" height="28" alt="" aria-hidden="true">';
   nav.className = 'side';
   nav.setAttribute('aria-label', 'Navigasi utama');
   nav.innerHTML = `<div class="side-brand">${LOGO}<div class="side-bt"><b>${APP}</b><small>${TAG}</small></div>` +

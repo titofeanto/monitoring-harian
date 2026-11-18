@@ -1,6 +1,6 @@
 /* Service worker Jendela Jasper: membuat aplikasi bisa dipasang dan membuka halaman walau sinyal jelek.
    Halaman dan aset milik sendiri: jaringan dulu, salinan lama kalau offline. Data Apps Script tidak disentuh. */
-const CACHE = 'mh-shell-v3';
+const CACHE = 'mh-shell-v4';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
