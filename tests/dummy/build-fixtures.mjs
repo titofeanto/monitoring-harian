@@ -36,13 +36,15 @@ export function buildAll(seed = 2026) {
       'dummy-hadir.json': call(ds, { view: 'hadir', code: ACCESS.pusat }),
       'dummy-mh.json': call(ds, { code: ACCESS.tmk }),   // data mentah Monitoring Harian DT Timika
     },
+    // Varian jalur kosong: Assortment tanpaData di semua DSR, DSR 202 tanpa PS. Fixture utama di atas tidak berubah.
+    varian: { 'dummy-rank-tanpadata.json': call(buildDummy({ seed, tanpaData: true }), { view: 'rank', code: ACCESS.pusat }) },
   };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { files } = buildAll();
+  const { files, varian } = buildAll();
   const secrets = Object.values(ACCESS);
-  for (const [name, obj] of Object.entries(files)) {
+  for (const [name, obj] of Object.entries(Object.assign({}, files, varian))) {
     if (obj.error) throw new Error(name + ': server mengembalikan galat ' + obj.error + ' ' + (obj.message || ''));
     const txt = JSON.stringify(obj);
     if (secrets.some(s => txt.includes(s)) || txt.includes('kode_akses')) throw new Error(name + ': memuat kode akses');

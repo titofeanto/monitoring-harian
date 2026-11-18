@@ -8,6 +8,10 @@ SEMUA data di sini FIKTIF: nama toko, salesman, produk, angka, dan kode akses (`
 - `node --test tests/` menjalankan `tests/dummy.test.mjs` bersama tes lain.
 - Lihat di halaman: `node tests/ui/shot.mjs great-sales skor dummy-gs-pusat 390 light` (pola sama untuk `ranking`, `cek-stok`, `kehadiran`, `index` dengan `dummy-rank`, `dummy-stok`, `dummy-hadir`, `dummy-mh`). Server uji sudah menerima `?fx=dummy-...` tanpa perubahan.
 
+## Varian fixture
+
+- `dummy-rank-tanpadata.json` (`buildDummy({ tanpaData: true })`): tanpa tab `GS_TREND_ASRT` (Assortment `tanpaData` di semua DSR) dan DSR 202 tanpa toko di laporan PS. Dipakai `tests/ui/rank-tanpadata.test.mjs` untuk jalur "Belum ada data" di lembar detail DSR. Fixture `dummy-*.json` utama tidak berubah.
+
 ## Cara kerja
 
 `dataset.mjs` membangun isi Sheet palsu (pusat + dua Sheet DT). `fakeSpreadsheet.mjs` membungkusnya sebagai `SpreadsheetApp`. `build-fixtures.mjs` memuat `Code.gs` asli lewat `loadGs` dan memanggil `doGet` seperti produksi, jadi rumus tidak ditulis dua kali.

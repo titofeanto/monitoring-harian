@@ -167,7 +167,7 @@ function hargaRows(cat, rng) {
   return rows;
 }
 
-export function buildDummy({ seed = 2026 } = {}) {
+export function buildDummy({ seed = 2026, tanpaData = false } = {}) {
   const cat = buildCatalog(seed);
   const root = makeRng(seed);
   const registry = [{ kode_akses: ACCESS.pusat, peran: 'pusat', dt_kode: '', nama_dt: '', sheet_id: '', aktif: true }]
@@ -411,6 +411,13 @@ export function buildDummy({ seed = 2026 } = {}) {
       T.NORMS_SKU.push([tipe, x.suffix, bp, buOfBp(bp), soq]);
     });
   });
+
+  // Varian uji jalur "Belum ada data" (plan 030): tanpa tab GS_TREND_ASRT (Assortment tanpaData semua DSR) dan DSR 202 (D02) tanpa toko di laporan PS.
+  if (tanpaData) {
+    delete P.GS_TREND_ASRT;
+    const sm202 = new Set(gen.D02.monitored.filter(x => x.sm === '202').map(x => x.suffix));
+    P.GS_PS = P.GS_PS.filter(r => !(r[2] === 'D02' && sm202.has(r[4])));
+  }
 
   const meta = { seed, catalog: { basepacks: cat.bps.length, skus: cat.skus.length, bandedSpm: cat.banded.SPM.length, bandedMinis: cat.banded.MINIS.length },
     dts: {}, salesmen: DT_DEFS.flatMap(d => d.sales.map(s => ({ kode: s.kode, nama: s.nama, dt: d.kode, profile: s.profile }))) };
