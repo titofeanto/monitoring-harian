@@ -1,0 +1,946 @@
+{
+ "mode": "rank",
+ "peran": "dt",
+ "me": {
+  "dt_kode": "DA"
+ },
+ "tanggalData": "2026-11-17",
+ "bulan": "2026-11",
+ "minToko": 5,
+ "dts": [
+  {
+   "kode": "DA",
+   "nama": "PT Surya Niaga",
+   "status": "ok"
+  },
+  {
+   "kode": "DB",
+   "nama": "CV Mitra Timur Sejahtera",
+   "status": "ok"
+  }
+ ],
+ "bu": {
+  "FOODS": {
+   "label": "Foods",
+   "fop": [
+    {
+     "rank": 1,
+     "rankDt": 1,
+     "kode": "11",
+     "nama": "Andi Pratama",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 20,
+     "nilai": 0.8,
+     "weekly": 16,
+     "spm": {
+      "weekly": 8,
+      "n": 7
+     }
+    },
+    {
+     "rank": 2,
+     "rankDt": 1,
+     "kode": "21",
+     "nama": "Gita Lestari",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 22,
+     "nilai": 0.7272727272727273,
+     "weekly": 16,
+     "spm": {
+      "weekly": 8,
+      "n": 8
+     }
+    },
+    {
+     "rank": 3,
+     "rankDt": 2,
+     "kode": "22",
+     "nama": "Hendra Kusuma",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 17,
+     "nilai": 0.7058823529411765,
+     "weekly": 12,
+     "spm": {
+      "weekly": 6,
+      "n": 6
+     }
+    },
+    {
+     "rank": 4,
+     "rankDt": 2,
+     "kode": "12",
+     "nama": "Budi Santoso",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 18,
+     "nilai": 0.6666666666666666,
+     "weekly": 12,
+     "spm": {
+      "weekly": 6,
+      "n": 6
+     }
+    },
+    {
+     "rank": 5,
+     "rankDt": 3,
+     "kode": "23",
+     "nama": "Indra Gunawan",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 14,
+     "nilai": 0.6428571428571429,
+     "weekly": 9,
+     "spm": {
+      "weekly": 4,
+      "n": 5
+     }
+    },
+    {
+     "rank": 6,
+     "rankDt": 3,
+     "kode": "13",
+     "nama": "Citra Dewi",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 15,
+     "nilai": 0.6,
+     "weekly": 9,
+     "spm": {
+      "weekly": 4,
+      "n": 5
+     }
+    },
+    {
+     "rank": 7,
+     "rankDt": 4,
+     "kode": "14",
+     "nama": "Dimas Wijaya",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 12,
+     "nilai": 0.5833333333333334,
+     "weekly": 7,
+     "spm": {
+      "weekly": 3,
+      "n": 4
+     }
+    },
+    {
+     "rank": 8,
+     "rankDt": 4,
+     "kode": "24",
+     "nama": "Joko Susilo",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 10,
+     "nilai": 0.5,
+     "weekly": 5,
+     "spm": {
+      "weekly": 2,
+      "n": 4
+     }
+    },
+    {
+     "rank": 9,
+     "rankDt": 5,
+     "kode": "15",
+     "nama": "Eko Prasetyo",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 9,
+     "nilai": 0.3333333333333333,
+     "weekly": 3,
+     "spm": {
+      "weekly": 1,
+      "n": 3
+     }
+    },
+    {
+     "rank": 9,
+     "rankDt": 5,
+     "kode": "25",
+     "nama": "Kiki Amelia",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 6,
+     "nilai": 0.3333333333333333,
+     "weekly": 2,
+     "spm": {
+      "weekly": 1,
+      "n": 2
+     }
+    }
+   ],
+   "banded": [
+    {
+     "rank": 1,
+     "rankDt": 1,
+     "kode": "11",
+     "nama": "Andi Pratama",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 20,
+     "nilai": 0.7,
+     "hit": 14
+    },
+    {
+     "rank": 2,
+     "rankDt": 1,
+     "kode": "21",
+     "nama": "Gita Lestari",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 22,
+     "nilai": 0.6818181818181818,
+     "hit": 15
+    },
+    {
+     "rank": 3,
+     "rankDt": 2,
+     "kode": "12",
+     "nama": "Budi Santoso",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 18,
+     "nilai": 0.6666666666666666,
+     "hit": 12
+    },
+    {
+     "rank": 4,
+     "rankDt": 2,
+     "kode": "22",
+     "nama": "Hendra Kusuma",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 17,
+     "nilai": 0.6470588235294118,
+     "hit": 11
+    },
+    {
+     "rank": 5,
+     "rankDt": 3,
+     "kode": "13",
+     "nama": "Citra Dewi",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 15,
+     "nilai": 0.6,
+     "hit": 9
+    },
+    {
+     "rank": 6,
+     "rankDt": 3,
+     "kode": "23",
+     "nama": "Indra Gunawan",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 14,
+     "nilai": 0.5714285714285714,
+     "hit": 8
+    },
+    {
+     "rank": 7,
+     "rankDt": 4,
+     "kode": "14",
+     "nama": "Dimas Wijaya",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 12,
+     "nilai": 0.5,
+     "hit": 6
+    },
+    {
+     "rank": 7,
+     "rankDt": 4,
+     "kode": "24",
+     "nama": "Joko Susilo",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 10,
+     "nilai": 0.5,
+     "hit": 5
+    },
+    {
+     "rank": 7,
+     "rankDt": 4,
+     "kode": "25",
+     "nama": "Kiki Amelia",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 6,
+     "nilai": 0.5,
+     "hit": 3
+    },
+    {
+     "rank": 10,
+     "rankDt": 5,
+     "kode": "15",
+     "nama": "Eko Prasetyo",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 9,
+     "nilai": 0.4444444444444444,
+     "hit": 4
+    }
+   ],
+   "asrt": [
+    {
+     "rank": 1,
+     "rankDt": 1,
+     "kode": "21",
+     "nama": "Gita Lestari",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 22,
+     "nilai": 2.727272727272727,
+     "lines": 60,
+     "toko": 22
+    },
+    {
+     "rank": 2,
+     "rankDt": 1,
+     "kode": "11",
+     "nama": "Andi Pratama",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 20,
+     "nilai": 2.6,
+     "lines": 52,
+     "toko": 20
+    },
+    {
+     "rank": 3,
+     "rankDt": 2,
+     "kode": "12",
+     "nama": "Budi Santoso",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 18,
+     "nilai": 2.2222222222222223,
+     "lines": 40,
+     "toko": 18
+    },
+    {
+     "rank": 4,
+     "rankDt": 3,
+     "kode": "13",
+     "nama": "Citra Dewi",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 15,
+     "nilai": 2.2,
+     "lines": 33,
+     "toko": 15
+    },
+    {
+     "rank": 5,
+     "rankDt": 4,
+     "kode": "14",
+     "nama": "Dimas Wijaya",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 12,
+     "nilai": 2.0833333333333335,
+     "lines": 25,
+     "toko": 12
+    },
+    {
+     "rank": 6,
+     "rankDt": 2,
+     "kode": "22",
+     "nama": "Hendra Kusuma",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 17,
+     "nilai": 2.0588235294117645,
+     "lines": 35,
+     "toko": 17
+    },
+    {
+     "rank": 7,
+     "rankDt": 3,
+     "kode": "23",
+     "nama": "Indra Gunawan",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 14,
+     "nilai": 2,
+     "lines": 28,
+     "toko": 14
+    },
+    {
+     "rank": 7,
+     "rankDt": 3,
+     "kode": "24",
+     "nama": "Joko Susilo",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 10,
+     "nilai": 2,
+     "lines": 20,
+     "toko": 10
+    },
+    {
+     "rank": 9,
+     "rankDt": 5,
+     "kode": "15",
+     "nama": "Eko Prasetyo",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 9,
+     "nilai": 1.8888888888888888,
+     "lines": 17,
+     "toko": 9
+    },
+    {
+     "rank": 10,
+     "rankDt": 5,
+     "kode": "25",
+     "nama": "Kiki Amelia",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 6,
+     "nilai": 1.5,
+     "lines": 9,
+     "toko": 6
+    }
+   ],
+   "belumCukup": {
+    "fop": [
+     {
+      "rank": null,
+      "rankDt": null,
+      "kode": "16",
+      "nama": "Fitri Handayani",
+      "dt_kode": "DA",
+      "dt_nama": "PT Surya Niaga",
+      "n": 3,
+      "nilai": 1,
+      "weekly": 3,
+      "spm": {
+       "weekly": 1,
+       "n": 1
+      }
+     },
+     {
+      "rank": null,
+      "rankDt": null,
+      "kode": "26",
+      "nama": "Lina Marlina",
+      "dt_kode": "DB",
+      "dt_nama": "CV Mitra Timur Sejahtera",
+      "n": 2,
+      "nilai": 1,
+      "weekly": 2,
+      "spm": {
+       "weekly": 1,
+       "n": 1
+      }
+     }
+    ],
+    "banded": [
+     {
+      "rank": null,
+      "rankDt": null,
+      "kode": "16",
+      "nama": "Fitri Handayani",
+      "dt_kode": "DA",
+      "dt_nama": "PT Surya Niaga",
+      "n": 3,
+      "nilai": 0.6666666666666666,
+      "hit": 2
+     },
+     {
+      "rank": null,
+      "rankDt": null,
+      "kode": "26",
+      "nama": "Lina Marlina",
+      "dt_kode": "DB",
+      "dt_nama": "CV Mitra Timur Sejahtera",
+      "n": 2,
+      "nilai": 0.5,
+      "hit": 1
+     }
+    ],
+    "asrt": [
+     {
+      "rank": null,
+      "rankDt": null,
+      "kode": "16",
+      "nama": "Fitri Handayani",
+      "dt_kode": "DA",
+      "dt_nama": "PT Surya Niaga",
+      "n": 3,
+      "nilai": 2,
+      "lines": 6,
+      "toko": 3
+     },
+     {
+      "rank": null,
+      "rankDt": null,
+      "kode": "26",
+      "nama": "Lina Marlina",
+      "dt_kode": "DB",
+      "dt_nama": "CV Mitra Timur Sejahtera",
+      "n": 2,
+      "nilai": 1.5,
+      "lines": 3,
+      "toko": 2
+     }
+    ]
+   },
+   "belumTransaksi": 3
+  },
+  "HOME CARE": {
+   "label": "Home Care",
+   "fop": [
+    {
+     "rank": 1,
+     "rankDt": 1,
+     "kode": "22",
+     "nama": "Hendra Kusuma",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 17,
+     "nilai": 0.5294117647058824,
+     "weekly": 9,
+     "spm": {
+      "weekly": 4,
+      "n": 6
+     }
+    },
+    {
+     "rank": 2,
+     "rankDt": 2,
+     "kode": "21",
+     "nama": "Gita Lestari",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 22,
+     "nilai": 0.5,
+     "weekly": 11,
+     "spm": {
+      "weekly": 5,
+      "n": 8
+     }
+    },
+    {
+     "rank": 2,
+     "rankDt": 1,
+     "kode": "11",
+     "nama": "Andi Pratama",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 20,
+     "nilai": 0.5,
+     "weekly": 10,
+     "spm": {
+      "weekly": 5,
+      "n": 7
+     }
+    },
+    {
+     "rank": 2,
+     "rankDt": 1,
+     "kode": "12",
+     "nama": "Budi Santoso",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 18,
+     "nilai": 0.5,
+     "weekly": 9,
+     "spm": {
+      "weekly": 4,
+      "n": 6
+     }
+    },
+    {
+     "rank": 2,
+     "rankDt": 2,
+     "kode": "24",
+     "nama": "Joko Susilo",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 10,
+     "nilai": 0.5,
+     "weekly": 5,
+     "spm": {
+      "weekly": 2,
+      "n": 4
+     }
+    },
+    {
+     "rank": 6,
+     "rankDt": 3,
+     "kode": "15",
+     "nama": "Eko Prasetyo",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 9,
+     "nilai": 0.4444444444444444,
+     "weekly": 4,
+     "spm": {
+      "weekly": 2,
+      "n": 3
+     }
+    },
+    {
+     "rank": 7,
+     "rankDt": 4,
+     "kode": "13",
+     "nama": "Citra Dewi",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 15,
+     "nilai": 0.4,
+     "weekly": 6,
+     "spm": {
+      "weekly": 3,
+      "n": 5
+     }
+    }
+   ],
+   "banded": [
+    {
+     "rank": 1,
+     "rankDt": 1,
+     "kode": "22",
+     "nama": "Hendra Kusuma",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 17,
+     "nilai": 0.5882352941176471,
+     "hit": 10
+    },
+    {
+     "rank": 2,
+     "rankDt": 1,
+     "kode": "12",
+     "nama": "Budi Santoso",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 18,
+     "nilai": 0.5555555555555556,
+     "hit": 10
+    },
+    {
+     "rank": 3,
+     "rankDt": 2,
+     "kode": "11",
+     "nama": "Andi Pratama",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 20,
+     "nilai": 0.55,
+     "hit": 11
+    },
+    {
+     "rank": 4,
+     "rankDt": 2,
+     "kode": "21",
+     "nama": "Gita Lestari",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 22,
+     "nilai": 0.5454545454545454,
+     "hit": 12
+    },
+    {
+     "rank": 5,
+     "rankDt": 3,
+     "kode": "13",
+     "nama": "Citra Dewi",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 15,
+     "nilai": 0.5333333333333333,
+     "hit": 8
+    },
+    {
+     "rank": 6,
+     "rankDt": 3,
+     "kode": "24",
+     "nama": "Joko Susilo",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 10,
+     "nilai": 0.4,
+     "hit": 4
+    },
+    {
+     "rank": 7,
+     "rankDt": 4,
+     "kode": "15",
+     "nama": "Eko Prasetyo",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 9,
+     "nilai": 0.3333333333333333,
+     "hit": 3
+    }
+   ],
+   "asrt": [
+    {
+     "rank": 1,
+     "rankDt": 1,
+     "kode": "22",
+     "nama": "Hendra Kusuma",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 17,
+     "nilai": 1.8235294117647058,
+     "lines": 31,
+     "toko": 17
+    },
+    {
+     "rank": 2,
+     "rankDt": 2,
+     "kode": "21",
+     "nama": "Gita Lestari",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 22,
+     "nilai": 1.8181818181818181,
+     "lines": 40,
+     "toko": 22
+    },
+    {
+     "rank": 3,
+     "rankDt": 1,
+     "kode": "11",
+     "nama": "Andi Pratama",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 20,
+     "nilai": 1.8,
+     "lines": 36,
+     "toko": 20
+    },
+    {
+     "rank": 4,
+     "rankDt": 2,
+     "kode": "12",
+     "nama": "Budi Santoso",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 18,
+     "nilai": 1.6666666666666667,
+     "lines": 30,
+     "toko": 18
+    },
+    {
+     "rank": 5,
+     "rankDt": 3,
+     "kode": "24",
+     "nama": "Joko Susilo",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 10,
+     "nilai": 1.4,
+     "lines": 14,
+     "toko": 10
+    },
+    {
+     "rank": 6,
+     "rankDt": 3,
+     "kode": "13",
+     "nama": "Citra Dewi",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 15,
+     "nilai": 1.3333333333333333,
+     "lines": 20,
+     "toko": 15
+    },
+    {
+     "rank": 6,
+     "rankDt": 3,
+     "kode": "15",
+     "nama": "Eko Prasetyo",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 9,
+     "nilai": 1.3333333333333333,
+     "lines": 12,
+     "toko": 9
+    }
+   ],
+   "belumCukup": {
+    "fop": [],
+    "banded": [],
+    "asrt": []
+   },
+   "belumTransaksi": 0
+  },
+  "PERSONAL CARE": {
+   "label": "Personal Care",
+   "fop": [
+    {
+     "rank": 1,
+     "rankDt": 1,
+     "kode": "11",
+     "nama": "Andi Pratama",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 20,
+     "nilai": 0.4,
+     "weekly": 8,
+     "spm": {
+      "weekly": 4,
+      "n": 7
+     }
+    },
+    {
+     "rank": 2,
+     "rankDt": 1,
+     "kode": "21",
+     "nama": "Gita Lestari",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 22,
+     "nilai": 0.36363636363636365,
+     "weekly": 8,
+     "spm": {
+      "weekly": 4,
+      "n": 8
+     }
+    },
+    {
+     "rank": 3,
+     "rankDt": 2,
+     "kode": "23",
+     "nama": "Indra Gunawan",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 14,
+     "nilai": 0.35714285714285715,
+     "weekly": 5,
+     "spm": {
+      "weekly": 2,
+      "n": 5
+     }
+    },
+    {
+     "rank": 4,
+     "rankDt": 2,
+     "kode": "13",
+     "nama": "Citra Dewi",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 15,
+     "nilai": 0.3333333333333333,
+     "weekly": 5,
+     "spm": {
+      "weekly": 2,
+      "n": 5
+     }
+    }
+   ],
+   "banded": [
+    {
+     "rank": 1,
+     "rankDt": 1,
+     "kode": "11",
+     "nama": "Andi Pratama",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 20,
+     "nilai": 0.45,
+     "hit": 9
+    },
+    {
+     "rank": 2,
+     "rankDt": 1,
+     "kode": "23",
+     "nama": "Indra Gunawan",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 14,
+     "nilai": 0.42857142857142855,
+     "hit": 6
+    },
+    {
+     "rank": 3,
+     "rankDt": 2,
+     "kode": "21",
+     "nama": "Gita Lestari",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 22,
+     "nilai": 0.4090909090909091,
+     "hit": 9
+    },
+    {
+     "rank": 4,
+     "rankDt": 2,
+     "kode": "13",
+     "nama": "Citra Dewi",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 15,
+     "nilai": 0.3333333333333333,
+     "hit": 5
+    }
+   ],
+   "asrt": [
+    {
+     "rank": 1,
+     "rankDt": 1,
+     "kode": "11",
+     "nama": "Andi Pratama",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 20,
+     "nilai": 1.5,
+     "lines": 30,
+     "toko": 20
+    },
+    {
+     "rank": 2,
+     "rankDt": 1,
+     "kode": "21",
+     "nama": "Gita Lestari",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 22,
+     "nilai": 1.4090909090909092,
+     "lines": 31,
+     "toko": 22
+    },
+    {
+     "rank": 3,
+     "rankDt": 2,
+     "kode": "13",
+     "nama": "Citra Dewi",
+     "dt_kode": "DA",
+     "dt_nama": "PT Surya Niaga",
+     "n": 15,
+     "nilai": 1.2,
+     "lines": 18,
+     "toko": 15
+    },
+    {
+     "rank": 4,
+     "rankDt": 2,
+     "kode": "23",
+     "nama": "Indra Gunawan",
+     "dt_kode": "DB",
+     "dt_nama": "CV Mitra Timur Sejahtera",
+     "n": 14,
+     "nilai": 1,
+     "lines": 14,
+     "toko": 14
+    }
+   ],
+   "belumCukup": {
+    "fop": [],
+    "banded": [],
+    "asrt": []
+   },
+   "belumTransaksi": 4
+  }
+ }
+}

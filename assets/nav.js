@@ -18,11 +18,13 @@
     target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12h.01"/>',
     user: '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 11l2 2 4-4"/>',
     me: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    gauge: '<path d="M4 18a8 8 0 1 1 16 0M12 18l4-6"/>',
     out: '<path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/>',
   };
   /* [kunci, label, ikon, halaman (untuk tombol tab) atau berkas tujuan] */
   const GROUPS = [
-    { t: 'Great Sales', p: 'gs', file: 'great-sales.html', items: [['skor', 'Skor', 'trophy'], ['fop', 'Weekly FOP', 'cal'], ['banded', 'Banded', 'box'], ['asrt', 'Assortment', 'layers'], ['ps', 'Perfect Store', 'store'], ['toko', 'Toko', 'pin'], ['ranking', 'Ranking', 'list']] },
+    { t: 'Umum', items: [['rank', 'Ranking', 'trophy', 'ranking.html']] },   // terlihat di semua halaman, terbuka untuk akun mana pun
+    { t: 'Great Sales', p: 'gs', file: 'great-sales.html', items: [['skor', 'Skor', 'gauge'], ['fop', 'Weekly FOP', 'cal'], ['banded', 'Banded', 'box'], ['asrt', 'Assortment', 'layers'], ['ps', 'Perfect Store', 'store'], ['toko', 'Toko', 'pin']] },
     { t: 'Monitoring Harian', p: 'mon', file: 'index.html', items: [['ring', 'Ringkasan', 'chart'], ['sim', 'Simulator', 'sim'], ['fruit', 'Low Hanging Fruit', 'target']] },
     { t: 'Alat', items: [['stok', 'Cek Stok', 'box', 'cek-stok.html'], ['hadir', 'Kehadiran', 'user', 'kehadiran.html']] },
   ];
@@ -31,7 +33,7 @@
     const inner = `${ico(it[2])}<span class="side-l">${it[1]}</span>`;
     if (g.p && g.p === page) {   // halaman ini: tombol tab sungguhan
       return g.p === 'gs'
-        ? `<button type="button" class="side-i" data-tab="${it[0]}"${it[0] === 'ranking' ? ' hidden' : ''}>${inner}</button>`
+        ? `<button type="button" class="side-i" data-tab="${it[0]}">${inner}</button>`
         : `<button type="button" class="side-i" id="tab-${it[0]}" aria-controls="p-${it[0]}"${it[0] === 'ring' ? ' aria-current="page"' : ''}>${inner}</button>`;
     }
     const href = it[3] || (g.file + (g.p === 'mon' && it[0] === 'ring' ? '' : '#' + it[0]));

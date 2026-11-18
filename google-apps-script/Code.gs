@@ -103,6 +103,7 @@ function doGet(e) {
     if (p.view === 'gs') return jsonOut(respondGs_(me, reg, String(p.dt || '').trim()));
     if (p.view === 'stok') return jsonOut(respondStok_(me, reg, String(p.dt || '').trim()));
     if (p.view === 'hadir') return jsonOut(respondHadir_(me, reg, String(p.dt || '').trim()));
+    if (p.view === 'rank') return jsonOut(respondRank_(me, reg));   // ranking bersama: peran apa pun, lintas DT (hanya bidang aman, lihat rankPublicRow_)
 
     if (me.peran === 'pusat') {
       const dts = reg.filter(r => r.peran === 'dt' && r.sheet_id);
@@ -1020,10 +1021,66 @@ function rankSales_(perDt, minToko) {
         r.rank = prev && same(prev.nilai, r.nilai) ? prev.rank : i + 1;
         res[kpi].push(r); prev = r;
       });
+      rankWithinDt_(res[kpi]);
     });
     out.bu[def[0]] = res;
   });
   return out;
+}
+
+/**
+ * Pure. rows = baris papan yang sudah berperingkat gabungan (rank != null), urut nilai menurun. Menambah `rankDt` pada tiap baris:
+ * peringkat di antara baris DT yang sama saja (nilai sama berbagi peringkat: 1, 2, 2, 4). Baris tanpa rank (belum cukup toko) tidak disentuh.
+ */
+function rankWithinDt_(rows) {
+  const per = {};
+  (rows || []).forEach(r => {
+    if (r.rank == null) return;
+    const t = per[r.dt_kode] = per[r.dt_kode] || { n: 0, prev: null };
+    t.n++;
+    r.rankDt = t.prev && Math.abs(t.prev.nilai - r.nilai) < 1e-9 ? t.prev.rankDt : t.n;
+    t.prev = r;
+  });
+  return rows;
+}
+
+/**
+ * Pure. Satu-satunya pintu data ranking lintas DT: hanya bidang ini yang boleh keluar ke akun mana pun.
+ * Dilarang: nama/kode toko, SKU, omzet, kode akses. Tambah bidang baru HANYA setelah persetujuan pemilik.
+ */
+function rankPublicRow_(r) {
+  const o = { rank: r.rank == null ? null : r.rank, rankDt: r.rankDt == null ? null : r.rankDt, kode: String(r.kode), nama: String(r.nama), dt_kode: String(r.dt_kode), dt_nama: String(r.dt_nama), n: +r.n || 0, nilai: r.nilai };
+  if (r.weekly !== undefined) o.weekly = r.weekly;
+  if (r.spm) o.spm = { weekly: r.spm.weekly, n: r.spm.n };
+  if (r.hit !== undefined) o.hit = r.hit;
+  if (r.lines !== undefined) o.lines = r.lines;
+  if (r.toko !== undefined) o.toko = r.toko;   // jumlah toko aktif (angka), bukan daftar toko
+  return o;
+}
+
+/** Ranking bersama semua DT untuk akun mana pun (sudah lolos kode akses di doGet). Tanpa filter cakupan, tapi hanya bidang aman. */
+function respondRank_(me, reg) {
+  const mine = me.peran === 'dt' ? me.dt_kode : '';
+  const hit = cacheGet_('respondrank_v1');
+  if (hit) return Object.assign({ mode: 'rank', peran: me.peran, me: { dt_kode: mine } }, hit);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const toko = readObjs_(ss, 'GS_TOKO');
+  const bandedSku = readObjs_(ss, 'GS_BANDED_SKU').map(b => ({ channel: String(b.channel), sku_kode: String(b.sku_kode), sku_nama: String(b.sku_nama) }));
+  const cfg = readGsCfg_(ss);
+  const hist = readObjs_(ss, 'GS_BULANAN');
+  const dts = reg.filter(x => x.peran === 'dt' && x.sheet_id);
+  const rankRes = dts.map(x => salesRankForDt_(x, toko, bandedSku, cfg, hist));
+  const rk = rankSales_(rankRes, cfg.rank_min_toko);
+  const bu = {};
+  Object.keys(rk.bu).forEach(k => {
+    const b = rk.bu[k];
+    bu[k] = { label: b.label, fop: b.fop.map(rankPublicRow_), banded: b.banded.map(rankPublicRow_), asrt: b.asrt.map(rankPublicRow_),
+      belumCukup: { fop: b.belumCukup.fop.map(rankPublicRow_), banded: b.belumCukup.banded.map(rankPublicRow_), asrt: b.belumCukup.asrt.map(rankPublicRow_) }, belumTransaksi: b.belumTransaksi };
+  });
+  const body = { tanggalData: rk.tanggalData, bulan: rk.bulan, minToko: rk.minToko,
+    dts: rankRes.map(d => ({ kode: d.dist_kode, nama: d.dist_nama, status: d.error ? 'error' : d.bulan ? 'ok' : 'tanpa_data' })), bu: bu };
+  if (!rankRes.some(d => d.error)) cachePut_('respondrank_v1', body);   // hasil dengan DT galat tidak disimpan, supaya pulih begitu DT itu normal
+  return Object.assign({ mode: 'rank', peran: me.peran, me: { dt_kode: mine } }, body);
 }
 
 /** Fingerprint pendek input yang memengaruhi hasil tetapi bukan bagian kunci cache DMS (daftar toko, SKU banded, config, riwayat). */

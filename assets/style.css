@@ -708,3 +708,7 @@ th .th-b:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-
 @media (prefers-reduced-motion:reduce){.ring .rg-f,.kpi-toggle svg{transition:none}}
 .dsr-k{margin-top:14px;padding-top:16px;border-top:1px solid var(--line);gap:22px}
 .rk .kpi-detail{cursor:default}
+
+/* Ranking bersama: baris salesman dari DT akun yang sedang masuk diberi tepi lembut dan penanda "DT Anda" */
+.rk.mine{box-shadow:inset 3px 0 0 var(--brand)}
+.rk-h .nm .tag.b{margin-left:4px}
