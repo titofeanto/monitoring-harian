@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { setup, skip } from './fuzz/testkit.mjs';
-import { CODES, okResponse } from './fuzz/fuzzserve.mjs';
-import { PAGES, state } from './fuzz/browser.fuzz.mjs';
+import { setup, skip } from './testkit.mjs';
+import { CODES, okResponse } from './fuzzserve.mjs';
+import { PAGES, state } from './browser.fuzz.mjs';
 
-const env = setup(8852);
+const env = setup();
 const server = new Proxy({}, { get: (_, k) => env.server[k] }), browser = new Proxy({}, { get: (_, k) => env.browser[k] });
 // Kode akses kosong/spasi (plan 025)
 const dataReqs = (sc) => server.log.filter(l => l.sc === sc && /(^|&)code=/.test(l.q)).length;

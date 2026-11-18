@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { setup, skip } from './fuzz/testkit.mjs';
-import { CODES, okResponse } from './fuzz/fuzzserve.mjs';
-import { PAGES, state } from './fuzz/browser.fuzz.mjs';
+import { setup, skip } from './testkit.mjs';
+import { CODES, okResponse } from './fuzzserve.mjs';
+import { PAGES, state } from './browser.fuzz.mjs';
 
-const env = setup(8854);
+const env = setup();
 const server = new Proxy({}, { get: (_, k) => env.server[k] }), browser = new Proxy({}, { get: (_, k) => env.browser[k] });
 // Salinan data di localStorage dari versi lama/bentuk lain tidak boleh membuat halaman macet di "Memuat" selamanya.
 const BAD_CACHES = {
@@ -21,7 +21,7 @@ for (const [id, list] of Object.entries(BAD_CACHES)) {
       const ls = { mh_code: def.code, [CACHE_KEYS[id]]: JSON.stringify(bad) };
       await page.goto(`${server.fresh()}/${def.file}?sc=ok&fast=1&ls=${encodeURIComponent(JSON.stringify(ls))}`);
       const ok = await page.waitFor("(function(){var a=document.getElementById('appScreen');return a&&!a.hidden&&document.body.innerText.length>400})()", 8000);
-      assert.ok(ok, 'halaman macet: ' + JSON.stringify(await (await import('./fuzz/browser.fuzz.mjs')).state(page)));
+      assert.ok(ok, 'halaman macet: ' + JSON.stringify(await (await import('./browser.fuzz.mjs')).state(page)));
       assert.deepEqual(page.errors, []);
     } finally { await page.close(); }
   }));

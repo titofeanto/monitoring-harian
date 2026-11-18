@@ -11,7 +11,7 @@ import { mutateDataset } from './mutate.mjs';
 const NOW = Date.UTC(2026, 10, 18, 3, 0, 0);
 class FixedDate extends Date { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } static [Symbol.hasInstance](x) { return Object.prototype.toString.call(x) === '[object Date]'; } }   // Date dari sel mutasi berasal dari realm lain (vm): instanceof harus tetap benar
 
-export const BAD_STR = /^(NaN|undefined|Infinity|-Infinity|\[object Object\])$|\b(NaN|undefined|Infinity)\b|\[object Object\]/;
+export const BAD_STR = /^(NaN|undefined|Infinity|-Infinity|\[object Object\])$|\b(NaN|undefined|Infinity)\b|\[object Object\]|GMT[+-]\d{4}/;   // GMT+0900: String(Date) bocor
 export const FORBIDDEN_RANK_KEYS = ['outlet', 'sku', 'omzet', 'kode_akses', 'toko_kode'];
 
 /** Telusuri objek sebelum JSON.stringify. Mengembalikan daftar { path, why }. */

@@ -1,14 +1,15 @@
 // Regresi bug browser dari fuzz (plan 025), memakai Chrome headless lewat CDP. Dilewati bila Chrome tidak ada.
-import { test, before, after } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { launch, hasChrome } from './fuzz/cdp.mjs';
-import { startFuzzServer, CODES } from './fuzz/fuzzserve.mjs';
+import { setup, skip } from './fuzz/testkit.mjs';
+import { CODES } from './fuzz/fuzzserve.mjs';
 import { BAD_TEXT } from './fuzz/browser.fuzz.mjs';
 
-const skip = !hasChrome && 'Chrome tidak ada';
-let server, browser;
-before(async () => { if (skip) return; server = await startFuzzServer(8851); browser = await launch(); });
-after(async () => { if (browser) await browser.close(); if (server) server.close(); });
+const env = setup(8851);   // satu Chrome + satu server untuk berkas ini dan semua kasus yang diimpor di bawah
+const server = new Proxy({}, { get: (_, k) => env.server[k] }), browser = new Proxy({}, { get: (_, k) => env.browser[k] });
+import './fuzz/cases.kode.mjs';
+import './fuzz/cases.segarkan.mjs';
+import './fuzz/cases.cache.mjs';
 
 async function open(file, code, extra = '', scenario = 'ok') {
   const page = await browser.newPage();

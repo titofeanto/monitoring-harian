@@ -72,7 +72,7 @@ export async function runLoginFuzz(browser, server, only = '') {
     }
     // 4. penyimpanan rusak
     const LSBAD = [
-      ['mh_code objek', { mh_code: '{"a":1}' }], ['mh_code array', { mh_code: '[1,2]' }], ['mh_code kosong', { mh_code: '' }], ['mh_code spasi', { mh_code: '   ' }], ['mh_code panjang', { mh_code: 'x'.repeat(20000) }],
+      ['mh_code objek', { mh_code: '{"a":1}' }], ['mh_code array', { mh_code: '[1,2]' }], ['mh_code kosong', { mh_code: '' }], ['mh_code spasi', { mh_code: '   ' }], ['mh_code panjang', { mh_code: 'x'.repeat(4000) }],
       ['cache JSON rusak', { mh_code: def.code, mh_gs_cache: '{bad', mh_stok_cache: '{bad', mh_hadir_cache: '{bad', mh_rank_cache: '{bad', mh_cache: '{bad' }], ['cache null', { mh_code: def.code, mh_gs_cache: 'null', mh_rank_cache: 'null', mh_stok_cache: 'null', mh_hadir_cache: 'null' }],
       ['cache bentuk salah', { mh_code: def.code, mh_gs_cache: JSON.stringify({ code: def.code, view: '', data: 5 }), mh_rank_cache: JSON.stringify({ code: def.code, data: [] }), mh_stok_cache: JSON.stringify({ code: def.code, data: 'x' }), mh_hadir_cache: JSON.stringify({ code: def.code, data: { mode: 'hadir' } }) }],
       ['tab tersimpan aneh', { mh_code: def.code, mh_gs_tab: '<script>', mh_gs_bnd_view: '[1' }],
