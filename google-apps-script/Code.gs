@@ -330,6 +330,7 @@ function doPost(e) {
     let body;
     try { body = JSON.parse((e.postData && e.postData.contents) || '{}'); }
     catch (err) { return jsonOut({ error: 'bad_request', message: 'Body bukan JSON valid.' }); }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return jsonOut({ error: 'bad_request', message: 'Body harus objek JSON.' });
 
     if (body.action === 'simpanStok') return jsonOut(simpanStok_(body));
     if (body.action === 'cekKodeAdmin') return jsonOut(adminAuth_(String(body.kode || '')) || { ok: true });
@@ -342,7 +343,7 @@ function doPost(e) {
     if (target.error) return jsonOut(target);
 
     const periode = String(body.periode || '').trim();
-    if (!/^\d{4}-\d{2}$/.test(periode)) return jsonOut({ error: 'bad_request', message: 'periode harus format YYYY-MM.' });
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(periode)) return jsonOut({ error: 'bad_request', message: 'periode harus format YYYY-MM.' });
     const rows = Array.isArray(body.rows) ? body.rows : null;
     if (!rows || !rows.length) return jsonOut({ error: 'bad_request', message: 'rows kosong.' });
     if (rows.length > HASIL_MAX_ROWS) return jsonOut({ error: 'bad_request', message: 'rows terlalu banyak (maks ' + HASIL_MAX_ROWS + ').' });

@@ -72,3 +72,17 @@ test('sel tanggal bertipe Date (diketik tangan di Sheet) keluar sebagai yyyy-MM-
   const hg = call(asDate('HARGA_PL', 'mulai'), { view: 'stok', code: ACCESS.pusat });
   hg.harga.forEach(r => assert.ok(r.mulai === '' || /^\d{4}-\d{2}-\d{2}$/.test(r.mulai), 'HARGA_PL.mulai: ' + r.mulai));
 });
+
+test('doPost: periode bulan 13/00 dan body JSON null ditolak dengan bad_request (bukan menulis atau TypeError)', () => {
+  const ds = structuredClone(base);
+  const ctx = loadGs({ SpreadsheetApp: makeSpreadsheetApp(ds), globals: { Session: { getScriptTimeZone: () => 'Asia/Jayapura' }, Date: FixedDate } });
+  const post = c => JSON.parse(ctx.doPost({ postData: { contents: c } }).getContent());
+  for (const periode of ['2026-13', '2026-00', '2026-99', '0000-00']) {
+    const r = post(JSON.stringify({ action: 'simpanHasil', code: ACCESS.tmk, periode, rows: [[1]] }));
+    assert.equal(r.error, 'bad_request', periode + ' -> ' + JSON.stringify(r));
+  }
+  for (const c of ['null', '5', '[1]', '"x"', 'true']) {
+    const r = post(c);
+    assert.ok(r.error && r.error !== 'server_error', c + ' -> ' + JSON.stringify(r));
+  }
+});
