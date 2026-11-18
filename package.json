@@ -1,1 +1,1 @@
-{"private": true, "type": "module", "scripts": {"test": "node --test tests/"}}
+{"private": true, "type": "module", "scripts": {"test": "node --test tests/", "dummy": "node tests/dummy/build-fixtures.mjs"}}
