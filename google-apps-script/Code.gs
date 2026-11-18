@@ -146,7 +146,7 @@ function respond_(r, p) {
   }
   const configOut = Object.assign({}, payload.config);
   delete configOut.kode_akses;
-  return { mode: 'dt', dt: { kode: r.dt_kode, nama: r.nama_dt }, builtAt: payload.builtAt, config: configOut, tabs: payload.tabs };
+  return { mode: 'dt', dt: { kode: r.dt_kode, nama: r.nama_dt }, builtAt: payload.builtAt, config: configOut, tabs: payload.tabs, catatan: payload.catatan || { tanggalRusak: 0 } };
 }
 
 /** String aman: null/undefined (kolom hilang atau header berganti nama) jadi '' bukan teks "undefined". */
@@ -157,6 +157,14 @@ function numOrNull_(v) { if (v === null || v === undefined || (typeof v === 'str
 
 /** Teks sel: Date (sel tanggal/jam yang diketik tangan jadi Date di Sheet) diformat dengan zona Sheet, bukan String(Date). */
 function cellText_(v, ss, fmt) { return v instanceof Date ? Utilities.formatDate(v, ss.getSpreadsheetTimeZone(), fmt) : str_(v); }
+
+/** Tanggal yang sah: teks yyyy-MM-dd dengan bulan 1-12 dan hari 1-31. Selain itu (teks bebas, "31/31/2026", "2026-13-01", HTML) = false. */
+function validDay_(t) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(t));
+  return !!m && +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31;
+}
+/** Periode bulan yang sah: yyyy-MM dengan bulan 1-12. */
+function validMonth_(t) { return /^\d{4}-(0[1-9]|1[0-2])$/.test(String(t)); }
 
 function jsonOut(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
@@ -199,16 +207,17 @@ function getPayload_(sheetId) {
   const ss = SpreadsheetApp.openById(sheetId);
   const tz = ss.getSpreadsheetTimeZone();
   const tabs = {};
+  let tanggalRusak = 0;
   TABLE_TABS.forEach(name => {
     let aoa = readTab_(ss, name, tz);
-    if (name === 'DMS_EXTRACT') aoa = pickColumns_(aoa, DMS_COLUMNS);
+    if (name === 'DMS_EXTRACT') { aoa = pickColumns_(aoa, DMS_COLUMNS); const f = dropBadDmsDates_(aoa); aoa = f.aoa; tanggalRusak = f.rusak; }
     tabs[name] = aoa;
   });
   RAW_TABS.forEach(name => { tabs[name] = readTab_(ss, name, tz); });
   tabs.MASTER_PRODUK = trimProduk_(tabs.MASTER_PRODUK, [tabs.NORMS_SKU, tabs.SKU_FOKUS]);
   tabs.HASIL_PERHITUNGAN = readHasilTab_(ss);
 
-  const payload = { config: readConfig_(ss, tz), tabs: tabs, builtAt: new Date().toISOString(), ms: Date.now() - t0 };
+  const payload = { config: readConfig_(ss, tz), tabs: tabs, builtAt: new Date().toISOString(), ms: Date.now() - t0, catatan: { tanggalRusak: tanggalRusak } };
   cachePut_(key, payload);
   return payload;
 }
@@ -226,6 +235,21 @@ function cell_(c, tz) {
   if (c instanceof Date) return Utilities.formatDate(c, tz, 'yyyy-MM-dd');
   if (c === null || c === undefined) return '';
   return c;
+}
+
+/** Buang baris DMS yang tanggal INVDate-nya terisi tetapi bukan tanggal sah (teks, bulan di luar 1-12). Sel tanggal kosong dibiarkan. Mengembalikan {aoa, rusak}. */
+function dropBadDmsDates_(aoa) {
+  if (!aoa.length) return { aoa: aoa, rusak: 0 };
+  const hdr = aoa[0].map(h => String(h).trim()), c = ['INVDate', 'InvDate', 'Tanggal'].map(n => hdr.indexOf(n)).filter(i => i >= 0)[0];
+  if (c === undefined) return { aoa: aoa, rusak: 0 };
+  let rusak = 0;
+  const out = aoa.filter((row, i) => {
+    if (!i) return true;
+    const t = String(row[c] === null || row[c] === undefined ? '' : row[c]).trim();
+    if (t === '' || asrtIso_(t)) return true;
+    rusak++; return false;
+  });
+  return { aoa: out, rusak: rusak };
 }
 
 function pickColumns_(aoa, wanted) {
@@ -485,10 +509,12 @@ function respondHadir_(me, reg, dtWanted) {
     if (!sh || sh.getLastRow() < 2) return [];
     return sh.getRange(2, 1, sh.getLastRow() - 1, n).getValues().filter(r => r.some(c => c !== '') && ok[String(r[0])]);
   };
-  const rows = read('KEHADIRAN', 6);
+  const allRows = read('KEHADIRAN', 6);
+  const rows = allRows.filter(r => validDay_(cellText_(r[2], ss, 'yyyy-MM-dd')));
+  const tanggalRusak = allRows.length - rows.length;
   if (!rows.length) return { error: 'no_data', message: 'Data kehadiran belum diupload untuk DT ini.' };
   return {
-    mode: 'hadir',
+    mode: 'hadir', catatan: { tanggalRusak: tanggalRusak },
     dts: dts.map(x => ({ kode: x.dt_kode, nama: x.nama_dt })),
     sales: read('SALES_MASTER', 3).map(r => [String(r[0]), String(r[1]), String(r[2] || '')]),
     rows: rows.map(r => [str_(r[0]), str_(r[1]), cellText_(r[2], ss, 'yyyy-MM-dd'), cellText_(r[3], ss, 'HH:mm'), +r[4] ? 1 : 0, +r[5] || 1]),
@@ -537,8 +563,10 @@ function respondGs_(me, reg, dtWanted) {
   const toko = read('GS_TOKO').filter(t => !scope || String(t.dist_kode) === scope.dt_kode);
   const bandedSku = read('GS_BANDED_SKU').map(b => ({ channel: str_(b.channel), sku_kode: str_(b.sku_kode), sku_nama: str_(b.sku_nama) }));
   const cfg = readGsCfg_(ss);
-  const hist = read('GS_BULANAN').filter(h => !scope || String(h.dist_kode) === scope.dt_kode);
-  const mon = { cfg: cfg, hasList: toko.length > 0, bandedSku: bandedSku, perDt: [], noDt: [], manual: read('GS_MANUAL').slice(-60), recap: monRecap_(hist, read('GS_BULANAN_ASRT').filter(a => !scope || String(a.dist_kode) === scope.dt_kode), bandedSku, cfg) };
+  const histAll = read('GS_BULANAN').filter(h => !scope || String(h.dist_kode) === scope.dt_kode);
+  const hist = histAll.filter(h => validMonth_(h.periode));
+  const tanggalRusak = histAll.length - hist.length;
+  const mon = { catatan: { tanggalRusak: tanggalRusak }, cfg: cfg, hasList: toko.length > 0, bandedSku: bandedSku, perDt: [], noDt: [], manual: read('GS_MANUAL').slice(-60), recap: monRecap_(hist, read('GS_BULANAN_ASRT').filter(a => validMonth_(a.periode) && (!scope || String(a.dist_kode) === scope.dt_kode)), bandedSku, cfg) };
   if (toko.length) {
     const kodes = Object.create(null); toko.forEach(t => { kodes[String(t.dist_kode)] = t.dist_nama; });
     asrtDts.forEach(x => {
@@ -704,10 +732,11 @@ function asrtChannelOf_(typeDesc) {
 /** 'dd/MM/yyyy' atau 'yyyy-MM-dd' -> 'yyyy-MM-dd' ('' kalau tidak terbaca). */
 function asrtIso_(v) {
   const s = String(v === null || v === undefined ? '' : v).trim();
+  let iso = '';
   let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-  if (m) return m[1] + '-' + m[2] + '-' + m[3];
-  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);
-  return m ? m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2) : '';
+  if (m) iso = m[1] + '-' + m[2] + '-' + m[3];
+  else { m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s); if (m) iso = m[3] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[1]).slice(-2); }
+  return validDay_(iso) ? iso : '';   // bulan di luar 1-12 atau hari di luar 1-31 = bukan tanggal (T-02)
 }
 
 function asrtNum_(v) {
