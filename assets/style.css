@@ -12,6 +12,7 @@
   --ok:#12724A; --ok-bg:#DDF6E8; --minus:#B83829; --minus-bg:#F8DED7; --plus:#176DA6; --plus-bg:#E6F2FB; --warn-bg:#FDEBD3; --warn-ink:#8A4708;
   --gold:#E0A800; --silver:#9AA5B1; --bronze:#B8743A; --medal-ink:#3A2A00;
   --lime:#D9F25A; --lime-edge:#C3DF33; --lime-ink:#0F172A;
+  --warm:#A8461F; --warm-hover:#8F3A18; --warm-ink:#FFFFFF;
   --tint-1:#E6F2FB; --tint-2:#DDF6E8; --tint-3:#FDEBD3; --tint-4:#DDF3F8;
   --shadow:0 1px 2px rgba(15,23,42,.06),0 12px 32px rgba(48,160,229,.18); --shadow-s:0 1px 2px rgba(15,23,42,.05),0 8px 24px rgba(48,160,229,.12);
   --r:16px; --r-s:11px;
@@ -32,6 +33,7 @@
     --ok:#6CC592; --ok-bg:#16382B; --minus:#F59A86; --minus-bg:#3C2220; --plus:#8FCBF3; --plus-bg:#16355A; --warn-bg:#3A3110; --warn-ink:#F2D878;
     --tint-1:#16355A; --tint-2:#16382B; --tint-3:#3F3018; --tint-4:#12333F;
     --shadow:0 8px 28px rgba(0,0,0,.45); --shadow-s:0 2px 10px rgba(0,0,0,.35);
+    --warm:#E08A5C; --warm-hover:#EBA07A; --warm-ink:#2A1204;
   }
 }
 
@@ -48,13 +50,45 @@ h1,h2,h3,h4,p{margin:0}
 svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 
-/* ---------- login ---------- */
-.login-wrap{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px;background:linear-gradient(160deg,var(--brand-deep),var(--head-1) 55%,var(--brand-2))}
-.login-box{width:100%;max-width:400px;background:var(--surface);border-radius:24px;padding:28px 24px;display:grid;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
-.login-box h1{margin:4px 0 0;font-weight:800;font-size:28px;letter-spacing:-.01em;line-height:1.1;text-transform:none}
-.login-box p{color:var(--ink-2);font-size:14px;margin:0 0 6px}
-.login-box .icon,.mark{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:16px;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;flex:none;letter-spacing:.02em}
-.login-box .icon{width:56px;height:56px;font-size:22px;border-radius:16px}
+/* ---------- login (satu komponen untuk lima halaman; lihat DESIGN.md "Login") ---------- */
+.login-wrap{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--bg)}
+.lg-brand{flex:0 0 auto;min-height:clamp(220px,45dvh,460px);background:var(--brand);color:#fff;display:flex;flex-direction:column;justify-content:space-between;gap:20px;padding:calc(28px + env(safe-area-inset-top,0px)) 24px 0;overflow:hidden}
+.lg-name{margin:0;font-weight:800;font-size:clamp(64px,22vw,120px);line-height:.88;letter-spacing:-.04em;text-transform:none;color:#fff}
+.lg-beat{display:block;width:100%;max-width:520px;height:auto;max-height:42%;min-height:60px;fill:#fff;flex:none}
+.lg-main{flex:1 1 auto;padding:32px 24px calc(40px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:flex-start;gap:20px}
+.lg-form{width:100%;max-width:360px;display:grid;gap:16px}
+.lg-title{margin:0;font-size:18px;font-weight:700;line-height:1.25;color:var(--ink)}
+.lg-field{display:grid;gap:8px}
+.lg-field label{font-size:14px;font-weight:600;color:var(--ink)}
+.lg-input{position:relative}
+.lg-input input[type]{width:100%;height:52px;min-height:52px;box-sizing:border-box;padding:0 112px 0 14px;font:inherit;font-size:17px;color:var(--ink);background:var(--surface);border:1.5px solid var(--ink-2);border-radius:6px}
+.lg-input input[type]:focus{outline:3px solid var(--focus);outline-offset:2px;border-color:var(--ink);box-shadow:none}
+.lg-input input[type][aria-invalid=true]{border-color:var(--minus)}
+.lg-eye{position:absolute;top:4px;right:4px;min-width:44px;height:44px;padding:0 10px;border:0;border-radius:4px;background:transparent;color:var(--brand);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.lg-eye:hover{background:var(--brand-soft)}
+.lg-eye:focus-visible{outline:3px solid var(--focus);outline-offset:0}
+.lg-err{margin:0;color:var(--minus);font-size:14px;font-weight:600;line-height:1.35}
+.lg-err:empty{display:none}
+.lg-submit{height:52px;width:100%;border:0;border-radius:6px;background:var(--warm);color:var(--warm-ink);font:inherit;font-size:17px;font-weight:700;cursor:pointer}
+.lg-submit:hover:not(:disabled){background:var(--warm-hover)}
+.lg-submit:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.lg-submit:disabled{opacity:.7;cursor:progress}
+.lg-help{margin:0;color:var(--ink-2);font-size:14px;line-height:1.4}
+.lg-main [data-install]{width:100%;max-width:360px}
+@media (min-width:900px){
+  .login-wrap{flex-direction:row}
+  .lg-brand{flex:1 1 55%;min-height:100dvh;padding:56px 56px 0;justify-content:space-between}
+  .lg-name{font-size:clamp(120px,14vw,200px)}
+  .lg-beat{max-width:640px;max-height:46%}
+  .lg-main{flex:1 1 45%;justify-content:center;align-items:flex-start;padding:48px clamp(32px,5vw,80px)}
+}
+@media (prefers-color-scheme:dark){.lg-brand{background:var(--brand-deep)}}
+@media (prefers-reduced-motion:no-preference){
+  .lg-beat rect{transform-box:fill-box;transform-origin:50% 100%;animation:lg-up .26s ease-out backwards}
+  .lg-beat rect:nth-child(5n+1){animation-delay:0s}.lg-beat rect:nth-child(5n+2){animation-delay:.03s}.lg-beat rect:nth-child(5n+3){animation-delay:.06s}.lg-beat rect:nth-child(5n+4){animation-delay:.09s}.lg-beat rect:nth-child(5n){animation-delay:.12s}
+  @keyframes lg-up{from{transform:scaleY(0)}}
+}
+.mark{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:16px;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;flex:none;letter-spacing:.02em}
 .field{display:grid;gap:6px}
 .field label,.lbl{display:block;font-size:13px;font-weight:600;color:var(--ink-2)}
 .err{color:var(--minus);font-size:14px;min-height:1.2em}
@@ -425,7 +459,6 @@ details.box[open]>summary::after{transform:rotate(180deg)}
 @media print{dialog.dlg-confirm,.side,.nav-scrim,.menu-btn,.btn,.chip,.top .hdr-btn{display:none}.top{background:none;color:#000;position:static;box-shadow:none}}
 
 /* ---------- tambahan ---------- */
-.login-box form{display:grid;gap:12px}
 .card h2[style]{margin-top:0!important}
 .card p.muted{font-size:13px;margin:0 0 10px}
 .card>.scroll{margin-top:0}

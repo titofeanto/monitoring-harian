@@ -3,3 +3,5 @@
 window.APP_CONFIG = {
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzu8lO0vIulHD3ihJv4k7jAPT1WiCblCx7Su3eV93ymMd_awmDXUu3sa32aDXT3mssdiA/exec",
 };
+// Nama aplikasi yang tampil di layar login (satu tempat, mudah diganti). Tempat lain yang perlu diganti: docs/identitas-aplikasi.md.
+window.MH_APP_NAME = "Tifa";

@@ -40,7 +40,7 @@ export async function runLoginFuzz(browser, server, only = '') {
         if (expect === 'masuk') { if (!st.app) add(def.id, `kode ${name}: tidak masuk`, JSON.stringify(st)); else if (sentCodes.some(c => c !== CODES.pusat && def.id !== 'index')) add(def.id, `kode ${name}: tidak di-trim`, JSON.stringify(sentCodes)); }
         if (expect === 'salah' && st.app) add(def.id, `kode ${name}: masuk padahal salah`, JSON.stringify(st));
         if (expect !== 'masuk' && !st.login) add(def.id, `kode ${name}: layar login hilang`, JSON.stringify(st));
-        if (expect === 'salah' && (st.btnDis || /Menghubungkan/.test(st.btn))) add(def.id, `kode ${name}: tombol Masuk macet`, JSON.stringify(st));
+        if (expect === 'salah' && (st.btnDis || /Memeriksa kode/.test(st.btn))) add(def.id, `kode ${name}: tombol Masuk macet`, JSON.stringify(st));
         if (expect === 'salah' && !st.err) add(def.id, `kode ${name}: tanpa pesan galat`, JSON.stringify(st));
         const inj = await page.eval('({pwn:!!window.__pwn})'); if (inj.pwn) add(def.id, `kode ${name}: eksekusi skrip`, '');
         if (expect === 'masuk') break;

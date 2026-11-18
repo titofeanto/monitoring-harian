@@ -434,14 +434,14 @@
   }
 
   async function login(code, silent, noCache) {
-    if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
+    if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Memeriksa kode…'; }
     let c = silent && !noCache ? readCache(code) : null;
     /* Salinan dari versi lama / bentuk lain bisa membuat enter() melempar. Jangan macet di "Memuat": buang salinan dan ambil dari jaringan. */
     const dropBad = () => { c = null; DATA = null; try { localStorage.removeItem(CACHE_KEY); } catch (e) { /* mode privat */ } $('appScreen').hidden = true; $('loginScreen').hidden = false; };
     if (c) { try { enter(c.data, code); note('wait'); } catch (e) { dropBad(); } }
     try {
       const d = await fetchStok(code);
-      if (d.error === 'invalid_code') { problem('Kode akses salah.', silent, true); return false; }
+      if (d.error === 'invalid_code') { problem('Kode tidak cocok. Periksa huruf besar/kecil atau minta kode baru.', silent, true); return false; }
       if (d.error === 'no_data') { if (c) { note('off'); banner(d.message); } else problem(d.message + ' Upload lewat tool upload.', silent, false); return false; }
       if (d.error) { if (c) { note('off'); banner('Gagal memperbarui (' + (d.message || d.error) + '), ini data tersimpan.'); } else problem('Server Apps Script bermasalah: ' + (d.message || d.error), silent, false); return false; }
       if (d.mode !== 'stok') { problem('API belum mendukung Cek Stok. Deploy ulang Apps Script (lihat README).', silent, false); return false; }

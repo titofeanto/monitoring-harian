@@ -108,5 +108,28 @@
     b.setAttribute('aria-expanded', String(open)); d.hidden = !open; OPEN[b.dataset.kt] = open;
   }, true);
 
+  /* Layar login bersama (lihat DESIGN.md "Login"): nama aplikasi dari MH_APP_NAME, tombol tampilkan/sembunyikan kode,
+     dan aria-invalid pada kolom saat ada pesan galat. Tidak menyentuh mekanisme login halaman. */
+  function initLogin() {
+    const $ = id => document.getElementById(id), inp = $('codeInput'), eye = $('codeToggle'), err = $('loginErr');
+    if (!inp) return;
+    const nm = window.MH_APP_NAME;
+    if (nm) [].forEach.call(document.querySelectorAll('[data-app-name]'), el => { el.textContent = nm; });
+    if (eye) eye.addEventListener('click', () => {
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      eye.textContent = show ? 'Sembunyikan' : 'Tampilkan';
+      eye.setAttribute('aria-pressed', String(show));
+      inp.focus();
+    });
+    if (err) {
+      const sync = () => { if (err.textContent) inp.setAttribute('aria-invalid', 'true'); else inp.removeAttribute('aria-invalid'); };
+      new MutationObserver(sync).observe(err, { childList: true, characterData: true, subtree: true });
+      inp.addEventListener('input', () => { if (inp.getAttribute('aria-invalid')) inp.removeAttribute('aria-invalid'); });
+      sync();
+    }
+  }
+  if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initLogin); else initLogin(); }
+
   window.MHUtil = { esc, isMedal, stIcon, stOf, stLegend, numOf, sortTable, toneOf, kpiTone, ring, barThin, barItem, kpiRow };
 })();

@@ -66,7 +66,7 @@
   }
 
   async function login(code, silent, noCache) {
-    if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
+    if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Memeriksa kode…'; }
     const cached = silent && !noCache ? readCache(code) : null;
     let shown = !!(cached && cached.mode === 'gs' && cached.live && cached.scorecard && cached.scorecard.length);   // salinan lama tanpa `live` tidak ditampilkan
     if (shown) {
@@ -79,7 +79,7 @@
     try {
       const d = await fetchGs(code, VIEW);
       if (shown && d.error) refreshNote('Gagal memperbarui (' + (d.message || d.error) + '), ini data tersimpan.', true);
-      if (d.error === 'invalid_code') { problem('Kode akses salah.', silent, true); return; }
+      if (d.error === 'invalid_code') { problem('Kode tidak cocok. Periksa huruf besar/kecil atau minta kode baru.', silent, true); return; }
       if (d.error === 'no_data') { problem('Data Great Sales belum diupload lewat tool upload.', silent, false); return; }
       if (d.error) { problem('Server Apps Script bermasalah: ' + (d.message || d.error), silent, false); return; }
       if (d.mode !== 'gs') { problem('API belum mendukung Great Sales. Deploy ulang Apps Script (lihat README).', silent, false); return; }

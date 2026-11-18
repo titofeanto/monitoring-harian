@@ -1,4 +1,4 @@
-// Respons lambat 8 detik (plan 025): layar muat tetap tampil, tombol Masuk menunjukkan "Menghubungkan…" dan tidak bisa ditembak ganda, lalu data tampil tanpa galat.
+// Respons lambat 8 detik (plan 025): layar muat tetap tampil, tombol Masuk menunjukkan "Memeriksa kode…" dan tidak bisa ditembak ganda, lalu data tampil tanpa galat.
 // Pakai: node tests/fuzz/slow.fuzz.mjs
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -20,7 +20,7 @@ export async function runSlow(browser, server, delay = 8000) {
     if (!ok) found.push({ page: def.id, rule: 'respons 8 dtk: app tidak pernah tampil', detail: JSON.stringify(await state(page)).slice(0, 150) });
     page.errors.forEach(e => found.push({ page: def.id, rule: 'galat konsol (respons lambat)', detail: e.slice(0, 160) }));
     await page.close();
-    // b. login manual: tombol "Menghubungkan…", klik ganda diabaikan
+    // b. login manual: tombol "Memeriksa kode…", klik ganda diabaikan
     page = await browser.newPage();
     await page.goto(`${server.fresh()}/${def.file}?sc=${encodeURIComponent(sc + '|m')}`);
     server.scenarios.set(sc + '|m', q => ({ delay: q.get('view') === 'status' ? 0 : delay, body: okResponse(q) }));
@@ -29,7 +29,7 @@ export async function runSlow(browser, server, delay = 8000) {
     await page.eval(`(function(){document.getElementById('codeInput').value=${JSON.stringify(def.code)};var f=document.getElementById('loginForm');for(var i=0;i<5;i++)f.requestSubmit();})()`);
     await page.sleep(1500);
     st = await state(page);
-    if (!st.btnDis || !/Menghubungkan/.test(st.btn)) found.push({ page: def.id, rule: 'login lambat: tombol tidak menunjukkan Menghubungkan', detail: JSON.stringify(st).slice(0, 150) });
+    if (!st.btnDis || !/Memeriksa kode/.test(st.btn)) found.push({ page: def.id, rule: 'login lambat: tombol tidak menunjukkan Memeriksa kode', detail: JSON.stringify(st).slice(0, 150) });
     const sent = server.log.filter(l => l.sc === sc + '|m' && /code=/.test(l.q)).length - n0;
     if (sent > 1) found.push({ page: def.id, rule: 'login lambat: submit 5x mengirim ' + sent + ' permintaan', detail: '' });
     await page.waitFor("(function(){var a=document.getElementById('appScreen');return a&&!a.hidden})()", delay + 8000);

@@ -602,7 +602,7 @@ if (typeof module !== 'undefined') {
       loginProblem('APPS_SCRIPT_URL belum diisi di assets/config.js. Lihat README bagian 3.', silent, false);
       return false;
     }
-    if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Menghubungkan…'; }
+    if (!silent) { $('loginBtn').disabled = true; $('loginBtn').textContent = 'Memeriksa kode…'; }
     // Login otomatis: tampilkan salinan terakhir dulu, data baru menyusul di belakang.
     let shown = false;
     if (silent && !noCache) {
@@ -617,7 +617,7 @@ if (typeof module !== 'undefined') {
     try {
       const raw = await fetchAll(code, silent);
       const data = raw.data;
-      if (data.error === 'invalid_code') { dropShown(shown); loginProblem('Kode akses salah.', silent, true); return false; }
+      if (data.error === 'invalid_code') { dropShown(shown); loginProblem('Kode tidak cocok. Periksa huruf besar/kecil atau minta kode baru.', silent, true); return false; }
       if (data.error === 'missing_code') { dropShown(shown); loginProblem('Isi kode akses dulu.', silent, true); return false; }
       if (data.error) {
         if (shown) { refreshNote('Gagal memperbarui (' + (data.message || data.error) + '), ini data tersimpan' + (cacheAt ? ' pukul ' + jam(cacheAt) : '') + '.', true); return true; }
