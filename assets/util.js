@@ -76,6 +76,8 @@
      Warna: kelas okc/amb/neg atau level server bila ada; bila tidak ada, hijau bila >= 100% selain itu merah (aturan tampilan saja). ---- */
   const RING_R = 42, RING_C = 2 * Math.PI * RING_R;
   const toneOf = (p, cls) => { if (!isFinite(p)) return ''; return stOf(cls) || (p >= 1 ? 'ok' : 'bad'); };
+  /** Warna titik/cincin KPI di peringkat total (tampilan saja, mengikuti pola 100% / 70%): >=1 ok, >=0.7 mid, selain itu bad; null/NaN = abu (tanpa data). */
+  const kpiTone = p => (typeof p !== "number" || !isFinite(p)) ? "" : p >= 1 ? "ok" : p >= 0.7 ? "mid" : "bad";
   const pctInt = p => Math.round(p * 100);
   const ring = (p, tone, name) => {
     if (typeof p !== 'number' || !isFinite(p)) return '';
@@ -94,7 +96,7 @@
     const has = typeof o.p === 'number' && isFinite(o.p), exp = !!(o.detail && has && OPEN[o.id]), det = o.detail && has;
     return `<div class="kpi-row${has ? '' : ' no-ring'}" data-tone="${has ? o.tone || '' : ''}"><div class="kr-main">${ring(o.p, o.tone, o.name)}` +
       `<div class="kr-body"><div class="kpi-name">${o.icon || ''}<span>${o.name}</span></div><div class="kpi-big">${o.big}</div>` +
-      `<div class="kpi-meta">${o.target ? `<span>Target ${o.target}</span>` : ''}${o.sisa ? `<span>Sisa Target ${o.sisa}</span>` : ''}</div></div>` +
+      `<div class="kpi-meta">${o.target ? `<span>Target ${o.target}</span>` : ''}${o.sisa ? `<span>Sisa Target ${o.sisa}</span>` : ''}${o.meta || ''}</div></div>` +
       (det ? `<button type="button" class="kpi-toggle" data-kt="${esc(o.id)}" aria-expanded="${exp}" aria-controls="kd-${esc(o.id)}" aria-label="Rincian ${esc(String(o.name).replace(/<[^>]*>/g, ''))}">${CHEV}</button>` : '') + '</div>' +
       (det ? `<div class="kpi-detail" id="kd-${esc(o.id)}"${exp ? '' : ' hidden'}>${o.detail}</div>` : '') + '</div>';
   };
@@ -106,5 +108,5 @@
     b.setAttribute('aria-expanded', String(open)); d.hidden = !open; OPEN[b.dataset.kt] = open;
   }, true);
 
-  window.MHUtil = { esc, isMedal, stIcon, stOf, stLegend, numOf, sortTable, toneOf, ring, barThin, barItem, kpiRow };
+  window.MHUtil = { esc, isMedal, stIcon, stOf, stLegend, numOf, sortTable, toneOf, kpiTone, ring, barThin, barItem, kpiRow };
 })();

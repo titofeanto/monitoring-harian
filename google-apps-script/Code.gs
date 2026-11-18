@@ -1421,7 +1421,7 @@ function rankKpiPublic_(kpi) {
     if (k === 'ps') { e.full = d.full; e.lite = d.lite; }
     else if (k === 'fop') { e.weekly = d.weekly; e.target = d.target; }
     else if (k === 'banded') { e.hit = d.hit; e.target = d.target; }
-    else if (k === 'asrt') { e.lines = d.lines; e.target = d.target === undefined ? undefined : Math.round(d.target * 10) / 10; e.tokoNaik = d.tokoNaik; }
+    else if (k === 'asrt') { e.lines = d.lines; e.target = d.target === undefined ? undefined : Math.round(d.target * 10) / 10; e.tokoNaik = d.tokoNaik; e.tanpaBaseline = d.tanpaBaseline; }
     else if (k === 'r2g') {
       const c = d.komponen;
       e.komponen = c ? { ss: { pct: c.ss.pct }, e2e: { pct: c.e2e.pct, a: c.e2e.a, t: c.e2e.t }, e2s: { pct: c.e2s.pct, a: c.e2s.a, t: c.e2s.t },

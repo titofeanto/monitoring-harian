@@ -195,7 +195,7 @@ test('10. view=rank dummy: total ada, bidang aman saja, dua DSR kembar berbagi p
   const keys = keysDeep(t); forbidden.forEach(k => assert.ok(!keys.has(k), 'bidang terlarang: ' + k));
   const rowKeys = new Set(['rank', 'rankDt', 'kode', 'nama', 'dt_kode', 'dt_nama', 'n', 'skor', 'kpi']);
   t.rows.concat(t.belumCukup).forEach(r => Object.keys(r).forEach(k => assert.ok(rowKeys.has(k), 'bidang baris tak terduga: ' + k)));
-  const kpiKeys = new Set(['pct', 'skor', 'bobot', 'tanpaData', 'n', 'full', 'lite', 'weekly', 'target', 'hit', 'lines', 'tokoNaik', 'komponen']);
+  const kpiKeys = new Set(['pct', 'skor', 'bobot', 'tanpaData', 'n', 'full', 'lite', 'weekly', 'target', 'hit', 'lines', 'tokoNaik', 'tanpaBaseline', 'komponen']);
   t.rows.forEach(r => Object.values(r.kpi).forEach(k => Object.keys(k).forEach(x => assert.ok(kpiKeys.has(x), 'bidang KPI tak terduga: ' + x))));
   const txt = JSON.stringify(out); assert.ok(!/A10\d\d|K10\d\d|dummy-sheet|dummy-dt/.test(txt), 'kode toko / sheet / akses bocor');
   const tied = t.rows.filter(r => r.rank === 1); assert.equal(tied.length, 2);

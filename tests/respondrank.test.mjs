@@ -71,7 +71,7 @@ test('b2. skor total: hanya bidang aman, tanpa kode toko, SKU, omzet', () => {
   assert.ok(t && t.rows.length > 0);
   assert.deepEqual(Object.keys(t).sort(), ['aktif', 'belumCukup', 'bobot', 'rows']);
   const rowAllowed = new Set(['rank', 'rankDt', 'kode', 'nama', 'dt_kode', 'dt_nama', 'n', 'skor', 'kpi']);
-  const kpiAllowed = new Set(['pct', 'skor', 'bobot', 'tanpaData', 'n', 'full', 'lite', 'weekly', 'target', 'hit', 'lines', 'tokoNaik', 'komponen']);
+  const kpiAllowed = new Set(['pct', 'skor', 'bobot', 'tanpaData', 'n', 'full', 'lite', 'weekly', 'target', 'hit', 'lines', 'tokoNaik', 'tanpaBaseline', 'komponen']);
   t.rows.concat(t.belumCukup).forEach(r => { Object.keys(r).forEach(k => assert.ok(rowAllowed.has(k), 'bidang baris tak terduga: ' + k)); Object.values(r.kpi).forEach(x => Object.keys(x).forEach(k => assert.ok(kpiAllowed.has(k), 'bidang KPI tak terduga: ' + k))); });
   // R2G: komponen hanya pct dan hitungan a/t; nilai rupiah SS tidak ikut
   const k1 = t.rows.find(r => r.kode === '1').kpi.r2g.komponen;

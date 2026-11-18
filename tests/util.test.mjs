@@ -27,3 +27,8 @@ test('isMedal: rank [1,2,3,4] tiga medali', () => {
   const { isMedal } = ctx.window.MHUtil;
   assert.deepEqual([1, 2, 3, 4].map((r, i) => isMedal(r, i)), [true, true, true, false]);
 });
+
+test('kpiTone: >=1 ok, 0,7-0,99 mid, <0,7 bad, null/NaN abu', () => {
+  const { kpiTone } = ctx.window.MHUtil;
+  assert.deepEqual([1.2, 1, 0.99, 0.7, 0.69, 0, null, undefined, NaN].map(kpiTone), ['ok', 'ok', 'mid', 'mid', 'bad', 'bad', '', '', '']);
+});
