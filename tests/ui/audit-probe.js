@@ -2,7 +2,9 @@
 (function () {
   var f = document.querySelector('iframe');
   function run() {
-    var w = f.contentWindow, d = f.contentDocument, out = { w: w.innerWidth, h: w.innerHeight };
+    var w = f.contentWindow, d = f.contentDocument;
+    var st = d.createElement('style'); st.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}'; d.head.appendChild(st); // ukur posisi akhir, bukan di tengah animasi
+    var out = { w: w.innerWidth, h: w.innerHeight };
     var cv = document.createElement('canvas'); cv.width = cv.height = 1; var cx = cv.getContext('2d', { willReadFrequently: true });
     function rgba(c) { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); var p = cx.getImageData(0, 0, 1, 1).data; return [p[0], p[1], p[2], p[3] / 255]; }
     function lum(c) { var a = [c[0], c[1], c[2]].map(function (v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * a[0] + .7152 * a[1] + .0722 * a[2]; }

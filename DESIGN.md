@@ -104,6 +104,23 @@ Tujuan: sekali lihat tahu posisi, rincian hanya bila diketuk. Hanya tampilan yan
 - Pencarian, filter, dan urutan memakai satu pola yang sama di semua daftar (lihat `mountList` di `assets/gs.js`).
 - Setiap halaman diuji di 390 px terang, 390 px gelap (laci tertutup dan terbuka), dan 1200 px terang dan gelap sebelum dirilis. `tests/ui/nav.test.mjs` menguji laci dan sidebar; `tests/ui/rank.test.mjs` menguji halaman Ranking.
 
+## Rasio layar yang didukung
+
+Diperiksa otomatis oleh `node tests/ui/layout-audit.mjs` (semua halaman x 8 lebar x terang/gelap; keluaran JSON + tabel jumlah temuan per kategori) dan sebagian oleh `tests/ui/layout-audit.test.mjs`. Lebar < 500 px memakai iframe pembungkus karena Chrome headless tidak mau lebih sempit.
+
+| Perangkat | Lebar (CSS px) | Orientasi | Sidebar | Isi `main` |
+|---|---|---|---|---|
+| HP kecil | 360 | potret | laci | 1 kolom, penuh |
+| HP umum | 390 | potret | laci | 1 kolom, penuh |
+| HP besar | 430 | potret | laci | 1 kolom, penuh |
+| HP lanskap | 844 (tinggi 390) | lanskap | laci (dapat digulir) | 1 kolom, header <= 25% tinggi |
+| iPad mini | 768 | potret | laci | 1 kolom penuh (maks 1100) |
+| iPad lanskap / kecil | 1024 | lanskap | tetap 248 px | sisa lebar (sekitar 776) |
+| Laptop | 1280 | - | tetap 248 px | maks 1100, di tengah |
+| Layar lebar | 1536 | - | tetap 248 px | maks 1100, tidak meregang |
+
+Aturan kolom per breakpoint: < 900 px sidebar laci dan satu kolom; >= 900 px sidebar tetap; grid dua kolom hanya bila ada panel pendamping (Ranking >= 1200 px: daftar + panel detail; Ringkasan Monitoring Harian: kartu DSR dua kolom); `.kpi-list` di dalam kartu dibatasi 620 px dari 768 px supaya panah tidak jauh dari isinya; blok harga Cek Stok dan filter brand dibatasi 420 px. Tidak boleh ada gulir mendatar halaman pada seluruh matriks (tabel padat menggulir di dalam `.scroll`). Ambang audit: sentuh >= 44 px (HP/tablet, kecuali chip 34 px dan tombol ikon 40 px yang disengaja di atas), teks >= 12 px, kontras >= 4,5:1 (chip kosong `.z` sengaja diredupkan).
+
 ## Daftar periksa fitur baru
 
 1. Memakai token, bukan warna baru. Ada pasangan gelap.
