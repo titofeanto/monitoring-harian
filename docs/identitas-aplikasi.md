@@ -1,8 +1,69 @@
 # Nama dan identitas aplikasi
 
+Keputusan pemilik (plan 031): aplikasi bernama **Jendela Jasper**, tagline **Monitoring Pencapaian Sales Harian**. Alasan dari pemilik: aplikasi ini memantau pencapaian sales harian, dan jendela berarti tempat melihat hasil. Bagian 1 sampai 5 di bawah ini adalah catatan terbaru. Usulan lama "Tifa" (bagian Arsip) tidak dipakai lagi.
+
+## 1. Berkas merek (`assets/brand/`)
+
+| Berkas | Isi | Ukuran (px) |
+|---|---|---|
+| `sumber/lembar-logo.jpg` | lembar logo asli pemilik (5 varian) | 2576x1405 |
+| `sumber/logo-utama.jpg` | logo utama dengan tagline | 2576x1405 |
+| `logo-gelap.png` | versi latar navy (dipakai di layar login); latar navy dibersihkan jadi satu warna rata `#1E3656` supaya menyatu dengan bidang login | 520x430 |
+| `logo-horizontal.png` | versi horizontal, latar kertas asli | 1010x205 |
+| `logo-emblem.png` | emblem utama dengan tagline, latar kertas asli | 545x485 |
+| `ikon.svg`, `ikon-maskable.svg`, `ikon-mono.svg`, `favicon.svg` | ikon aplikasi vektor buatan sendiri (jendela lengkung, kisi kipas, centang amber) | viewBox 512 |
+| `ikon-192.png`, `ikon-512.png`, `ikon-maskable-512.png` | ikon manifest PWA | 192, 512, 512 |
+| `apple-touch-icon-180.png` | ikon layar utama iOS (latar penuh, tanpa transparan) | 180 |
+| `favicon-32.png`, `favicon-48.png` | favicon tab | 32, 48 |
+
+**Peringatan resolusi.** Potongan logo hanya 500 sampai 1000 px lebarnya (berasal dari gambar 2576 px yang berisi lima varian). Di layar retina (2x) logo login (tampil 300 px) masih cukup, tetapi di layar lebar atau dicetak akan terlihat kurang tajam. Pemilik sebaiknya mengunggah berkas asli beresolusi tinggi (SVG, atau PNG minimal 2000 px per varian, satu varian per berkas, latar transparan) untuk menggantikan `logo-gelap.png`, `logo-horizontal.png`, dan `logo-emblem.png`. Nama berkas dan rasio boleh tetap; ubah `width`/`height` di `<img class="lg-logo">` bila rasionya berbeda.
+
+**Catatan jujur tentang logo.** Logo dibuat generator gambar raster dan punya cacat kecil: segitiga oranye kecil dekat huruf J, huruf A di "JASPER" tertimpa garis zig-zag, ikon kecil di versi horizontal terlalu rapat, dan ikon kilau bintang kecil. Dipakai apa adanya untuk sekarang. Rekomendasi: gambar ulang sebagai vektor (SVG) bersih sebelum logo dipakai resmi atau dicetak. Untuk ikon aplikasi sudah dibuat versi vektor bersih sendiri (`ikon.svg`), bukan memakai potongan raster.
+
+## 2. Warna merek (sampel piksel nyata)
+
+| Peran | Nilai | Sumber sampel |
+|---|---|---|
+| Navy (bidang, ikon, manifest) | `#1E3656` | latar kotak Dark Background di lembar logo |
+| Navy huruf | `#26426A` | badan huruf judul "JENDELA JASPER" di lembar |
+| Amber | `#FEBA42` | zig-zag di logo utama |
+| Amber centang | `#EEAE46` | centang ikon aplikasi pemilik (dipakai `#FEBA42` di ikon baru agar lebih terang) |
+| Abu tagline | `#6A727A` | tagline di logo utama |
+
+Token di `assets/style.css`: `--logo-navy`, `--logo-amber`, dan `--warm` (= amber) untuk tombol Masuk (teks navy, kontras 7,2:1). Biru tema aplikasi `--brand` (#176DA6) tidak diganti.
+
+## 3. Nama pendek di layar utama
+
+`manifest.webmanifest`: `name` "Jendela Jasper", `short_name` "Jasper". Alasan: nama ikon di layar utama Android dipotong sekitar 12 karakter, dan "Jendela Jasper" (14 karakter) akan terpotong menjadi "Jendela Jas…". iOS memakai `apple-mobile-web-app-title` "Jendela Jasper" (boleh dua baris).
+
+## 4. Peringatan merek dagang
+
+Periksa sendiri kesamaan nama "Jendela Jasper" sebelum dipakai resmi: toko aplikasi, mesin pencari, dan pangkalan data merek (DJKI untuk Indonesia). Kami tidak bisa memastikan nama bebas dipakai. "Jendela" dan "Jasper" adalah kata umum, dan ada kemungkinan merek lain yang mirip.
+
+## 5. Tempat nama dipakai
+
+Konstanta: `window.MH_APP_NAME` dan `window.MH_APP_TAGLINE` di `assets/config.js`.
+
+| Tempat | Isi |
+|---|---|
+| Layar login (`.lg-logo` alt, `.lg-tag`), 5 halaman | logo gelap + tagline |
+| Kepala menu samping (`assets/nav.js`) | ikon J-jendela 28 px + nama + tagline |
+| `<title>`, `application-name`, `apple-mobile-web-app-title`, `og:title`, `og:description`, `description` di semua HTML | "Jendela Jasper" atau "{Halaman} · Jendela Jasper" |
+| `manifest.webmanifest` | nama, `short_name`, deskripsi, warna navy, ikon baru |
+| `<link rel="icon">` (SVG, 32, 48) dan `apple-touch-icon` | berkas `assets/brand/` |
+| `sw.js` | cache `mh-shell-v2` (menarik ikon baru) |
+
+Nama halaman dan fitur ("Monitoring Harian", "Great Sales", "Cek Stok", "Kehadiran", "Ranking") tetap sebagai nama halaman. Belum diganti dan di luar cakupan: `upload-tool/` (Apps Script terpisah, judul "Upload Data Monitoring Harian"), judul proyek Sheet dan Apps Script, `README.md`. Tidak ada lagi tempat "belum diganti" di aplikasi web utama.
+
+---
+
+# Arsip: usulan "Tifa" (tidak dipakai)
+
+Bagian di bawah ini adalah usulan awal sebelum pemilik memilih Jendela Jasper. Disimpan sebagai arsip; palet terakota, motif batang ritme, dan daftar "belum diganti" sudah tidak berlaku.
+
 Dokumen ini untuk pemilik (Deputy Account Manager, area Timika dan Sorong, 6 salesman). Isinya: usulan nama, pedoman tampilan, prompt untuk membuat gambar, dan daftar tempat yang harus diganti bila nama dipakai. Nama di layar login diambil dari satu konstanta (`window.MH_APP_NAME` di `assets/config.js`), sekarang berisi "Tifa". Tempat lain belum diganti; itu keputusan pemilik.
 
-## 1. Rekomendasi nama utama: "Tifa"
+## A1. Rekomendasi nama utama: "Tifa"
 
 Alasan:
 
@@ -18,7 +79,7 @@ Pilihan tagline:
 
 Rekomendasi: **"Ritme jualan harian tim."** Paling lugas, tidak menjanjikan hasil, dan menyebut apa yang dikerjakan aplikasi.
 
-## 2. Alternatif
+## A2. Alternatif
 
 | Nama | Alasan satu baris | Pro | Kontra |
 |---|---|---|---|
@@ -30,7 +91,7 @@ Rekomendasi: **"Ritme jualan harian tim."** Paling lugas, tidak menjanjikan hasi
 
 **Catatan pengecekan.** Pemilik perlu memeriksa sendiri kesamaan nama dan merek dagang sebelum dipakai resmi (pencarian di toko aplikasi, mesin pencari, dan pangkalan data merek). Kami tidak bisa memastikan nama bebas dipakai. Ini juga berlaku untuk "Tifa".
 
-## 3. Pedoman identitas
+## A3. Pedoman identitas
 
 **Motif penanda.** Pilih salah satu dan pakai konsisten:
 
@@ -54,7 +115,7 @@ Pakai aksen hangat di satu tempat per layar. Jangan di ikon, garis, dan latar se
 
 **Hormati budaya.** Pakai motif generik dan abstrak. Jangan meniru ukiran atau pola suku tertentu secara literal tanpa izin dari pemiliknya.
 
-## 4. Prompt pembuat gambar
+## A4. Prompt pembuat gambar
 
 Prompt ditulis dalam bahasa Inggris supaya model gambar menurut dengan baik. Catatan Indonesia ada di bawah tiap prompt. Setiap prompt punya dua variasi (V1, V2). Palet: biru `#176DA6`, biru tua `#0B2A47`, latar terang `#EEF6FC`, aksen terakota `#A8461F` (gelap `#E08A5C`).
 
@@ -123,7 +184,7 @@ V1: sharp corners. V2: slightly rounded corners (2 px radius).
 
 Catatan: ikon menu di aplikasi saat ini berupa SVG garis di `assets/nav.js`; set ini hanya bila pemilik ingin mengganti.
 
-## 5. Suara dan kalimat
+## A5. Suara dan kalimat
 
 Kalimat pendek, bahasa Indonesia sehari-hari, lugas. Sebut apa yang terjadi dan langkah berikutnya. Bukan jargon, bukan sapaan hangat berlebihan.
 
@@ -136,7 +197,7 @@ Kalimat pendek, bahasa Indonesia sehari-hari, lugas. Sebut apa yang terjadi dan 
 
 Jangan mengarang nomor kontak atau nama orang. Bantuan login: "Kode dari Deputy Account Manager atau pimpinan DT Anda."
 
-## 6. Daftar tempat ganti nama
+## A6. Daftar tempat ganti nama (arsip)
 
 Belum diganti pada tugas ini (menunggu keputusan pemilik). Konstanta nama layar login: `window.MH_APP_NAME` di `assets/config.js`.
 
