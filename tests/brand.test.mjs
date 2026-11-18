@@ -27,7 +27,7 @@ test('manifest: JSON valid, nama merek, ikon ada dan berukuran benar', () => {
 test('ikon PNG: 192, 512, maskable 512, apple-touch 180, favicon 32 dan 48; SVG ada', () => {
   const want = { 'ikon-192.png': 192, 'ikon-512.png': 512, 'ikon-maskable-512.png': 512, 'apple-touch-icon-180.png': 180, 'favicon-32.png': 32, 'favicon-48.png': 48 };
   for (const [f, n] of Object.entries(want)) assert.deepEqual(png('assets/brand/' + f), { w: n, h: n }, f);
-  for (const f of ['ikon.svg', 'ikon-maskable.svg', 'ikon-mono.svg', 'favicon.svg']) assert.match(read('assets/brand/' + f), /<svg[^>]+viewBox="0 0 512 512"/, f);
+  for (const f of ['ikon.svg', 'ikon-navy.svg', 'ikon-maskable.svg', 'ikon-mono.svg', 'favicon.svg']) assert.match(read('assets/brand/' + f), /<svg[^>]+viewBox="0 0 512 512"/, f);
 });
 
 for (const f of HTML) {
@@ -54,4 +54,14 @@ test('berkas logo ada dan layar login merujuk logo gelap', () => {
   for (const f of ['logo-gelap.png', 'logo-horizontal.png', 'logo-emblem.png']) assert.ok(png('assets/brand/' + f).w >= 400, f);
   const d = png('assets/brand/logo-gelap.png');
   for (const f of HTML.slice(0, 5)) { const h = read(f); assert.match(h, new RegExp(`class="lg-logo" src="assets/brand/logo-gelap.png" width="${d.w}" height="${d.h}" alt="Jendela Jasper"`), f); }
+});
+
+test('palet resmi (plan 032): token CSS, manifest, theme-color, lembar ikon', () => {
+  const css = read('assets/style.css');
+  assert.match(css, /--logo-navy:#001F5B; --logo-amber:#F8991C; --logo-gray:#6D6E71;/);
+  const m = JSON.parse(read('manifest.webmanifest'));
+  assert.equal(m.theme_color, '#001F5B'); assert.equal(m.background_color, '#001F5B');
+  for (const f of HTML) assert.match(read(f), /<meta name="theme-color" content="#001F5B">/, f);
+  assert.ok(fs.existsSync(path.join(root, 'assets/brand/ikon-lembar.png')));
+  assert.ok(fs.existsSync(path.join(root, 'assets/brand/sumber/lembar-logo-v2.jpg')));
 });
