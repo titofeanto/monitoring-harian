@@ -10,11 +10,16 @@ const NOW = Date.UTC(2026, 10, 18, 3, 0, 0);
 class FixedDate extends Date { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } }
 const base = buildDummy({ seed: 2026 });
 
-/** Panggil doGet pada salinan dataset yang sudah diubah `mut(ds)`. Mengembalikan objek respons. */
+/** Panggil doGet pada salinan dataset yang sudah diubah `mut(ds)`. Mengembalikan objek respons SEBELUM JSON.stringify
+ *  (stringify mengubah NaN/Infinity jadi null dan menyembunyikan bug). */
 function call(mut, parameter) {
   const ds = structuredClone(base); if (mut) mut(ds);
-  const ctx = loadGs({ SpreadsheetApp: makeSpreadsheetApp(ds), globals: { Session: { getScriptTimeZone: () => 'Asia/Jayapura' }, Date: FixedDate } });
-  return JSON.parse(ctx.doGet({ parameter }).getContent());
+  const trace = [];
+  const J = { stringify: (o, ...a) => { const t = JSON.stringify(o, ...a); trace.push({ o, t }); return t; }, parse: JSON.parse };
+  const ctx = loadGs({ SpreadsheetApp: makeSpreadsheetApp(ds), globals: { Session: { getScriptTimeZone: () => 'Asia/Jayapura' }, Date: FixedDate, JSON: J } });
+  const txt = ctx.doGet({ parameter }).getContent();
+  const f = trace.filter(t => t.t === txt).pop();
+  return f ? f.o : JSON.parse(txt);
 }
 const noBad = (o, what) => assert.deepEqual(walk(o), [], what);
 const renameHeader = (tab, from, to = 'x_' + from) => ds => { const h = ds.pusat[tab][0]; h[h.indexOf(from)] = to; };
@@ -31,4 +36,16 @@ test('header/kolom berganti nama: respons tidak memuat string "undefined" (bande
   noBad(call(renameHeader('JUAL_SKU', 'mulai'), { view: 'stok', code: ACCESS.pusat }), 'JUAL_SKU.mulai');
   noBad(call(renameHeader('SKU_FLAG', 'barcode'), { view: 'stok', code: ACCESS.pusat }), 'SKU_FLAG.barcode');
   noBad(call(renameHeader('HARGA_PL', 'brand'), { view: 'stok', code: ACCESS.pusat }), 'HARGA_PL.brand');
+});
+
+test('HARGA_PL: harga bukan angka (abc, #N/A, kolom hilang) menjadi null, bukan NaN', () => {
+  const setCol = (c, v) => ds => { const a = ds.pusat.HARGA_PL, i = a[0].indexOf(c); a.slice(1).forEach(r => { r[i] = v; }); };
+  for (const v of ['abc', '#N/A', '#DIV/0!', ' ', null]) for (const c of ['h_new', 'h_old', 's_new', 's_old']) {
+    const o = call(setCol(c, v), { view: 'stok', code: ACCESS.pusat });
+    noBad(o, c + '=' + v);
+  }
+  const o = call(renameHeader('HARGA_PL', 'h_old'), { view: 'stok', code: ACCESS.pusat });
+  assert.equal(o.harga[0].hOld, null);
+  const ok = call(setCol('h_new', 12500), { view: 'stok', code: ACCESS.pusat });
+  assert.equal(ok.harga[0].hNew, 12500);
 });

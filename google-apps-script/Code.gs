@@ -152,6 +152,9 @@ function respond_(r, p) {
 /** String aman: null/undefined (kolom hilang atau header berganti nama) jadi '' bukan teks "undefined". */
 function str_(v) { return v === null || v === undefined ? '' : String(v); }
 
+/** Angka dari sel; kosong, teks bukan angka, atau galat rumus (#N/A) jadi null, tidak pernah NaN. */
+function numOrNull_(v) { if (v === null || v === undefined || (typeof v === 'string' && !v.trim())) return null; const n = +v; return isFinite(n) ? n : null; }
+
 function jsonOut(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
@@ -456,8 +459,8 @@ function respondStok_(me, reg, dtWanted) {
     jual: jualObjs.map(r => [str_(r.dt_kode), str_(r.sku), str_(r.bkt), str_(r.mulai), str_(r.v)]),
     flags: readObjs_(ss, 'SKU_FLAG').map(r => [str_(r.barcode), str_(r.flag), str_(r.plu), str_(r.ket)]),
     harga: harga.map(r => ({ sku: str_(r.sku), bc: str_(r.barcode), brand: str_(r.brand), nama: str_(r.nama), kemasan: str_(r.kemasan),
-      isi: +r.isi || 1, mulai: iso(r.mulai || ''), hNew: r.h_new === '' ? null : +r.h_new, hOld: r.h_old === '' ? null : +r.h_old,
-      sNew: r.s_new === '' ? null : +r.s_new, sOld: r.s_old === '' ? null : +r.s_old })),
+      isi: +r.isi || 1, mulai: iso(r.mulai || ''), hNew: numOrNull_(r.h_new), hOld: numOrNull_(r.h_old),
+      sNew: numOrNull_(r.s_new), sOld: numOrNull_(r.s_old) })),
     hargaTanggal: harga.length ? String(harga[0].tanggal_pl || '') : '',
     wcWarn: { ambang: STOK_WC_WARN, perDt: stokWcPerDt_(dts, stok, harga, jualObjs, tanggal, iso) },
   };
