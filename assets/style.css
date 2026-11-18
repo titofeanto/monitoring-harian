@@ -344,7 +344,7 @@ input[type=range]{width:100%;accent-color:var(--brand);min-height:32px}
 .neg,.no{color:var(--minus);font-weight:700}.pos{color:var(--plus);font-weight:600}.ok{color:var(--ok);font-weight:700}
 .delta-up{color:var(--ok)}.delta-down{color:var(--minus)}
 
-.rk-list{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr))}
+.rk-list{display:grid;gap:10px;grid-template-columns:minmax(0,1fr)}
 .rk{border-radius:var(--r-s);background:var(--surface-2);padding:12px;min-width:0}
 .rk-h{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
 .rk-h .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;overflow:hidden}
@@ -824,4 +824,16 @@ main .field+.field,main .field+.btn{margin-top:12px}
   .tb-meta{min-height:44px}
   input[type=range]{min-height:44px}
   .side-i{min-height:44px}
+}
+
+/* ---------- tata letak layar lebar (plan 027): HP satu kolom, 768-1199 px satu kolom <= 720 px, >= 1200 px dua kolom ---------- */
+@media (min-width:768px) and (max-width:1199px){
+  .rk-list:not(.rkn-list),#csList{max-width:720px}
+}
+@media (min-width:1200px){
+  .rk-list:not(.rkn-list),#csList{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  #csList{display:grid;align-items:start}
+  #csList>.cs-item{margin-top:0}
+  #csList>.empty,#csList>.card{grid-column:1/-1}
+  .rk-list.lega{gap:0 32px}
 }
