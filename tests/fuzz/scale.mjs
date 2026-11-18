@@ -5,7 +5,7 @@ import { makeSpreadsheetApp } from '../dummy/fakeSpreadsheet.mjs';
 import { walk } from './server.fuzz.mjs';
 
 const NOW = Date.UTC(2026, 10, 18, 3, 0, 0);
-class FixedDate extends Date { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } }
+class FixedDate extends Date { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } static [Symbol.hasInstance](x) { return Object.prototype.toString.call(x) === '[object Date]'; } }   // Date dari sel mutasi berasal dari realm lain (vm): instanceof harus tetap benar
 
 /** Perbesar DMS_EXTRACT tiap DT jadi `rows` baris (baris asli diulang; tanggal dan qty tetap). */
 export function scaledDataset(rows) {

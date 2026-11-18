@@ -155,6 +155,9 @@ function str_(v) { return v === null || v === undefined ? '' : String(v); }
 /** Angka dari sel; kosong, teks bukan angka, atau galat rumus (#N/A) jadi null, tidak pernah NaN. */
 function numOrNull_(v) { if (v === null || v === undefined || (typeof v === 'string' && !v.trim())) return null; const n = +v; return isFinite(n) ? n : null; }
 
+/** Teks sel: Date (sel tanggal/jam yang diketik tangan jadi Date di Sheet) diformat dengan zona Sheet, bukan String(Date). */
+function cellText_(v, ss, fmt) { return v instanceof Date ? Utilities.formatDate(v, ss.getSpreadsheetTimeZone(), fmt) : str_(v); }
+
 function jsonOut(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
@@ -487,7 +490,7 @@ function respondHadir_(me, reg, dtWanted) {
     mode: 'hadir',
     dts: dts.map(x => ({ kode: x.dt_kode, nama: x.nama_dt })),
     sales: read('SALES_MASTER', 3).map(r => [String(r[0]), String(r[1]), String(r[2] || '')]),
-    rows: rows.map(r => [String(r[0]), String(r[1]), String(r[2]), String(r[3]), +r[4] ? 1 : 0, +r[5] || 1]),
+    rows: rows.map(r => [str_(r[0]), str_(r[1]), cellText_(r[2], ss, 'yyyy-MM-dd'), cellText_(r[3], ss, 'HH:mm'), +r[4] ? 1 : 0, +r[5] || 1]),
   };
 }
 

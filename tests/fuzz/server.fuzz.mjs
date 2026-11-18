@@ -9,7 +9,7 @@ import { makeRng } from '../dummy/prng.mjs';
 import { mutateDataset } from './mutate.mjs';
 
 const NOW = Date.UTC(2026, 10, 18, 3, 0, 0);
-class FixedDate extends Date { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } }
+class FixedDate extends Date { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } static [Symbol.hasInstance](x) { return Object.prototype.toString.call(x) === '[object Date]'; } }   // Date dari sel mutasi berasal dari realm lain (vm): instanceof harus tetap benar
 
 export const BAD_STR = /^(NaN|undefined|Infinity|-Infinity|\[object Object\])$|\b(NaN|undefined|Infinity)\b|\[object Object\]/;
 export const FORBIDDEN_RANK_KEYS = ['outlet', 'sku', 'omzet', 'kode_akses', 'toko_kode'];
@@ -103,10 +103,10 @@ function runCall(srv, name, param, opts, ds, violations, tag) {
   return { obj, src, isError: false };
 }
 
-/** Kumpulkan jalur JSON (indeks larik dinormalkan jadi []) yang bernilai null pada respons server nyata (dataset dummy bermutasi).
- *  Dipakai fuzz browser agar mutasi "null" hanya mengenai bidang yang memang bisa null dari server. Mengembalikan { view: Set(jalur) }. */
+/** Kumpulkan jalur JSON (indeks larik dinormalkan jadi []) yang bernilai null, atau larik/objek kosong, pada respons server nyata (dataset dummy bermutasi).
+ *  Dipakai fuzz browser agar mutasi "null" dan "kosong" hanya mengenai bidang yang memang bisa begitu dari server. Mengembalikan { nulls: {view: Set}, empties: {view: Set} }. */
 export function collectNullPaths({ seed = 11, n = 40 } = {}) {
-  const base = buildDummy({ seed: 2026 }), out = { gs: new Set(), rank: new Set(), stok: new Set(), hadir: new Set() };
+  const base = buildDummy({ seed: 2026 }), out = { gs: new Set(), rank: new Set(), stok: new Set(), hadir: new Set() }, emp = { gs: new Set(), rank: new Set(), stok: new Set(), hadir: new Set() };
   const views = [['gs', { view: 'gs', code: ACCESS.pusat }], ['rank', { view: 'rank', code: ACCESS.pusat }], ['stok', { view: 'stok', code: ACCESS.pusat }], ['hadir', { view: 'hadir', code: ACCESS.pusat }]];
   const rng = makeRng(seed);
   for (let i = -1; i < n; i++) {
@@ -116,10 +116,10 @@ export function collectNullPaths({ seed = 11, n = 40 } = {}) {
       srv.trace.length = 0;
       const txt = srv.ctx.doGet({ parameter: param }).getContent();
       const f = srv.trace.filter(t => t.s === txt).pop(); if (!f || (f.o && f.o.error)) return;
-      (function rec(x, p) { if (x === null) out[v].add(p); else if (Array.isArray(x)) x.forEach(y => rec(y, p + '[]')); else if (x && typeof x === 'object') Object.keys(x).forEach(k => rec(x[k], p + '.' + k)); })(f.o, '$');
+      (function rec(x, p) { if (x === null) out[v].add(p); else if (Array.isArray(x)) { if (!x.length) emp[v].add(p); x.forEach(y => rec(y, p + '[]')); } else if (x && typeof x === 'object') { if (!Object.keys(x).length) emp[v].add(p); Object.keys(x).forEach(k => rec(x[k], p + '.' + k)); } })(f.o, '$');
     });
   }
-  return out;
+  return { nulls: out, empties: emp };
 }
 
 export function runFuzz({ seed = 1, n = 300, log = () => {} } = {}) {

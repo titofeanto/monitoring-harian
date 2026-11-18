@@ -24,11 +24,12 @@ let NULLABLE = null;   // jalur yang memang bisa null dari server (dikumpulkan d
  *  numstr, drop, allnull untuk halaman berbasis view (gs/rank/stok/hadir) melanggar kontrak server: dilaporkan sebagai "stress". */
 export function mutJson(obj, rng, mode, view = '') {
   const P = { nulls: 0.6, allnull: 0.5, numstr: 0.4, html: 0.25, long: 0.1, drop: 0.08, empty: 0.25, negnum: 0.2 }[mode];
-  if (mode === 'nulls' && !NULLABLE) NULLABLE = collectNullPaths();
-  const nullable = mode === 'nulls' ? (NULLABLE[view] || new Set()) : null;
+  if ((mode === 'nulls' || mode === 'empty') && view && !NULLABLE) NULLABLE = collectNullPaths();
+  const nullable = mode === 'nulls' ? (NULLABLE.nulls[view] || new Set()) : null;
+  const emptyOk = mode === 'empty' && view ? (NULLABLE.empties[view] || new Set()) : null;   // halaman mentah (tanpa view): semua larik boleh kosong
   const rec = (v, p) => {
-    if (Array.isArray(v)) return mode === 'empty' && rng.next() < P ? [] : v.map(x => rec(x, p + '[]'));
-    if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) { if (mode === 'drop' && rng.next() < P) continue; o[k] = rec(v[k], p + '.' + k); } return mode === 'empty' && rng.next() < P / 3 ? {} : o; }
+    if (Array.isArray(v)) return mode === 'empty' && (!emptyOk || emptyOk.has(p)) && rng.next() < P ? [] : v.map(x => rec(x, p + '[]'));
+    if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) { if (mode === 'drop' && rng.next() < P) continue; o[k] = rec(v[k], p + '.' + k); } return mode === 'empty' && (!emptyOk || emptyOk.has(p)) && rng.next() < P / 3 ? {} : o; }
     if (mode === 'nulls') return nullable.has(p) && rng.next() < P ? null : v;
     if (rng.next() >= P) return v;
     if (mode === 'allnull') return null;
@@ -60,7 +61,7 @@ const BROKEN = {
 };
 export const BROKEN_NAMES = Object.keys(BROKEN);
 export const RAW_PAGES = new Set(['index', 'index-pusat']);   // data mentah Sheet: teks/angka campur memang mungkin
-export const MODES_VALID = id => RAW_PAGES.has(id) ? ['numstr', 'html', 'long', 'empty', 'negnum'] : ['nulls', 'html', 'long', 'empty', 'negnum'];
+export const MODES_VALID = id => RAW_PAGES.has(id) ? ['numstr', 'html', 'long', 'empty', 'negnum'] : ['nulls', 'html', 'long', 'empty', 'negnum'];   // empty: hanya jalur yang pernah kosong di server
 export const MODES_STRESS = id => RAW_PAGES.has(id) ? ['drop', 'allnull'] : ['numstr', 'drop', 'allnull'];
 
 export function registerScenario(server, id, kind, seed = 1) {
