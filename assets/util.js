@@ -131,5 +131,9 @@
   }
   if (typeof document !== 'undefined') { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initLogin); else initLogin(); }
 
-  window.MHUtil = { esc, isMedal, stIcon, stOf, stLegend, numOf, sortTable, toneOf, kpiTone, ring, barThin, barItem, kpiRow };
+  /* Respons server harus objek biasa. `null`, angka, teks, array dari proxy/Apps Script rusak jangan sampai memicu TypeError. */
+  const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+  const needObj = v => { if (isObj(v)) return v; const e = new Error('Server Apps Script bermasalah: respons tidak dikenali. Coba lagi sebentar lagi.'); e.bad = true; throw e; };
+
+  window.MHUtil = { isObj, needObj, esc, isMedal, stIcon, stOf, stLegend, numOf, sortTable, toneOf, kpiTone, ring, barThin, barItem, kpiRow };
 })();

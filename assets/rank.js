@@ -249,7 +249,7 @@
     const dropBad = () => { c = null; DATA = null; try { localStorage.removeItem(CACHE_KEY); } catch (e) { /* mode privat */ } $('appScreen').hidden = true; $('loginScreen').hidden = false; };
     if (c && c.data && c.data.mode === 'rank') { try { enter(c.data, code); note('wait'); } catch (e) { dropBad(); } }
     try {
-      const d = await fetchRank(code);
+      const d = window.MHUtil.needObj(await fetchRank(code));
       if (d.error === 'invalid_code') { problem('Kode tidak cocok. Periksa huruf besar/kecil atau minta kode baru.', silent, true); return false; }
       if (d.error) { if (c) { note('off'); banner('Gagal memperbarui (' + (d.message || d.error) + '), ini data tersimpan.'); } else problem('Server Apps Script bermasalah: ' + (d.message || d.error), silent, false); return false; }
       if (d.mode !== 'rank') { problem('API belum diperbarui. Deploy ulang Apps Script.', silent, false); return false; }
@@ -257,7 +257,7 @@
       return true;
     } catch (err) {
       if (c || DATA) { note('off'); banner('Gagal memperbarui, ini data tersimpan. Ketuk muat ulang untuk coba lagi.'); return false; }
-      problem('Tidak bisa terhubung ke Apps Script (' + err.message + ').', silent, false);
+      problem(err.bad ? err.message : 'Tidak bisa terhubung ke Apps Script (' + err.message + ').', silent, false);
       return false;
     }
   }

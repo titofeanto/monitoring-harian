@@ -77,7 +77,7 @@
       }
     }
     try {
-      const d = await fetchGs(code, VIEW);
+      const d = window.MHUtil.needObj(await fetchGs(code, VIEW));
       if (shown && d.error) refreshNote('Gagal memperbarui (' + (d.message || d.error) + '), ini data tersimpan.', true);
       if (d.error === 'invalid_code') { problem('Kode tidak cocok. Periksa huruf besar/kecil atau minta kode baru.', silent, true); return; }
       if (d.error === 'no_data') { problem('Data Great Sales belum diupload lewat tool upload.', silent, false); return; }
@@ -90,7 +90,7 @@
       return true;
     } catch (err) {
       if (shown || DATA) { refreshNote('Gagal memperbarui, ini data tersimpan' + (cacheAt ? ' pukul ' + jam(cacheAt) : '') + '. Ketuk muat ulang untuk coba lagi.', true); return false; }
-      problem('Tidak bisa terhubung ke Apps Script (' + err.message + ').', silent, false);
+      problem(err.bad ? err.message : 'Tidak bisa terhubung ke Apps Script (' + err.message + ').', silent, false);
     }
   }
 

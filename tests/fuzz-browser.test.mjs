@@ -10,6 +10,7 @@ const server = new Proxy({}, { get: (_, k) => env.server[k] }), browser = new Pr
 import './fuzz/cases.kode.mjs';
 import './fuzz/cases.segarkan.mjs';
 import './fuzz/cases.cache.mjs';
+import './fuzz/cases.respons.mjs';
 
 async function open(file, code, extra = '', scenario = 'ok') {
   const page = await browser.newPage();

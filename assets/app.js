@@ -535,13 +535,13 @@ if (typeof module !== 'undefined') {
 
   /* Ambil semua respons mentah: {data} (satu DT) atau {data, dts:[{kode, nama, x, err}]} (pusat). */
   async function fetchAll(code, silent) {
-    const data = await fetchApi(code);
+    const data = window.MHUtil.needObj(await fetchApi(code));
     if (data.error || data.mode !== 'pusat') return { data };
     if (silent) window.MHBoot.stage(`Memuat ${data.dts.length} DT…`); else $('loginBtn').textContent = `Memuat ${data.dts.length} DT…`;
     // Tiap DT diambil terpisah supaya respons kecil dan cache per DT tetap terpakai.
     const dts = await Promise.all(data.dts.map(async d => {
       try {
-        const x = await fetchApi(code, d.kode);
+        const x = window.MHUtil.needObj(await fetchApi(code, d.kode));
         if (x.error) throw new Error(x.message || x.error);
         return { kode: d.kode, nama: d.nama, x: x, err: '' };
       } catch (err) { return { kode: d.kode, nama: d.nama, x: null, err: err.message }; }
@@ -636,7 +636,7 @@ if (typeof module !== 'undefined') {
       return true;
     } catch (err) {
       if (shown) { refreshNote('Gagal memperbarui, ini data tersimpan' + (cacheAt ? ' pukul ' + jam(cacheAt) : '') + '. Tarik layar untuk coba lagi.', true); return true; }
-      loginProblem('Tidak bisa terhubung ke Apps Script. Cek koneksi internet, lalu coba lagi. (' + err.message + ')', silent, false);
+      loginProblem(err.bad ? err.message : 'Tidak bisa terhubung ke Apps Script. Cek koneksi internet, lalu coba lagi. (' + err.message + ')', silent, false);
       return false;
     } finally {
       if (!silent) { $('loginBtn').disabled = false; $('loginBtn').textContent = 'Masuk'; }
