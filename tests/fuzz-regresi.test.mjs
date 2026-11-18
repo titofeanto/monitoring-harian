@@ -24,3 +24,11 @@ test('gsTgl_: bulan di luar 1-12 tidak menjadi "undefined"', () => {
   for (const iso of ['2026-13-01', '2026-00-10', '2026-99-99']) assert.doesNotMatch(ctx.gsTgl_(iso), /undefined/, iso);
   assert.equal(ctx.gsTgl_('2026-11-12'), '12 Nov 2026');
 });
+
+test('header/kolom berganti nama: respons tidak memuat string "undefined" (bandedSku, stok, scorecard)', () => {
+  noBad(call(renameHeader('GS_BANDED_SKU', 'sku_kode'), { view: 'gs', code: ACCESS.pusat }), 'GS_BANDED_SKU.sku_kode');
+  noBad(call(renameHeader('GS_SCORECARD', 'tanggal'), { view: 'gs', code: ACCESS.pusat }), 'GS_SCORECARD.tanggal');
+  noBad(call(renameHeader('JUAL_SKU', 'mulai'), { view: 'stok', code: ACCESS.pusat }), 'JUAL_SKU.mulai');
+  noBad(call(renameHeader('SKU_FLAG', 'barcode'), { view: 'stok', code: ACCESS.pusat }), 'SKU_FLAG.barcode');
+  noBad(call(renameHeader('HARGA_PL', 'brand'), { view: 'stok', code: ACCESS.pusat }), 'HARGA_PL.brand');
+});

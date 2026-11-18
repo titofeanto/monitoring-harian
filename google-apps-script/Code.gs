@@ -86,7 +86,7 @@ function doGet(e) {
       lockS.waitLock(30000);
       try {
         const ssS = SpreadsheetApp.getActiveSpreadsheet();
-        const tokoS = readObjs_(ssS, 'GS_TOKO'), skuS = readObjs_(ssS, 'GS_BANDED_SKU').map(b => ({ channel: String(b.channel), sku_kode: String(b.sku_kode), sku_nama: String(b.sku_nama) }));
+        const tokoS = readObjs_(ssS, 'GS_TOKO'), skuS = readObjs_(ssS, 'GS_BANDED_SKU').map(b => ({ channel: str_(b.channel), sku_kode: str_(b.sku_kode), sku_nama: str_(b.sku_nama) }));
         const cfgS = readGsCfg_(ssS);
         const outS = regS.filter(x => x.peran === 'dt' && x.sheet_id && (!e.parameter.dt || x.dt_kode === e.parameter.dt)).map(x => snapshotDt_(ssS, x, tokoS, skuS, cfgS));
         return jsonOut({ ok: true, saved: outS });
@@ -148,6 +148,9 @@ function respond_(r, p) {
   delete configOut.kode_akses;
   return { mode: 'dt', dt: { kode: r.dt_kode, nama: r.nama_dt }, builtAt: payload.builtAt, config: configOut, tabs: payload.tabs };
 }
+
+/** String aman: null/undefined (kolom hilang atau header berganti nama) jadi '' bukan teks "undefined". */
+function str_(v) { return v === null || v === undefined ? '' : String(v); }
 
 function jsonOut(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
@@ -449,10 +452,10 @@ function respondStok_(me, reg, dtWanted) {
   return {
     mode: 'stok',
     dts: dts.filter(x => tanggal[x.dt_kode]).map(x => ({ kode: x.dt_kode, nama: x.nama_dt, tanggal: tanggal[x.dt_kode] })),
-    stok: stok.map(r => [String(r.dt_kode), String(r.sku), +r.karton || 0, +r.lusin || 0, +r.pcs || 0, +r.isi || 1, +r.rpp || 0]),
-    jual: jualObjs.map(r => [String(r.dt_kode), String(r.sku), String(r.bkt), String(r.mulai), String(r.v)]),
-    flags: readObjs_(ss, 'SKU_FLAG').map(r => [String(r.barcode), String(r.flag), String(r.plu || ''), String(r.ket || '')]),
-    harga: harga.map(r => ({ sku: String(r.sku), bc: String(r.barcode), brand: String(r.brand), nama: String(r.nama), kemasan: String(r.kemasan),
+    stok: stok.map(r => [str_(r.dt_kode), str_(r.sku), +r.karton || 0, +r.lusin || 0, +r.pcs || 0, +r.isi || 1, +r.rpp || 0]),
+    jual: jualObjs.map(r => [str_(r.dt_kode), str_(r.sku), str_(r.bkt), str_(r.mulai), str_(r.v)]),
+    flags: readObjs_(ss, 'SKU_FLAG').map(r => [str_(r.barcode), str_(r.flag), str_(r.plu), str_(r.ket)]),
+    harga: harga.map(r => ({ sku: str_(r.sku), bc: str_(r.barcode), brand: str_(r.brand), nama: str_(r.nama), kemasan: str_(r.kemasan),
       isi: +r.isi || 1, mulai: iso(r.mulai || ''), hNew: r.h_new === '' ? null : +r.h_new, hOld: r.h_old === '' ? null : +r.h_old,
       sNew: r.s_new === '' ? null : +r.s_new, sOld: r.s_old === '' ? null : +r.s_old })),
     hargaTanggal: harga.length ? String(harga[0].tanggal_pl || '') : '',
@@ -525,7 +528,7 @@ function respondGs_(me, reg, dtWanted) {
   });
   // Weekly FOP & Banded: daftar toko monitoring + SKU banded + config, dihitung dari DMS Extract tiap DT dalam cakupan.
   const toko = read('GS_TOKO').filter(t => !scope || String(t.dist_kode) === scope.dt_kode);
-  const bandedSku = read('GS_BANDED_SKU').map(b => ({ channel: String(b.channel), sku_kode: String(b.sku_kode), sku_nama: String(b.sku_nama) }));
+  const bandedSku = read('GS_BANDED_SKU').map(b => ({ channel: str_(b.channel), sku_kode: str_(b.sku_kode), sku_nama: str_(b.sku_nama) }));
   const cfg = readGsCfg_(ss);
   const hist = read('GS_BULANAN').filter(h => !scope || String(h.dist_kode) === scope.dt_kode);
   const mon = { cfg: cfg, hasList: toko.length > 0, bandedSku: bandedSku, perDt: [], noDt: [], manual: read('GS_MANUAL').slice(-60), recap: monRecap_(hist, read('GS_BULANAN_ASRT').filter(a => !scope || String(a.dist_kode) === scope.dt_kode), bandedSku, cfg) };
@@ -577,7 +580,7 @@ function computeGsLive_(in_) {
   const scorecard = in_.scorecard || [], ps = in_.ps || {}, asrt = in_.asrt || {}, mon = in_.mon || {};
   // snapshot per tanggal: {tanggal: {kpi: baris}}
   const by = {};
-  scorecard.forEach(r => { const t = String(r.tanggal); (by[t] = by[t] || {})[r.kpi] = r; });
+  scorecard.forEach(r => { const t = str_(r.tanggal); (by[t] = by[t] || {})[r.kpi] = r; });
   const snaps = Object.keys(by).sort().map(t => ({ tanggal: t, rows: by[t] }));
   const cur = snaps[snaps.length - 1], prev = snaps.length > 1 ? snaps[snaps.length - 2] : null;
   if (!cur) return null;
@@ -1458,7 +1461,7 @@ function respondRank_(me, reg) {
   if (hit) return Object.assign({ mode: 'rank', peran: me.peran, me: { dt_kode: mine } }, hit);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const toko = readObjs_(ss, 'GS_TOKO');
-  const bandedSku = readObjs_(ss, 'GS_BANDED_SKU').map(b => ({ channel: String(b.channel), sku_kode: String(b.sku_kode), sku_nama: String(b.sku_nama) }));
+  const bandedSku = readObjs_(ss, 'GS_BANDED_SKU').map(b => ({ channel: str_(b.channel), sku_kode: str_(b.sku_kode), sku_nama: str_(b.sku_nama) }));
   const cfg = readGsCfg_(ss);
   const hist = readObjs_(ss, 'GS_BULANAN');
   const dts = reg.filter(x => x.peran === 'dt' && x.sheet_id);
