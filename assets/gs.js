@@ -307,7 +307,7 @@
         items.slice(0, 10).map(o => `<div class="rk"><div class="rk-h"><span class="si ${ref && o.lines >= ref ? 'ok' : 'neg'}">${svg(ref && o.lines >= ref ? 'check' : 'down')}</span><div class="it-i"><div class="nm">${esc(o.nama)}</div><div class="sk">${esc(o.dt)}</div></div><b class="num">${o.lines}${ref ? ` <span class="muted" style="font-weight:600;font-size:11px">/ ${nf1(ref)}</span>` : ''}</b></div></div>`).join('') + '</div></details>' : '';
     }).join('');
     $('secAsrt').innerHTML = `<div class="card">${ciTitle('box', 'Assortment per channel', '', first.tanggalData ? 's.d. ' + esc(tgl(first.tanggalData)) : '')}` +
-      `<p class="hint">Dari Extract DMS${first.tanggalData ? ' s.d. ' + esc(tgl(first.tanggalData)) : ''}. Satu line = satu base pack di satu toko, dihitung kalau qty bersih bulan ini minimal ${DATA.asrt.moq} pcs. Base pack yang sama di toko yang sama hanya dihitung sekali, jadi tambah assortment dengan menjual base pack baru. Acuan per toko = target dibagi toko terdaftar di Outlet Master.${noTarget ? ' Target belum diisi untuk sebagian channel, jadi persennya belum muncul.' : ''}</p>` +
+      `<details class="how"><summary>Cara baca</summary><p class="hint">Dari Extract DMS${first.tanggalData ? ' s.d. ' + esc(tgl(first.tanggalData)) : ''}. Satu line = satu base pack di satu toko, dihitung kalau qty bersih bulan ini minimal ${DATA.asrt.moq} pcs. Base pack yang sama di toko yang sama hanya dihitung sekali, jadi tambah assortment dengan menjual base pack baru. Acuan per toko = target dibagi toko terdaftar di Outlet Master.${noTarget ? ' Target belum diisi untuk sebagian channel, jadi persennya belum muncul.' : ''}</p></details>` +
       `<div class="kpis">${head}</div></div>` +
       (cards ? `<div class="card">${ciTitle('store', 'Per DT dan channel')}<div class="rk-list">${cards}</div></div>` : '') + low;
   }
@@ -385,7 +385,7 @@
     const done = rows.filter(o => o.status === 'WEEKLY').length, live = MON_G[channel] && monLive(), ms = live ? DATA.live.summary.mon : null;
     const hasRisk = rows.some(o => o.risk !== undefined), isSpm = channel === 'LOCAL SUPERMARKET';   // server lama: tampilan dan filter lama
     el.innerHTML = ciTitle('cal', esc(title), (k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '') + (isSpm && live ? ` <span class="tag r">WAJIB ${fopNeed()}x</span>` : ''), done + ' dari ' + rows.length + ' toko sudah WEEKLY') +
-      (live ? monNote() + `<p class="hint">${done} dari ${rows.length} toko monitoring sudah WEEKLY (order di ${fopNeed()} minggu atau lebih bulan ini). Dihitung dari Extract DMS sampai ${tgl(ms.tanggal)}, minggu ke-${ms.week}. Aturan: ${fopNeed()} minggu = WEEKLY, ${num(DATA.mon.cfg.fop_biweekly) || 2} = BIWEEKLY, 1 = MONTHLY.</p>`
+      (live ? monNote() + `<details class="how"><summary>Cara baca</summary><p class="hint">${done} dari ${rows.length} toko monitoring sudah WEEKLY (order di ${fopNeed()} minggu atau lebih bulan ini). Dihitung dari Extract DMS sampai ${tgl(ms.tanggal)}, minggu ke-${ms.week}. Aturan: ${fopNeed()} minggu = WEEKLY, ${num(DATA.mon.cfg.fop_biweekly) || 2} = BIWEEKLY, 1 = MONTHLY.</p></details>`
         : `<p class="hint">${done} dari ${rows.length} toko aktif sudah WEEKLY di file. Sisanya perlu order ${fopNeed()}x bulan ini, mulai dari yang paling dekat.</p>`) +
       (hasRisk ? wajibBox(rows, isSpm) : '') +
       mountList(key, {
@@ -421,7 +421,7 @@
     const rows = st.map(o => Object.assign({}, o, { miss: psMissing(o) }));
     const comp = (o, p) => { const f = String(o[p[0]]); const sc = o['s_' + p[0]]; return `<div class="${f === '1' ? 'okc' : f === '0' ? 'neg' : ''}"><small>${p[1]}</small><b>${f === '1' ? '✓' : f === '0' ? '✗' : '–'}</b><em>${sc === '' || sc == null ? ' ' : Math.round(num(sc) * 100) + '%'}</em></div>`; };
     $('secPs').innerHTML = `<div class="card">${ciTitle('store', 'Perfect Stores', k ? ` <span class="lv ${k.level}">${pct(k.aktual)}</span>` : '', 'Data ' + esc(tgl(sm.tanggal)))}` +
-      `<p class="hint">Data ${esc(tgl(sm.tanggal))}, update mingguan. Status Full atau Lite mengikuti hasil HO di file.</p>` +
+      `<details class="how"><summary>Cara baca</summary><p class="hint">Data ${esc(tgl(sm.tanggal))}, update mingguan. Status Full atau Lite mengikuti hasil HO di file.</p></details>` +
       `<div class="hero-units" style="margin-top:0;border-top:0;padding-top:0"><div><b>${sm.perfect}</b><span>Perfect</span></div><div><b>${sm.full} · ${sm.lite}</b><span>Full · Lite</span></div><div><b>${sm.target}</b><span>Target</span></div></div>` +
       `<div class="bar"><i style="width:${Math.min(100, v * 100).toFixed(0)}%"></i></div><div class="bar-meta"><span>${need ? `Kurang <b>${need}</b> toko lagi` : 'Target tercapai'}</span><b>${pct(v)}</b></div>` +
       `<p class="hint" style="margin-top:10px">Belum perfect paling sering kurang: ${esc(missTxt || '-')}.</p></div>` +
@@ -443,7 +443,7 @@
     if (monLive()) { renderBandedLive(kMinis, kSpm); return; }
     const list = (title, k, items) => `<details class="box" style="margin-top:8px"><summary><span>${esc(title)} ${k ? `<span class="lv ${k.level}">${pct(k.aktual)} / target ${pct(k.target)}</span>` : ''} · ${items.length} SKU</span></summary>` +
       `<ul class="sku-list">${items.map(o => `<li>${esc(o.outlet_kode)} ${esc(o.outlet_nama)}</li>`).join('')}</ul></details>`;
-    $('secBanded').innerHTML = ciTitle('box', 'Banded') + '<p class="hint">SKU banded yang harus ada di toko monitoring. Pastikan tiap toko di daftar sudah order semua SKU channel-nya.</p>' +
+    $('secBanded').innerHTML = ciTitle('box', 'Banded') + '<details class="how"><summary>Cara baca</summary><p class="hint">SKU banded yang harus ada di toko monitoring. Pastikan tiap toko di daftar sudah order semua SKU channel-nya.</p></details>' +
       list('Local Minis', kMinis, sku('LOCAL MINIS')) + list('Supermarket (SPM)', kSpm, sku('SPM')) +
       (outs.length ? `<details class="box" style="margin-top:8px"><summary><span>Toko monitoring banded · ${outs.length} toko</span></summary><div class="rk-list" style="margin-top:10px">` +
         outs.map(o => `<div class="rk"><div class="rk-h"><span class="si plus">${svg('store')}</span><div class="it-i"><div class="nm">${esc(o.outlet_nama)}</div><div class="sk">${esc(o.dist_nama)}</div></div><span class="tag a">${esc(o.remark)}</span></div></div>`).join('') + '</div></details>' : '');
@@ -468,7 +468,7 @@
     const names = {}; (DATA.mon.bandedSku || []).forEach(b => { names[b.sku_kode] = b.sku_nama; });
     const groups = [['SPM', 'Supermarket (SPM)', kSpm, num(cfg.banded_spm) || 0.8], ['MINIS', 'Local Minis', kMinis, num(cfg.banded_minis) || 0.7]];   // SPM dulu: channel wajib
     $('secBanded').innerHTML = ciTitle('box', 'Banded', '', 'EVB ' + esc(ms.qLabel)) + monNote() +
-      `<p class="hint">EVB ${esc(ms.qLabel)}: toko tercapai kalau SKU banded channel-nya yang pernah dibeli sepanjang kuartal ini minimal ${Math.round((num(cfg.banded_spm) || 0.8) * 100)}% (Supermarket) atau ${Math.round((num(cfg.banded_minis) || 0.7) * 100)}% (Local Minis). Bulan yang terhitung: ${esc(ms.qMonths.map(bulanLbl).join(', '))}; bulan lalu diambil dari rekap yang tersimpan, bulan berjalan dari Extract DMS sampai ${tgl(ms.tanggal)}. Hanya toko ber-REMARK monitoring. Ini hitungan sendiri, bukan angka HO.</p>` +
+      `<details class="how"><summary>Cara baca</summary><p class="hint">EVB ${esc(ms.qLabel)}: toko tercapai kalau SKU banded channel-nya yang pernah dibeli sepanjang kuartal ini minimal ${Math.round((num(cfg.banded_spm) || 0.8) * 100)}% (Supermarket) atau ${Math.round((num(cfg.banded_minis) || 0.7) * 100)}% (Local Minis). Bulan yang terhitung: ${esc(ms.qMonths.map(bulanLbl).join(', '))}; bulan lalu diambil dari rekap yang tersimpan, bulan berjalan dari Extract DMS sampai ${tgl(ms.tanggal)}. Hanya toko ber-REMARK monitoring. Ini hitungan sendiri, bukan angka HO.</p></details>` +
       groups.map(g => `<div class="card" style="margin-top:10px"><h3 style="margin:0 0 6px">${esc(g[1])} ${g[2] ? `<span class="lv ${g[2].level}">${pct(g[2].aktual)} / target ${pct(g[2].target)}</span>` : ''}</h3><div id="bd-${g[0]}"></div></div>`).join('');
     BND = {};
     groups.forEach(g => {
@@ -523,7 +523,7 @@
       });
       BND[ch] = { hasSku, skuList, tokoList };
       const sw = hasSku ? `<div class="chips bv" role="group" aria-label="Pandangan ${esc(g[1])}" id="bvs-${ch}"></div>` : '';
-      box.innerHTML = summary + `<p class="hint" style="margin:10px 0 8px">${hasSku ? 'Per SKU: SKU mana yang belum dibeli banyak toko. Per toko: toko mana yang masih kurang SKU. Dihitung sepanjang kuartal.' : `${hit} dari ${rows.length} toko tercapai · ${tot} SKU banded, ambang ${minSku} SKU per toko (sepanjang kuartal).`}</p>` + sw + `<div id="bv-${ch}"></div>`;
+      box.innerHTML = summary + `<details class="how"><summary>Cara baca</summary><p class="hint" style="margin:10px 0 8px">${hasSku ? 'Per SKU: SKU mana yang belum dibeli banyak toko. Per toko: toko mana yang masih kurang SKU. Dihitung sepanjang kuartal.' : `${hit} dari ${rows.length} toko tercapai · ${tot} SKU banded, ambang ${minSku} SKU per toko (sepanjang kuartal).`}</p></details>` + sw + `<div id="bv-${ch}"></div>`;
       paintBanded(ch);
     });
   }
@@ -574,7 +574,7 @@
     const el = $('secToko'); if (!el) return;
     STORES = tokoCards();
     el.innerHTML = ciTitle('store', 'Toko monitoring', '', nf(STORES.length) + ' toko') + (monLive() ? monNote() : '') +
-      '<p class="hint">Semua toko monitoring SPM dan Minis dalam satu daftar: order mingguan, Banded, dan Perfect Store. Ketuk toko untuk melihat detailnya.</p>' +
+      '<details class="how"><summary>Cara baca</summary><p class="hint">Semua toko monitoring SPM dan Minis dalam satu daftar: order mingguan, Banded, dan Perfect Store. Ketuk toko untuk melihat detailnya.</p></details>' +
       mountList('toko', {
         st: true, more: [['order', 'Order terbanyak', (a, b) => b.fop.weeks - a.fop.weeks || String(a.nama).localeCompare(b.nama)], ['banded', 'Banded terbanyak', (a, b) => b.banded.bBought - a.banded.bBought || String(a.nama).localeCompare(b.nama)]],
         rows: STORES, empty: 'Belum ada data toko monitoring. Upload daftar toko dan Extract DMS di tool upload.',
@@ -611,7 +611,7 @@
   /** Lencana medali untuk peringkat 1-3 (emas, perak, perunggu). */
   const medal = n => `<svg class="medal g${n}" viewBox="0 0 34 34" role="img" aria-label="Peringkat ${n}"><path class="m-rb" d="M9 1h7l2 9h-7zM25 1h-7l-2 9h7z"/><circle class="m-bg" cx="17" cy="21" r="12"/><text x="17" y="25.5">${n}</text></svg>`;
   function rkRow(r, top) {
-    const w = top > 0 ? Math.max(2, Math.min(100, r.nilai / top * 100)) : 0, pod = r.ord < 3 && r.rank <= 3;   // tiga baris teratas; seri tetap memakai nomor peringkat dari server
+    const w = top > 0 ? Math.max(2, Math.min(100, r.nilai / top * 100)) : 0, pod = MHUtil.isMedal(r.rank, r.ord);   // medali menurut rank server (1-3), maks 5 baris; nilai kembar tetap satu medali
     return `<div class="rk${pod ? ' pod' : ''}"><div class="rk-h">${pod ? medal(r.rank) : `<span class="si rkn off" aria-label="Peringkat ${r.rank}">${r.rank}</span>`}<div class="it-i"><div class="nm">${esc(r.nama)}</div><div class="sk">${esc(r.dt_nama)} · ${rkSub(r)}</div></div><span class="rk-val">${rkVal(r)}</span></div>` +
       `<div class="bar" style="margin-top:10px;height:6px"><i style="width:${w.toFixed(0)}%"></i></div><div class="rk-s two">${rkStats(r)}</div></div>`;
   }
@@ -636,7 +636,7 @@
     if (failed.length) notes.push('Ranking belum bisa dihitung untuk ' + failed.join(', ') + '.');
     const what = RK.kpi === 'fop' ? 'Persen toko yang WEEKLY (order di ' + (DATA.mon && DATA.mon.cfg ? fopNeed() : 3) + ' minggu atau lebih bulan ini).' : RK.kpi === 'banded' ? 'Persen toko yang tercapai Banded kuartal ini, hanya SKU banded BU ini.' : 'Rata-rata lines (base pack) per toko aktif di BU ini, minimal ' + ((DATA.asrt && DATA.asrt.moq) || 3) + ' pcs per base pack.';
     el.innerHTML = title + '<div class="rk-layout"><div class="rk-side">' +
-      `<p class="hint" style="margin:0">Peringkat salesman per BU, dari toko yang dilayani bulan ini. Dihitung dari Extract DMS sampai ${esc(tgl(rk.tanggalData))}. ${what} Minimal ${nf(rk.minToko)} toko untuk dapat peringkat.</p>` +
+      `<details class="how"><summary>Cara baca</summary><p class="hint" style="margin:0">Peringkat salesman per BU, dari toko yang dilayani bulan ini. Dihitung dari Extract DMS sampai ${esc(tgl(rk.tanggalData))}. ${what} Minimal ${nf(rk.minToko)} toko untuk dapat peringkat.</p></details>` +
       `<div class="chips" id="rkBu" role="group" aria-label="Pilih BU">${buChips}</div><div class="chips" id="rkKpi" role="group" aria-label="Pilih KPI">${kpiChips}</div>` +
       (notes.length ? `<div class="notice">${notes.map(esc).join('<br>')}</div>` : '') +
       (bd.low.length ? `<details class="box"><summary><span>Belum cukup toko (kurang dari ${nf(rk.minToko)}) · ${nf(bd.low.length)}</span></summary><div class="rk-list" style="margin-top:10px">${bd.low.slice(0, 60).map(rkLowRow).join('')}</div>` +
@@ -718,7 +718,7 @@
     const rows = Object.keys(by).sort().reverse().map(k => { const o = by[k];
       return `<tr><td>${esc(bulanLbl(k))}<div><span class="tag ${o.draft ? 'a' : 'g'}">${o.draft ? 'Draft' : 'Final'}</span></div><small class="muted">s.d. ${esc(tgl(o.sampai))}</small></td><td class="n">${cell(o.SPM, 'weekly')}</td><td class="n">${cell(o.MINIS, 'weekly')}</td><td class="n">${cell(o.SPM, 'evbQ')}</td><td class="n">${cell(o.MINIS, 'evbQ')}</td>` +
         `<td class="n">${o.asrt.SPM ? nf(o.asrt.SPM.lines) : '-'}</td><td class="n">${o.asrt.MINIS ? nf(o.asrt.MINIS.lines) : '-'}</td></tr>`; }).join('');
-    el.innerHTML = title + '<p class="hint">Hasil tiap bulan disimpan otomatis dari Extract DMS. FINAL = data sudah sampai hari kerja terakhir bulan itu. EVB = SKU banded yang pernah dibeli sejak awal kuartal.</p>' +
+    el.innerHTML = title + '<details class="how"><summary>Cara baca</summary><p class="hint">Hasil tiap bulan disimpan otomatis dari Extract DMS. FINAL = data sudah sampai hari kerja terakhir bulan itu. EVB = SKU banded yang pernah dibeli sejak awal kuartal.</p></details>' +
       '<div class="scroll"><table><thead><tr><th>Bulan</th><th class="n">FOP SPM</th><th class="n">FOP Minis</th><th class="n">EVB SPM</th><th class="n">EVB Minis</th><th class="n">Lines SPM</th><th class="n">Lines Minis</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
   }
 

@@ -68,5 +68,8 @@
   }
   if (typeof document !== 'undefined') { if (document.body) watch(); else document.addEventListener('DOMContentLoaded', watch); }
 
-  window.MHUtil = { esc, stIcon, stOf, stLegend, numOf, sortTable };
+  /** Medali hanya untuk rank server 1-3 dan paling banyak 5 baris pertama (ord = urutan baris dari 0); rank kembar sama-sama bermedali. */
+  const isMedal = (rank, ord) => rank >= 1 && rank <= 3 && ord < 5;
+
+  window.MHUtil = { esc, isMedal, stIcon, stOf, stLegend, numOf, sortTable };
 })();

@@ -17,3 +17,13 @@ test('esc: null/undefined jadi string kosong, 0 tetap "0"', () => {
   assert.equal(esc(undefined), '');
   assert.equal(esc(0), '0');
 });
+
+test('isMedal: rank [1,1,3,3,3,3,7] hanya 5 baris pertama bermedali', () => {
+  const { isMedal } = ctx.window.MHUtil;
+  const out = [1, 1, 3, 3, 3, 3, 7].map((r, i) => isMedal(r, i));
+  assert.deepEqual(out, [true, true, true, true, true, false, false]);
+});
+test('isMedal: rank [1,2,3,4] tiga medali', () => {
+  const { isMedal } = ctx.window.MHUtil;
+  assert.deepEqual([1, 2, 3, 4].map((r, i) => isMedal(r, i)), [true, true, true, false]);
+});
