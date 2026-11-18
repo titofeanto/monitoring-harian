@@ -25,7 +25,7 @@ export function mutJson(obj, rng, mode) {
     if (Array.isArray(v)) return mode === 'empty' && rng.next() < P ? [] : v.map(rec);
     if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) { if (mode === 'drop' && rng.next() < P) continue; o[k] = rec(v[k]); } return mode === 'empty' && rng.next() < P / 3 ? {} : o; }
     if (rng.next() >= P) return v;
-    if (mode === 'nulls' || mode === 'allnull') return null;
+    if (mode === 'allnull' || (mode === 'nulls' && typeof v === 'number')) return null;   // nulls: hanya angka (server memang bisa mengirim pct null); allnull: semua daun, uji tahan banting
     if (mode === 'numstr' && typeof v === 'number') return rng.pick([String(v), String(v).replace('.', ','), '1.234,5', 'abc', '', ' ']);
     if (mode === 'html' && typeof v === 'string') return rng.pick(PAYLOADS);
     if (mode === 'long' && typeof v === 'string') return 'Z'.repeat(3000);

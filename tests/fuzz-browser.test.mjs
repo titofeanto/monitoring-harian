@@ -18,11 +18,12 @@ async function open(file, code, extra = '', scenario = 'ok') {
   return page;
 }
 
-test('Monitoring Harian (kode pusat): kartu DT dan Total tidak menampilkan NaN pada Assortment/ECO', { skip }, async () => {
+test('Monitoring Harian (kode pusat): kartu DT, Total, dan per DSR tidak menampilkan NaN pada Assortment/ECO', { skip }, async () => {
   const page = await open('index.html', CODES.pusat);
   try {
-    const text = await page.eval('document.getElementById("tOverview").innerText');
+    const text = await page.eval('document.getElementById("p-ring").innerText');
     assert.match(text, /Total semua DT/);
+    assert.match(text, /Salesman Timika 1/, 'kartu per DSR ikut tampil');
     assert.doesNotMatch(text, BAD_TEXT, text.slice(0, 400));
     assert.deepEqual(page.errors, []);
   } finally { await page.close(); }

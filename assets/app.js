@@ -816,7 +816,7 @@ if (typeof module !== 'undefined') {
     showIssues(W.flatMap(r => (r.err ? [r.err] : r.m.warn).map(w => `${r.d.nama}: ${w}`)), []);
 
     const allCards = ok.flatMap(r => r.m.dsrList.map(x => { const c = M.calc(x, r.m.rules, M.zeroSim());
-      return dsrCard({ nama: x.nama, band: c.band, sub: `${M.esc(r.d.nama)} · skor ${Math.round(c.score)} · ${M.rpFull(c.total)}`, ss: c.ach.ss, ssSub: rp(x.ss.aktual), as: c.ach.asrt, asSub: idn1.format(x.asrt.aktual) + '/' + idn1.format(x.asrt.target), eco: c.ach.eco, ecoSub: x.eco.tx + '/' + x.eco.pjp }); }));
+      return dsrCard({ nama: x.nama, band: c.band, sub: `${M.esc(r.d.nama)} · skor ${Math.round(c.score)} · ${M.rpFull(c.total)}`, ss: c.ach.ss, ssA: x.ss.aktual, ssT: x.ss.target, as: c.ach.asrt, asA: x.asrt.aktual, asT: x.asrt.target, eco: c.ach.eco, ecoA: x.eco.tx, ecoT: x.eco.pjp }); }));
     $('ringDetail').innerHTML = `<div class="kpis">
         <div class="kpi"><div class="l">Target SS total</div><div class="v">${rp(T.ssT)}</div><div class="s">Aktual ${rp(T.ssA)}</div></div>
         <div class="kpi"><div class="l">Capaian SS</div><div class="v">${pct(ach(T.ssA, T.ssT))}</div><div class="s">Kurang ${rp(Math.max(0, T.ssT - T.ssA))}</div></div>
