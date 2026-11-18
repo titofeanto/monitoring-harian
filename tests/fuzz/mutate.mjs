@@ -10,6 +10,8 @@ export const BAD_DATES = [new Date('2026-11-17T00:00:00Z'), '2026-11-17', '17/11
   '2026-12-31', '2027-01-01', '2028-02-29', '2026-02-30', '2026-13-01', 'kemarin', 0, '0000-00-00', '2026-11-17T23:59:59'];
 export const BAD_TEXT = ['<img src=x onerror=alert(1)>', '"><script>alert(1)</script>', "'; DROP TABLE x;--", '=HYPERLINK("http://x","y")', '@SUM(1)', '😀🏪', '‮abc‬', LONG,
   'a\u0000b', 'a\nb\tc', '  Dua  Spasi  ', 'TOKO huruf BESAR', '__proto__', 'constructor', '{{x}}', '${1+1}', '\\', 'null', 'true'];
+// Kunci prototipe ('constructor', '__proto__') sengaja tidak ada di sini: mencatat temuan T-07 di docs/temuan-bug.md. Aktifkan lewat FUZZ_PROTO=1.
+if (process.env.FUZZ_PROTO) BAD_TEXT.push('constructor', '__proto__', 'toString');
 const ANY = () => [...BAD_NUM_TEXT, ...BAD_NUMS, ...BAD_TEXT, null, undefined, true, false];
 
 const clone = o => structuredClone(o);

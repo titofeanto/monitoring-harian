@@ -54,3 +54,10 @@ test('GS_TOKO tanpa kolom outlet_kode: monitoring tidak memuat toko berkode "und
   const o = call(renameHeader('GS_TOKO', 'outlet_kode'), { view: 'gs', code: ACCESS.pusat });
   noBad(o, 'GS_TOKO.outlet_kode');
 });
+
+test('kolom hilang di tab GS_*: nilai kosong, bukan "undefined" (akar: pembaca tab tidak mengisi kolom wajib)', () => {
+  const gs = { view: 'gs', code: ACCESS.pusat };
+  for (const [tab, col] of [['GS_BULANAN', 'periode'], ['GS_BULANAN', 'data_sampai'], ['GS_BULANAN', 'disimpan'], ['GS_BULANAN_ASRT', 'periode'], ['GS_PS', 'tanggal'], ['GS_PS', 'status'],
+    ['GS_PS_HIST', 'tanggal'], ['GS_TARGET', 'target_full'], ['GS_MANUAL', 'waktu'], ['GS_MANUAL', 'tanggal'], ['GS_OUTLET', 'detail'], ['GS_TOKO', 'outlet_nama'], ['GS_TOKO', 'dist_kode']])
+    noBad(call(renameHeader(tab, col), gs), tab + '.' + col);
+});

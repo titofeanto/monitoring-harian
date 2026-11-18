@@ -503,7 +503,7 @@ function respondGs_(me, reg, dtWanted) {
     if (!sh || sh.getLastRow() < 2) return [];
     const v = sh.getDataRange().getValues(), h = v[0].map(x => String(x).trim());
     return v.slice(1).filter(r => r.some(c => c !== '')).map(r => {
-      const o = {}; h.forEach((k, i) => { o[k] = r[i] instanceof Date ? Utilities.formatDate(r[i], ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : r[i]; }); return o;
+      const o = {}; h.forEach((k, i) => { o[k] = r[i] instanceof Date ? Utilities.formatDate(r[i], ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : r[i]; }); return fillCols_(o, name);
     });
   };
   const scorecard = read('GS_SCORECARD');
@@ -1708,8 +1708,28 @@ function readObjs_(ss, name) {
   const sh = ss.getSheetByName(name);
   if (!sh || sh.getLastRow() < 2) return [];
   const v = sh.getDataRange().getValues(), h = v[0].map(x => String(x).trim());
-  return v.slice(1).filter(r => r.some(c => c !== '')).map(r => { const o = {}; h.forEach((k, i) => { o[k] = r[i]; }); return o; });
+  return v.slice(1).filter(r => r.some(c => c !== '')).map(r => { const o = {}; h.forEach((k, i) => { o[k] = r[i]; }); return fillCols_(o, name); });
 }
+
+/** Kolom wajib per tab Sheet pusat (sama dengan penulisnya di tool upload dan Code.gs ini). */
+function tabCols_(name) {
+  switch (name) {
+    case 'GS_SCORECARD': return ['tanggal', 'kpi', 'label', 'target', 'bobot', 'aktual', 'poin', 'catatan'];
+    case 'GS_TOKO': return ['tanggal', 'dist_kode', 'dist_nama', 'outlet_kode', 'outlet_nama', 'channel', 'subchannel', 'remark', 'status'];
+    case 'GS_PS': return ['tanggal', 'periode', 'dist_kode', 'dist_nama', 'outlet_kode', 'outlet_nama', 'channel', 'status', 'total_kpi', 'cotc', 'npd', 'sos', 'sstd', 'banded', 's_cotc', 's_npd', 's_sos', 's_sstd', 's_banded'];
+    case 'GS_PS_HIST': return ['tanggal', 'dist_kode', 'target', 'full', 'lite', 'perfect'];
+    case 'GS_TARGET': return ['dist_kode', 'dist_nama', 'target_full', 'target_lite'];
+    case 'GS_MANUAL': return ['tanggal', 'rank', 'dr', 'waktu'];
+    case 'GS_OUTLET': return ['tanggal', 'jenis', 'dist_kode', 'dist_nama', 'outlet_kode', 'outlet_nama', 'channel', 'remark', 'v1', 'v2', 'v3', 'status', 'detail'];
+    case 'GS_BANDED_SKU': return ['channel', 'sku_kode', 'sku_nama'];
+    case 'GS_BULANAN': return BUL_HEADER;
+    case 'GS_BULANAN_ASRT': return BUL_ASRT_HEADER;
+    default: return [];
+  }
+}
+
+/** Kolom wajib yang hilang (header berganti nama atau terhapus) diisi '' supaya hilir tidak menulis teks 'undefined'. */
+function fillCols_(o, name) { tabCols_(name).forEach(k => { if (!(k in o)) o[k] = ''; }); return o; }
 
 function writeObjs_(ss, name, header, rows) {
   const sh = ss.getSheetByName(name) || ss.insertSheet(name);
