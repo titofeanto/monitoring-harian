@@ -10,7 +10,7 @@ SEMUA data di sini FIKTIF: nama toko, salesman, produk, angka, dan kode akses (`
 
 ## Varian fixture
 
-- `dummy-rank-tanpadata.json` (`buildDummy({ tanpaData: true })`): tanpa tab `GS_TREND_ASRT` (Assortment `tanpaData` di semua DSR) dan DSR 202 tanpa toko di laporan PS. Dipakai `tests/ui/rank-tanpadata.test.mjs` untuk jalur "Belum ada data" di lembar detail DSR. Fixture `dummy-*.json` utama tidak berubah.
+- `dummy-rank-tanpadata.json` (`buildDummy({ tanpaData: true })`): tanpa tab `GS_TREND_ASRT` (Assortment `tanpaData` di semua DSR) dan DSR 202 tanpa toko di laporan PS. Dipakai `tests/ui/rank-tanpadata.test.mjs` untuk jalur "Belum ada data" di lembar detail DSR. Fixture `dummy-*.json` utama tidak berubah. Tile Ringkasan 5 dan 7 tidak punya fixture sendiri: `tests/ui/tiles.test.mjs` menyuntik 3 sampai 8 tile ke `.kpis` lewat `tests/ui/tiles-harness.html`.
 
 ## Cara kerja
 

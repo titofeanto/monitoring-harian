@@ -152,3 +152,5 @@ Hal yang sengaja tidak mengikuti ambang, dicatat satu per satu:
 - Tile ringkasan 5 dan 7 memakai grid 6/12 kolom dengan span agar baris terakhir penuh; 2, 3, 4, 6 sudah tanpa slot kosong.
 - Daftar `.lega` dua kolom (>= 1200 px): garis pemisah item kedua dari terakhir disembunyikan.
 - Label kecil di grid empat kolom (Assortment) dipendekkan ("rata-rata") agar maksimal dua baris.
+
+- **Tanggal Sheet divalidasi di server (plan 030)**: tanggal harus `yyyy-MM-dd` (periode `yyyy-MM`) dengan bulan 1-12; baris yang gagal dibuang dan jumlahnya ada di `catatan.tanggalRusak`. Browser tidak menampilkan baris yang tidak ada. KPI tanpa data tampil abu "Belum ada data" (teks, tanpa cincin), bukan 0%.
