@@ -8,11 +8,11 @@ import { launch, hasChrome } from './cdp.mjs';
 import { startFuzzServer, CODES } from './fuzzserve.mjs';
 import { PAGES, BAD_TEXT, state } from './browser.fuzz.mjs';
 
-export const WEIRD_QUERIES = [' ', '   ', '.*(', '(', '[', '\\', '+', '?', '*', '$^', 'a'.repeat(500), '<img src=x onerror="window.__pwn=1">', '😀', '‮abc', '%', '%E0%A4%A', 'null', 'undefined'];
+export const WEIRD_QUERIES = [' ', '   ', '.*(', '(', '[', '\\', '+', '?', '*', '$^', 'a'.repeat(500), '<img src=x onerror="window.__pwn=1">', '😀', '‮abc', '%', '%E0%A4%A'];   // 'null' dan 'undefined' sengaja tidak ada: halaman memantulkan teks pencarian ("untuk ...") dan itu bukan bug
 export const WEIRD_HASHES = ['#../', '#<script>window.__pwn=1</script>', '#fop%', '#%E0%A4%A', '#' + 'x'.repeat(2000), '#__proto__', '#constructor', '#%00', '#skor#fop', '#ranking'];
 
 export async function runExplore(browser, server) {
-  const found = []; const add = (page, step, detail) => found.push({ page, step, detail: String(detail).slice(0, 240) });
+  const found = []; const note = (page, m) => { if (process.env.EXPLORE_V) console.log('  [' + page + '] ' + m); }; const add = (page, step, detail) => found.push({ page, step, detail: String(detail).slice(0, 240) });
   const ls = code => encodeURIComponent(JSON.stringify({ mh_code: code }));
   const origin = server.fresh();   // satu origin supaya login tersimpan lintas halaman
   const urlOf = (def, hash = '', extra = '') => `${origin}/${def.file}?sc=ok&fast=1${extra}${hash}`;
@@ -41,6 +41,7 @@ export async function runExplore(browser, server) {
 
     // ganti DT cepat (chip)
     const chips = await page.eval("document.querySelectorAll('#dtChips .chip, #dtChips button').length");
+    note(def.id, 'chip DT: ' + chips);
     if (chips > 1) {
       await page.eval(`(function(){var c=document.querySelectorAll('#dtChips .chip, #dtChips button');for(var i=0;i<30;i++)c[i%c.length].click();})()`);
       await page.sleep(1200); ec = await check(def, 'ganti DT cepat', page, ec);
@@ -58,7 +59,8 @@ export async function runExplore(browser, server) {
     await page.eval(`[].forEach.call(document.querySelectorAll('input[data-q], input[type=search], input[type=text]:not(#codeInput)'), function(e){e.value='';e.dispatchEvent(new Event('input',{bubbles:true}));})`);
 
     // lembar detail buka/tutup berulang
-    const sheetSel = await page.eval(`['[data-store]','.rk.tap','[data-sel]','tr[data-i]'].filter(function(s){return document.querySelector(s)})[0]||''`);
+    const _sheetSel = await page.eval(`['[data-store]','.rk.tap','[data-sel]','tr[data-i]'].filter(function(s){return document.querySelector(s)})[0]||''`);
+    const sheetSel = _sheetSel; note(def.id, 'selektor lembar: ' + (sheetSel || '(tidak ada)') + ', kontrol cari/urut: ' + qs.length);
     if (sheetSel) {
       for (let i = 0; i < 15; i++) {
         await page.eval(`(function(){var e=document.querySelector(${JSON.stringify(sheetSel)});if(e)e.click()})()`); await page.sleep(40);
@@ -82,6 +84,7 @@ export async function runExplore(browser, server) {
 
     // pindah ke semua halaman lewat sidebar + tombol Kembali
     const links = await page.eval(`[].map.call(document.querySelectorAll('#tabsNav a.side-i'), function(a){return a.getAttribute('href')})`);
+    note(def.id, 'tautan sidebar: ' + links.length);
     for (const href of links) {
       const t = href.split('#')[0]; const other = PAGES.find(p => p.file === t); if (!other) { add(def.id, 'sidebar', 'tautan ke halaman tak dikenal ' + href); continue; }
       await page.eval(`(function(){var a=document.querySelector('#tabsNav a.side-i[href="${href}"]');a&&a.click();})()`);
