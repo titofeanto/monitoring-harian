@@ -28,8 +28,8 @@ Acuan: aplikasi Stok Opname dan Radar Sonik (https://ulisonik.github.io/radar-so
 | `--warn-ink` / `--warn-bg` | #8A4708 / #FDEBD3 | #F2D878 / #3A3110 | perlu perhatian |
 | `--minus` / `--minus-bg` | #B83829 / #F8DED7 | #F59A86 / #3C2220 | kurang, bahaya |
 | `--gold`, `--silver`, `--bronze` | #E0A800, #9AA5B1, #B8743A | sama | lencana medali peringkat |
-| `--logo-navy` / `--logo-amber` | #1E3656 / #FEBA42 | sama (aset logo datar) | warna merek Jendela Jasper, diambil dari piksel logo pemilik |
-| `--warm`, `--warm-hover`, `--warm-ink` | #FEBA42 (= `--logo-amber`), #EBA52E, #1E3656 | #FEBA42, #FFCB6B, #1E3656 | aksen amber merek: tombol Masuk di layar login (teks navy 7,2:1; hover 5,8:1 terang, 8,2:1 gelap) |
+| `--logo-navy` / `--logo-amber` | #001F5B / #F8991C | sama; `--logo-gray` #6D6E71 | palet resmi tertulis di lembar merek v2 (navy, amber, abu) |
+| `--warm`, `--warm-hover`, `--warm-ink` | #F8991C (= `--logo-amber`), #E08A10, #001F5B | #F8991C, #FFAE45, #001F5B | aksen amber merek: tombol Masuk di layar login (teks navy 7,1:1; hover 5,8:1 terang, 8,5:1 gelap) |
 | `--lime`, `--lime-edge`, `--lime-ink` | #D9F25A, #C3DF33, #0F172A | sama | tombol aksi utama `.btn.main` |
 | `--amber-t` | #A3560A | #F5C26B | teks nada "hampir" |
 | `--tint-1..4` | biru, hijau, oranye, cyan muda | versi gelap | latar 4 tile ringkasan |
