@@ -807,8 +807,8 @@ if (typeof module !== 'undefined') {
         ? `<div class="rk"><div class="rk-h"><span class="si neg">${svg('warn')}</span><div class="it-i"><div class="nm">${M.esc(r.d.nama)}</div><div class="sk">Gagal dimuat: ${M.esc(r.err)}</div></div></div></div>`
         : dsrCard({ nama: r.d.nama, attr: ` data-dt="${r.i}" role="button" tabindex="0"`,
             sub: `${r.nDsr} DSR · timegone ${pct(r.tf)} · ${M.rpFull(r.inc)}${r.warn ? ' · ada data perlu dicek' : ''}`,
-            tagHtml: band(r), ss: ach(r.ssA, r.ssT), ssSub: rp(r.ssA), as: ach(r.asA, r.asT), asSub: idn1.format(r.asA) + '/' + idn1.format(r.asT), eco: ach(r.ecoT, r.ecoP), ecoSub: r.ecoT + '/' + r.ecoP })).join('')
-      + dsrCard({ nama: 'Total semua DT', cur: true, pin: true, sub: `${T.nDsr} DSR · insentif ${M.rpFull(T.inc)}`, ss: ach(T.ssA, T.ssT), ssSub: rp(T.ssA), as: ach(T.asA, T.asT), asSub: idn1.format(T.asA) + '/' + idn1.format(T.asT), eco: ach(T.ecoT, T.ecoP), ecoSub: T.ecoT + '/' + T.ecoP });
+            tagHtml: band(r), ss: ach(r.ssA, r.ssT), ssA: r.ssA, ssT: r.ssT, as: ach(r.asA, r.asT), asA: r.asA, asT: r.asT, eco: ach(r.ecoT, r.ecoP), ecoA: r.ecoT, ecoT: r.ecoP })).join('')
+      + dsrCard({ nama: 'Total semua DT', cur: true, pin: true, sub: `${T.nDsr} DSR · insentif ${M.rpFull(T.inc)}`, ss: ach(T.ssA, T.ssT), ssA: T.ssA, ssT: T.ssT, as: ach(T.asA, T.asT), asA: T.asA, asT: T.asT, eco: ach(T.ecoT, T.ecoP), ecoA: T.ecoT, ecoT: T.ecoP });
     applySort($('tOverview'));
     document.querySelectorAll('#tOverview [data-dt]').forEach(b => { const go = () => document.querySelector(`#dtChips .chip[data-k="${b.dataset.dt}"]`).click(); b.onclick = go; b.onkeydown = e => { if (e.key === 'Enter') go(); }; });
 
