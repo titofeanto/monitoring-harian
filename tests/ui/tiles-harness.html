@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Harness tile</title>
+<link rel="stylesheet" href="/assets/style.css">
+</head><body>
+<!-- Dipakai tests/ui/tiles.test.mjs: ?n=<jumlah>&cls=kpis|tiles&w=<lebar>. Menyuntik n tile ke wadah dengan kelas CSS asli lalu menulis ukuran tiap tile ke #res. -->
+<main id="m"></main>
+<pre id="res"></pre>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search), n = +q.get('n') || 5, cls = q.get('cls') || 'kpis', W = +q.get('w') || 0;
+  if (W && !q.get('inner')) {
+    var f = document.createElement('iframe'); f.style.cssText = 'border:0;width:' + W + 'px;height:700px'; f.src = location.pathname + '?n=' + n + '&cls=' + cls + '&inner=1';
+    document.body.innerHTML = ''; document.body.appendChild(f);
+    var r = document.createElement('pre'); r.id = 'res'; document.body.appendChild(r);
+    f.onload = function () { setTimeout(function () { r.textContent = f.contentDocument.getElementById('res').textContent; }, 100); };
+    return;
+  }
+  var g = document.createElement('div'); g.className = cls;
+  for (var i = 1; i <= n; i++) g.insertAdjacentHTML('beforeend', '<div class="kpi"><div class="l">Tile ' + i + '</div><div class="v">Rp 1.234.567</div><div class="s">Keterangan ' + i + '</div></div>');
+  document.getElementById('m').appendChild(g);
+  var gr = g.getBoundingClientRect(), rows = {};
+  [].forEach.call(g.children, function (c) { var r = c.getBoundingClientRect(), k = Math.round(r.top); (rows[k] = rows[k] || []).push({ l: r.left, r: r.right, w: r.width }); });
+  var out = Object.keys(rows).sort(function (a, b) { return a - b; }).map(function (k) { var a = rows[k]; return { n: a.length, left: Math.min.apply(0, a.map(function (x) { return x.l; })) - gr.left, right: gr.right - Math.max.apply(0, a.map(function (x) { return x.r; })), minW: Math.min.apply(0, a.map(function (x) { return x.w; })) }; });
+  document.getElementById('res').textContent = JSON.stringify({ cols: getComputedStyle(g).gridTemplateColumns.split(' ').length, rows: out, hscroll: document.documentElement.scrollWidth > innerWidth + 1 });
+})();
+</script></body></html>
