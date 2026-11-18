@@ -791,6 +791,59 @@ function readAsrtTargets_(ss) {
   }));
 }
 
+const ASRT_TREND_TAB = 'GS_TREND_ASRT';
+const ASRT_BASE_FROM = '2025-10', ASRT_BASE_TO = '2025-12';
+
+/** Baca GS_TREND_ASRT (dist_kode | outlet_kode | periode | lines). Tab tidak ada atau kosong = []. */
+function readTrendAsrt_(ss) {
+  const sh = ss.getSheetByName(ASRT_TREND_TAB);
+  if (!sh || sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues().filter(r => String(r[0]).trim() && String(r[1]).trim()).map(r => ({
+    dist_kode: String(r[0]).trim(), outlet_kode: String(r[1]).trim(), periode: String(r[2]).trim().slice(0, 7), lines: asrtNum_(r[3]),
+  }));
+}
+
+/** Pure. Baseline per toko = rata-rata lines bulan yang ADA barisnya di rentang [from, to]. -> { 'dist|outlet': {baseline, bulan} }. */
+function asrtBaseline_(trendRows, from, to) {
+  const lo = from || ASRT_BASE_FROM, hi = to || ASRT_BASE_TO, acc = {};
+  (trendRows || []).forEach(r => {
+    if (r.periode < lo || r.periode > hi) return;
+    const k = r.dist_kode + '|' + r.outlet_kode, a = acc[k] = acc[k] || { sum: 0, per: {} };
+    if (a.per[r.periode]) return; // satu baris per bulan; duplikat diabaikan
+    a.per[r.periode] = 1; a.sum += r.lines;
+  });
+  const out = {};
+  Object.keys(acc).forEach(k => { const n = Object.keys(acc[k].per).length; out[k] = { baseline: acc[k].sum / n, bulan: n }; });
+  return out;
+}
+
+/** Pure. Target per toko = baseline x (1 + growth), hanya toko dengan baseline > 0. */
+function asrtTargetPerToko_(baselineMap, growth) {
+  const g = typeof growth === 'number' ? growth : GS_CFG_DEFAULT.asrt_growth, out = {};
+  Object.keys(baselineMap || {}).forEach(k => { if (baselineMap[k].baseline > 0) out[k] = baselineMap[k].baseline * (1 + g); });
+  return out;
+}
+
+/** Pure. Skor Assortment untuk sekumpulan toko. Hanya toko bertarget masuk target/aktual; tanpa pembatas per toko. */
+function asrtScoreForStores_(storeKeys, linesByStore, targetMap) {
+  const res = { target: 0, aktual: 0, tokoTarget: 0, tokoNaik: 0, tanpaBaseline: 0, pct: null };
+  (storeKeys || []).forEach(k => {
+    if (!(k in targetMap)) { res.tanpaBaseline++; return; }
+    const l = linesByStore[k] || 0;
+    res.target += targetMap[k]; res.aktual += l; res.tokoTarget++;
+    if (l >= targetMap[k]) res.tokoNaik++;
+  });
+  res.pct = res.target > 0 ? res.aktual / res.target : null;
+  return res;
+}
+
+/** Baseline + target dari tab tren. Tab kosong/tidak ada -> { aktif:false }. */
+function asrtTrendInfo_(ss, growth) {
+  const base = asrtBaseline_(readTrendAsrt_(ss));
+  if (!Object.keys(base).length) return { aktif: false };
+  return { aktif: true, baseline: base, target: asrtTargetPerToko_(base, growth) };
+}
+
 /** Assortment satu DT (cache 5 menit). MASTER_PRODUK dibaca penuh karena payload hanya memuat SKU yang dipakai norms/fokus. */
 function asrtForDt_(r) {
   const payload = getPayload_(r.sheet_id);
@@ -1120,7 +1173,7 @@ function salesRankForDt_(r, toko, bandedSku, cfg, hist) {
 //  - Banded: toko tercapai kalau SKU banded channel-nya yang sudah dibeli (qty bersih bulan data > 0) >= ambang
 //    (banded_spm / banded_minis di GS_CONFIG).
 
-const GS_CFG_DEFAULT = { remark_spm: 'LOCAL SPM', remark_minis: 'TOP 1000 LOCAL MINIS, LOCAL MINIS', banded_spm: 0.8, banded_minis: 0.7, fop_weekly: 3, fop_biweekly: 2, rank_min_toko: 5 };
+const GS_CFG_DEFAULT = { remark_spm: 'LOCAL SPM', remark_minis: 'TOP 1000 LOCAL MINIS, LOCAL MINIS', banded_spm: 0.8, banded_minis: 0.7, fop_weekly: 3, fop_biweekly: 2, rank_min_toko: 5, asrt_growth: 0.15 };
 
 function monIsoWeek_(iso) {
   const p = iso.split('-'), ms = Date.UTC(+p[0], +p[1] - 1, +p[2]), d = new Date(ms);
