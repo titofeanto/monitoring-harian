@@ -6,7 +6,7 @@
   const isoOf = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   const utc = s => { const p = s.split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); };
   const utcIso = ms => { const d = new Date(ms); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); };
-  const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? (+m[3]) + ' ' + BULAN[+m[2]] + ' ' + m[1] : String(iso || ''); };
+  const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m && BULAN[+m[2]] ? (+m[3]) + ' ' + BULAN[+m[2]] + ' ' + m[1] : String(iso || ''); };
   const jam = t => { const d = new Date(t); return pad(d.getHours()) + '.' + pad(d.getMinutes()); };
   const esc = window.MHUtil.esc;
 

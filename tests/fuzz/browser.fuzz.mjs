@@ -5,6 +5,7 @@ import path from 'node:path';
 import { launch, hasChrome } from './cdp.mjs';
 import { startFuzzServer, okResponse, CODES } from './fuzzserve.mjs';
 import { makeRng } from '../dummy/prng.mjs';
+import { collectNullPaths } from './server.fuzz.mjs';
 
 export const PAGES = [
   { id: 'index', file: 'index.html', code: CODES.tmk, tabs: ['#tab-ring', '#tab-sim', '#tab-fruit'] },
@@ -18,21 +19,26 @@ export const PAGES = [
 export const BAD_TEXT = /(^|[^\w])(NaN|undefined|Infinity)([^\w]|$)|\[object Object\]|(^|[^\w])null([^\w]|$)/;
 export const PAYLOADS = ['<img src=x onerror="window.__pwn=1">', '"><script>window.__pwn=1</script>', "'; DROP TABLE x;--", '😀🏪 Toko', '‮abc‬ RTL', 'Z'.repeat(3000), 'a\u0000b\nc\td', '  spasi  ganda  ', '=HYPERLINK("http://x","y")'];
 
-/** Mutasi JSON berbenih. mode: nulls | numstr | html | long | drop | empty | negnum | allnull */
-export function mutJson(obj, rng, mode) {
-  const P = { nulls: 0.12, allnull: 0.5, numstr: 0.4, html: 0.25, long: 0.1, drop: 0.08, empty: 0.25, negnum: 0.2 }[mode];
-  const rec = v => {
-    if (Array.isArray(v)) return mode === 'empty' && rng.next() < P ? [] : v.map(rec);
-    if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) { if (mode === 'drop' && rng.next() < P) continue; o[k] = rec(v[k]); } return mode === 'empty' && rng.next() < P / 3 ? {} : o; }
+let NULLABLE = null;   // jalur yang memang bisa null dari server (dikumpulkan dari respons server dummy bermutasi)
+/** Mutasi JSON berbenih. mode: nulls (hanya jalur yang bisa null dari server) | numstr | html | long | drop | empty | negnum | allnull.
+ *  numstr, drop, allnull untuk halaman berbasis view (gs/rank/stok/hadir) melanggar kontrak server: dilaporkan sebagai "stress". */
+export function mutJson(obj, rng, mode, view = '') {
+  const P = { nulls: 0.6, allnull: 0.5, numstr: 0.4, html: 0.25, long: 0.1, drop: 0.08, empty: 0.25, negnum: 0.2 }[mode];
+  if (mode === 'nulls' && !NULLABLE) NULLABLE = collectNullPaths();
+  const nullable = mode === 'nulls' ? (NULLABLE[view] || new Set()) : null;
+  const rec = (v, p) => {
+    if (Array.isArray(v)) return mode === 'empty' && rng.next() < P ? [] : v.map(x => rec(x, p + '[]'));
+    if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) { if (mode === 'drop' && rng.next() < P) continue; o[k] = rec(v[k], p + '.' + k); } return mode === 'empty' && rng.next() < P / 3 ? {} : o; }
+    if (mode === 'nulls') return nullable.has(p) && rng.next() < P ? null : v;
     if (rng.next() >= P) return v;
-    if (mode === 'allnull' || (mode === 'nulls' && typeof v === 'number')) return null;   // nulls: hanya angka (server memang bisa mengirim pct null); allnull: semua daun, uji tahan banting
+    if (mode === 'allnull') return null;
     if (mode === 'numstr' && typeof v === 'number') return rng.pick([String(v), String(v).replace('.', ','), '1.234,5', 'abc', '', ' ']);
     if (mode === 'html' && typeof v === 'string') return rng.pick(PAYLOADS);
     if (mode === 'long' && typeof v === 'string') return 'Z'.repeat(3000);
     if (mode === 'negnum' && typeof v === 'number') return rng.pick([-v, 0, 1e12, -1, 0.5]);
     return v;
   };
-  return rec(structuredClone(obj));
+  return rec(structuredClone(obj), '$');
 }
 
 const BROKEN = {
@@ -53,11 +59,13 @@ const BROKEN = {
   e500: () => ({ status: 500, ct: 'application/json', body: '{"error":"x"}' }),
 };
 export const BROKEN_NAMES = Object.keys(BROKEN);
-export const MUT_MODES = ['nulls', 'allnull', 'numstr', 'html', 'long', 'drop', 'empty', 'negnum'];
+export const RAW_PAGES = new Set(['index', 'index-pusat']);   // data mentah Sheet: teks/angka campur memang mungkin
+export const MODES_VALID = id => RAW_PAGES.has(id) ? ['numstr', 'html', 'long', 'empty', 'negnum'] : ['nulls', 'html', 'long', 'empty', 'negnum'];
+export const MODES_STRESS = id => RAW_PAGES.has(id) ? ['drop', 'allnull'] : ['numstr', 'drop', 'allnull'];
 
 export function registerScenario(server, id, kind, seed = 1) {
   if (BROKEN[kind]) server.scenarios.set(id, BROKEN[kind]);
-  else { const mode = kind.replace(/^mut-/, ''); const rng = makeRng(seed); server.scenarios.set(id, q => ({ body: mutJson(okResponse(q), rng.sub(q.toString()), mode) })); }
+  else { const mode = kind.replace(/^mut-/, ''); const rng = makeRng(seed); server.scenarios.set(id, q => ({ body: mutJson(okResponse(q), rng.sub(q.toString()), mode, q.get('view') || '') })); }
 }
 
 const sel = (p, expr) => p.eval(expr);
@@ -89,7 +97,7 @@ export async function runLoad(browser, server, def, kind, seed, extra = '') {
   const found = [];
   try {
     const ls = { mh_code: def.code };
-    await page.goto(`${server.base}/${def.file}?sc=${encodeURIComponent(id)}&fast=1&ls=${encodeURIComponent(JSON.stringify(ls))}${extra}`);
+    await page.goto(`${server.fresh()}/${def.file}?sc=${encodeURIComponent(id)}&fast=1&ls=${encodeURIComponent(JSON.stringify(ls))}${extra}`);
     await page.waitFor(`(function(){var a=document.getElementById('appScreen'),l=document.getElementById('loginScreen'),b=document.getElementById('bootActions');return (a&&!a.hidden)||(l&&!l.hidden&&!document.documentElement.classList.contains('has-code'))||(b&&!b.hidden)})()`, 7000);
     await page.sleep(400);
     const st = await state(page);
@@ -119,7 +127,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const jobs = [];
   for (const def of PAGES) { if (only && def.id !== only) continue;
     for (const k of BROKEN_NAMES) jobs.push([def, k, 1]);
-    for (const m of MUT_MODES) for (let s = 1; s <= seeds; s++) jobs.push([def, 'mut-' + m, s]); }
+    for (const m of MODES_VALID(def.id)) for (let s = 1; s <= seeds; s++) jobs.push([def, 'mut-' + m, s]);
+    if (process.argv.includes('--stress')) for (const m of MODES_STRESS(def.id)) for (let s = 1; s <= seeds; s++) jobs.push([def, 'mut-' + m, s]); }
   const res = await pool(jobs, conc, ([d, k, s]) => runLoad(browser, server, d, k, s));
   await browser.close(); server.close();
   const groups = new Map();

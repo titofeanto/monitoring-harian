@@ -57,7 +57,7 @@ const STUB = `<script>
 </script>`;
 
 export async function startFuzzServer(port) {
-  const scenarios = new Map(), hits = new Map(), log = [];
+  const scenarios = new Map(), hits = new Map(), log = []; let uid = 0;
   const srv = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname === '/__api') {
@@ -80,5 +80,7 @@ export async function startFuzzServer(port) {
     res.end(body);
   });
   await new Promise(ok => srv.listen(port, ok));
-  return { port, srv, scenarios, hits, log, base: 'http://localhost:' + port, close: () => { srv.closeAllConnections && srv.closeAllConnections(); srv.close(); } };
+  return { port, srv, scenarios, hits, log, base: 'http://localhost:' + port,
+    /** Origin baru tiap panggilan (u1.localhost, u2.localhost, ...): localStorage dan IndexedDB tidak bocor antar halaman. */
+    fresh: () => 'http://u' + (++uid) + '.localhost:' + port, close: () => { srv.closeAllConnections && srv.closeAllConnections(); srv.close(); } };
 }

@@ -6,7 +6,8 @@
   const $ = id => document.getElementById(id);
   const esc = window.MHUtil.esc;
   const BULAN = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-  const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? (+m[3]) + ' ' + BULAN[+m[2]] + ' ' + m[1] : String(iso || ''); };
+  /* Teks tanggal dari sel Sheet ikut ke innerHTML: bulan di luar 1-12 atau teks bukan tanggal dikembalikan ter-escape, bukan mentah. */
+  const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m && BULAN[+m[2]] ? (+m[3]) + ' ' + BULAN[+m[2]] + ' ' + m[1] : esc(String(iso || '')); };
   const rp = n => n == null ? '-' : 'Rp ' + Math.round(n).toLocaleString('id-ID');
   const pct = v => (Math.abs(v) * 100).toFixed(1).replace('.', ',') + '%';
   const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };

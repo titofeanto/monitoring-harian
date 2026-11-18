@@ -12,7 +12,7 @@ after(async () => { if (browser) await browser.close(); if (server) server.close
 
 async function open(file, code, extra = '', scenario = 'ok') {
   const page = await browser.newPage();
-  await page.goto(`${server.base}/${file}?sc=${scenario}&fast=1&ls=${encodeURIComponent(JSON.stringify(code ? { mh_code: code } : {}))}${extra}`);
+  await page.goto(`${server.fresh()}/${file}?sc=${scenario}&fast=1&ls=${encodeURIComponent(JSON.stringify(code ? { mh_code: code } : {}))}${extra}`);
   await page.waitFor("(function(){var a=document.getElementById('appScreen');return a&&!a.hidden})()", 8000);
   await page.sleep(300);
   return page;
@@ -28,3 +28,17 @@ test('Monitoring Harian (kode pusat): kartu DT, Total, dan per DSR tidak menampi
     assert.deepEqual(page.errors, []);
   } finally { await page.close(); }
 });
+
+// Injeksi HTML lewat data Sheet (stored XSS): nilai di jalur ini dari sel Sheet apa adanya dan tidak boleh dirender sebagai HTML.
+import { sweepOne } from './fuzz/xss.sweep.mjs';
+import { PAGES } from './fuzz/browser.fuzz.mjs';
+const XSS_SINKS = [
+  ['kehadiran', '$.rows[][3]'], ['great-sales', '$.live.tanggal'], ['great-sales', '$.live.history[].tanggal'], ['great-sales', '$.live.summary.mon.tanggal'],
+  ['great-sales', '$.live.kpis[].level'], ['cek-stok', '$.harga[].mulai'],
+];
+for (const [id, p] of XSS_SINKS) {
+  test(`injeksi HTML: ${id} ${p} tidak dirender sebagai HTML`, { skip }, async () => {
+    const r = await sweepOne(browser, server, PAGES.find(x => x.id === id), p);
+    assert.equal(r.hit, null, JSON.stringify(r.hit));
+  });
+}

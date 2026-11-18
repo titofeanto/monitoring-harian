@@ -107,7 +107,7 @@
         const dy = V.days[i];
         if (c.st === 'lib') h += '<td class="lib">·</td>';
         else if (c.st === 'abs') h += '<td class="abs" title="' + esc(dy.iso) + ': tidak ada kunjungan"></td>';
-        else h += '<td class="' + c.st + '" title="' + esc(dy.iso + ' · ' + c.n + ' kunjungan' + (c.geo0 ? ' · geo code 0' : '') + (c.late ? ' · lewat 09.00' : '')) + '">' + c.jam + (c.geo0 ? '<sup>geo</sup>' : '') + '</td>';
+        else h += '<td class="' + c.st + '" title="' + esc(dy.iso + ' · ' + c.n + ' kunjungan' + (c.geo0 ? ' · geo code 0' : '') + (c.late ? ' · lewat 09.00' : '')) + '">' + esc(c.jam) + (c.geo0 ? '<sup>geo</sup>' : '') + '</td>';
       });
       h += '</tr>';
     });

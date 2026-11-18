@@ -6,7 +6,7 @@
   const $ = id => document.getElementById(id);
   const esc = window.MHUtil.esc;
   const BLS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-  const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? (+m[3]) + ' ' + BLS[+m[2]] + ' ' + m[1] : String(iso || ''); };
+  const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m && BLS[+m[2]] ? (+m[3]) + ' ' + BLS[+m[2]] + ' ' + m[1] : String(iso || ''); };
   const nf = v => Math.round(v).toLocaleString('id-ID');
   const nf1 = v => (Math.round(v * 10) / 10).toLocaleString('id-ID');
   const pct = v => v == null ? '-' : (v * 100).toFixed(1).replace('.', ',') + '%';

@@ -103,6 +103,25 @@ function runCall(srv, name, param, opts, ds, violations, tag) {
   return { obj, src, isError: false };
 }
 
+/** Kumpulkan jalur JSON (indeks larik dinormalkan jadi []) yang bernilai null pada respons server nyata (dataset dummy bermutasi).
+ *  Dipakai fuzz browser agar mutasi "null" hanya mengenai bidang yang memang bisa null dari server. Mengembalikan { view: Set(jalur) }. */
+export function collectNullPaths({ seed = 11, n = 40 } = {}) {
+  const base = buildDummy({ seed: 2026 }), out = { gs: new Set(), rank: new Set(), stok: new Set(), hadir: new Set() };
+  const views = [['gs', { view: 'gs', code: ACCESS.pusat }], ['rank', { view: 'rank', code: ACCESS.pusat }], ['stok', { view: 'stok', code: ACCESS.pusat }], ['hadir', { view: 'hadir', code: ACCESS.pusat }]];
+  const rng = makeRng(seed);
+  for (let i = -1; i < n; i++) {
+    const ds = i < 0 ? structuredClone(base) : mutateDataset(base, rng.sub('np' + i), {}).ds;
+    const srv = makeServer(ds);
+    views.forEach(([v, param]) => {
+      srv.trace.length = 0;
+      const txt = srv.ctx.doGet({ parameter: param }).getContent();
+      const f = srv.trace.filter(t => t.s === txt).pop(); if (!f || (f.o && f.o.error)) return;
+      (function rec(x, p) { if (x === null) out[v].add(p); else if (Array.isArray(x)) x.forEach(y => rec(y, p + '[]')); else if (x && typeof x === 'object') Object.keys(x).forEach(k => rec(x[k], p + '.' + k)); })(f.o, '$');
+    });
+  }
+  return out;
+}
+
 export function runFuzz({ seed = 1, n = 300, log = () => {} } = {}) {
   const base = buildDummy({ seed: 2026 });
   const violations = [], stats = { iter: 0, calls: 0, errors: {}, mutations: {} };

@@ -9,7 +9,8 @@
 
   const num = v => { const n = typeof v === 'number' ? v : parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isNaN(n) ? null : n; };
   const pct = v => v == null ? '-' : (v * 100).toFixed(1).replace('.', ',') + '%';
-  const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m ? (+m[3]) + ' ' + BULAN[+m[2]] + ' ' + m[1] : String(iso || ''); };
+  /* Teks tanggal dari sel Sheet ikut ke innerHTML: bulan di luar 1-12 atau teks bukan tanggal dikembalikan ter-escape, bukan mentah. */
+  const tgl = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || '')); return m && BULAN[+m[2]] ? (+m[3]) + ' ' + BULAN[+m[2]] + ' ' + m[1] : esc(String(iso || '')); };
 
   async function fetchGs(code, dt) {
     const base = (window.APP_CONFIG && window.APP_CONFIG.APPS_SCRIPT_URL) || '';
@@ -230,6 +231,7 @@
 
   function render() {
     const live = DATA.live, rank = live.rank, prevRank = live.prevRank, scoreShown = live.scoreShown;
+    (live.kpis || []).forEach(k => { if (!Object.prototype.hasOwnProperty.call(LV_TONE, k.level)) k.level = ''; });   // level masuk ke atribut class: hanya green/amber/red
     $('gsSub').textContent = 'AAM' + (DATA.scope ? ' · ' + DATA.scope.nama : ' · semua DT') + (live.monLive ? ' · FOP s.d. mg ' + live.summary.mon.week : live.fopWeek !== '' ? ' · FOP s.d. mg ' + live.fopWeek : '');
     $('gsUpdated').textContent = 'Data ' + tgl(live.tanggal);
     window.MHFresh.set({ info: window.MHFresh.status(live.tanggal, { label: 'Scorecard' }) });
