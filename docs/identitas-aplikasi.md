@@ -4,33 +4,42 @@ Keputusan pemilik (plan 031): aplikasi bernama **Jendela Jasper**, tagline **Mon
 
 ## 1. Berkas merek (`assets/brand/`)
 
-| Berkas | Isi | Ukuran (px) |
+Lembar merek v2 (plan 032, 2816x1536) menggantikan lembar lama untuk semua potongan logo. Lembar lama tetap disimpan di `sumber/` sebagai arsip.
+
+| Berkas | Isi | Ukuran (px) | Lama (px) |
+|---|---|---|---|
+| `sumber/lembar-logo-v2.jpg` | lembar merek terbaru pemilik (logo utama, horizontal, ikon/monogram, mono, gelap, palet) | 2816x1536 | |
+| `sumber/lembar-logo.jpg`, `sumber/logo-utama.jpg` | lembar lama (arsip) | 2576x1405 | |
+| `logo-gelap.png` | kotak Dark Background; latar diratakan jadi satu warna `#001F5B` persis (piksel dekat navy dipaksa navy, tanpa halo JPEG) supaya menyatu dengan bidang login | 621x444 | 520x430 |
+| `logo-horizontal.png` | versi horizontal, latar kertas asli | 893x228 | 1010x205 |
+| `logo-emblem.png` | logo utama dengan tagline, dipotong rapat tanpa lingkaran penuh, latar kertas asli | 579x426 | 545x485 |
+| `ikon.svg` | ikon utama: ubin putih (radius ±22%, tepi abu tipis), monogram J-jendela navy, atap dan jendela amber, badge grafik | viewBox 512 | |
+| `ikon-navy.svg` | sama, ubin navy, J putih (tema gelap, layar utama Android) | viewBox 512 | |
+| `ikon-maskable.svg` | latar penuh navy tanpa sudut, J putih tanpa badge, 85% ukuran (zona aman 80%) | viewBox 512 | |
+| `ikon-mono.svg` | satu warna (hitam) | viewBox 512 | |
+| `favicon.svg` | varian sederhana tanpa badge dan tanpa atap: J-jendela putih, kisi kipas, satu jendela amber, ubin navy; dipakai juga di sidebar 28 px (`assets/nav.js`) | viewBox 512 | |
+| `ikon-192.png`, `ikon-512.png`, `ikon-maskable-512.png` | ikon manifest PWA (any dan maskable terpisah) | 192, 512, 512 | |
+| `apple-touch-icon-180.png` | ikon layar utama iOS, latar penuh navy tanpa transparan (J putih dan badge terbaca di layar utama terang maupun gelap; ubin putih akan menyatu dengan latar terang) | 180 | |
+| `favicon-32.png`, `favicon-48.png` | favicon tab dari `favicon.svg` | 32, 48 | |
+| `ikon-lembar.png` | lembar kontak ikon: 512, 192, 180, 64, 48, 32, pembesaran 4x dari 32 | 1330x700 | |
+
+**Perbandingan resolusi lama dan baru.** Lembar baru 2816 px (lama 2576 px), tetapi tiap varian di dalamnya tidak lebih besar: logo gelap naik dari 520 ke 621 px lebar (+19%; kini cukup untuk logo login 300 px di layar 2x, sebelumnya kurang), emblem 545 ke 579 px (+6%), sedangkan horizontal turun dari 1010 ke 893 px (-12%) dan tidak lebih tajam. Jadi hasilnya lebih tajam hanya untuk logo gelap di login; potongan lain setara atau sedikit lebih kecil.
+
+**Peringatan resolusi.** Potongan logo masih 500 sampai 900 px lebarnya. Di layar lebar atau dicetak akan terlihat kurang tajam. Pemilik sebaiknya mengunggah berkas asli beresolusi tinggi (SVG, atau PNG minimal 2000 px per varian, satu varian per berkas, latar transparan) untuk menggantikan `logo-gelap.png`, `logo-horizontal.png`, dan `logo-emblem.png`. Nama berkas dan rasio boleh tetap; ubah `width`/`height` di `<img class="lg-logo">` (dan `aspect-ratio` di `.lg-logo`, `assets/style.css`) bila rasionya berbeda.
+
+**Catatan jujur tentang logo.** Logo dibuat generator gambar raster dan punya cacat kecil: segitiga oranye kecil dekat huruf J, huruf A di "JASPER" tertimpa garis zig-zag, ikon kecil di versi horizontal terlalu rapat, dan ikon kilau bintang kecil. Dipakai apa adanya untuk sekarang. Rekomendasi: gambar ulang sebagai vektor (SVG) bersih sebelum logo dipakai resmi atau dicetak. Ikon aplikasi adalah gambar vektor sendiri yang meniru monogram pemilik (bukan jiplakan piksel); versi final sebaiknya digambar desainer.
+
+**Aturan ikon.** Ruang aman: biarkan minimal 12% sisi kosong di sekeliling monogram pada ubin. Ukuran minimum: 32 px (di bawah 48 px pakai `favicon.svg`/`favicon-*.png`, tanpa badge dan atap, karena badge dan chevron atap menyatu). Varian: putih (`ikon.svg`, bawaan), navy (`ikon-navy.svg`, latar gelap), mono (`ikon-mono.svg`, cetak hitam-putih). Tanpa gradien, bayangan, atau kilau; warna hanya navy, amber, putih, dan abu tepi.
+
+## 2. Warna merek (palet resmi di lembar v2)
+
+| Peran | Nilai | Token |
 |---|---|---|
-| `sumber/lembar-logo.jpg` | lembar logo asli pemilik (5 varian) | 2576x1405 |
-| `sumber/logo-utama.jpg` | logo utama dengan tagline | 2576x1405 |
-| `logo-gelap.png` | versi latar navy (dipakai di layar login); latar navy dibersihkan jadi satu warna rata `#1E3656` supaya menyatu dengan bidang login | 520x430 |
-| `logo-horizontal.png` | versi horizontal, latar kertas asli | 1010x205 |
-| `logo-emblem.png` | emblem utama dengan tagline, latar kertas asli | 545x485 |
-| `ikon.svg`, `ikon-maskable.svg`, `ikon-mono.svg`, `favicon.svg` | ikon aplikasi vektor buatan sendiri (jendela lengkung, kisi kipas, centang amber) | viewBox 512 |
-| `ikon-192.png`, `ikon-512.png`, `ikon-maskable-512.png` | ikon manifest PWA | 192, 512, 512 |
-| `apple-touch-icon-180.png` | ikon layar utama iOS (latar penuh, tanpa transparan) | 180 |
-| `favicon-32.png`, `favicon-48.png` | favicon tab | 32, 48 |
+| Navy (bidang merek, ubin ikon, theme-color, manifest, blok login) | `#001F5B` | `--logo-navy` |
+| Amber (aksen, tombol Masuk, jendela dan grafik di ikon) | `#F8991C` | `--logo-amber` |
+| Abu (tagline, tepi) | `#6D6E71` | `--logo-gray` |
 
-**Peringatan resolusi.** Potongan logo hanya 500 sampai 1000 px lebarnya (berasal dari gambar 2576 px yang berisi lima varian). Di layar retina (2x) logo login (tampil 300 px) masih cukup, tetapi di layar lebar atau dicetak akan terlihat kurang tajam. Pemilik sebaiknya mengunggah berkas asli beresolusi tinggi (SVG, atau PNG minimal 2000 px per varian, satu varian per berkas, latar transparan) untuk menggantikan `logo-gelap.png`, `logo-horizontal.png`, dan `logo-emblem.png`. Nama berkas dan rasio boleh tetap; ubah `width`/`height` di `<img class="lg-logo">` bila rasionya berbeda.
-
-**Catatan jujur tentang logo.** Logo dibuat generator gambar raster dan punya cacat kecil: segitiga oranye kecil dekat huruf J, huruf A di "JASPER" tertimpa garis zig-zag, ikon kecil di versi horizontal terlalu rapat, dan ikon kilau bintang kecil. Dipakai apa adanya untuk sekarang. Rekomendasi: gambar ulang sebagai vektor (SVG) bersih sebelum logo dipakai resmi atau dicetak. Untuk ikon aplikasi sudah dibuat versi vektor bersih sendiri (`ikon.svg`), bukan memakai potongan raster.
-
-## 2. Warna merek (sampel piksel nyata)
-
-| Peran | Nilai | Sumber sampel |
-|---|---|---|
-| Navy (bidang, ikon, manifest) | `#1E3656` | latar kotak Dark Background di lembar logo |
-| Navy huruf | `#26426A` | badan huruf judul "JENDELA JASPER" di lembar |
-| Amber | `#FEBA42` | zig-zag di logo utama |
-| Amber centang | `#EEAE46` | centang ikon aplikasi pemilik (dipakai `#FEBA42` di ikon baru agar lebih terang) |
-| Abu tagline | `#6A727A` | tagline di logo utama |
-
-Token di `assets/style.css`: `--logo-navy`, `--logo-amber`, dan `--warm` (= amber) untuk tombol Masuk (teks navy, kontras 7,2:1). Biru tema aplikasi `--brand` (#176DA6) tidak diganti.
+Tombol Masuk (`--warm` = amber, teks `--warm-ink` = navy): kontras 7,1:1. Hover terang `#E08A10` (teks navy, 5,8:1); hover gelap `#FFAE45` (8,5:1). Biru tema aplikasi `--brand` (#176DA6) tidak diganti. Tema gelap memakai navy resmi yang sama untuk bidang merek (tidak dicerahkan).
 
 ## 3. Nama pendek di layar utama
 
@@ -47,11 +56,11 @@ Konstanta: `window.MH_APP_NAME` dan `window.MH_APP_TAGLINE` di `assets/config.js
 | Tempat | Isi |
 |---|---|
 | Layar login (`.lg-logo` alt, `.lg-tag`), 5 halaman | logo gelap + tagline |
-| Kepala menu samping (`assets/nav.js`) | ikon J-jendela 28 px + nama + tagline |
+| Kepala menu samping (`assets/nav.js`) | monogram J-jendela sederhana (`favicon.svg`) 28 px + nama + tagline |
 | `<title>`, `application-name`, `apple-mobile-web-app-title`, `og:title`, `og:description`, `description` di semua HTML | "Jendela Jasper" atau "{Halaman} · Jendela Jasper" |
 | `manifest.webmanifest` | nama, `short_name`, deskripsi, warna navy, ikon baru |
 | `<link rel="icon">` (SVG, 32, 48) dan `apple-touch-icon` | berkas `assets/brand/` |
-| `sw.js` | cache `mh-shell-v2` (menarik ikon baru) |
+| `sw.js` | cache `mh-shell-v3` (menarik ikon dan logo baru) |
 
 Nama halaman dan fitur ("Monitoring Harian", "Great Sales", "Cek Stok", "Kehadiran", "Ranking") tetap sebagai nama halaman. Belum diganti dan di luar cakupan: `upload-tool/` (Apps Script terpisah, judul "Upload Data Monitoring Harian"), judul proyek Sheet dan Apps Script, `README.md`. Tidak ada lagi tempat "belum diganti" di aplikasi web utama.
 
