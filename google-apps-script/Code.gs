@@ -140,7 +140,7 @@ function respond_(r, p) {
   const payload = getPayload_(r.sheet_id);
   // ?cek=1: ringkasan jumlah baris saja, untuk mengecek Sheet tanpa mengunduh semua data.
   if (p.cek) {
-    const rows = {};
+    const rows = Object.create(null);
     Object.keys(payload.tabs).forEach(n => { rows[n] = Math.max(0, payload.tabs[n].length - 1); });
     return { dt: r.dt_kode, builtAt: payload.builtAt, ms: payload.ms, bytes: JSON.stringify(payload).length, rows: rows };
   }
@@ -179,7 +179,7 @@ function noteBadCode_() {
 
 /** Jalankan manual dari editor: cek kekuatan kode akses. Tidak pernah mencetak nilai kode. */
 function auditKodeAkses() {
-  const reg = readRegistry_(), seen = {};
+  const reg = readRegistry_(), seen = Object.create(null);
   reg.forEach(r => { seen[r.kode_akses] = (seen[r.kode_akses] || 0) + 1; });
   reg.forEach(r => {
     const k = r.kode_akses, flags = [];
@@ -241,7 +241,7 @@ function pickColumns_(aoa, wanted) {
  */
 function trimProduk_(produk, users) {
   if (produk.length < 2) return produk;
-  const used = {};
+  const used = Object.create(null);
   users.forEach(t => {
     if (!t.length) return;
     const i = t[0].map(h => String(h).trim()).indexOf('LEVEL-9');
@@ -449,11 +449,11 @@ function respondStok_(me, reg, dtWanted) {
   let dts = reg.filter(x => x.peran === 'dt' && x.sheet_id);
   if (me.peran === 'dt') dts = dts.filter(x => x.dt_kode === me.dt_kode);
   else if (dtWanted) dts = dts.filter(x => x.dt_kode === dtWanted);
-  const ok = {}; dts.forEach(x => { ok[x.dt_kode] = true; });
+  const ok = Object.create(null); dts.forEach(x => { ok[x.dt_kode] = true; });
   stok = stok.filter(r => ok[String(r.dt_kode)]);
   if (!stok.length) return { error: 'no_data', message: 'Stok gudang belum diupload untuk DT ini.' };
   const iso = v => v instanceof Date ? Utilities.formatDate(v, ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd') : String(v);
-  const tanggal = {};
+  const tanggal = Object.create(null);
   stok.forEach(r => { tanggal[String(r.dt_kode)] = iso(r.tanggal); });
   const jualObjs = readObjs_(ss, 'JUAL_SKU').filter(r => ok[String(r.dt_kode)]);
   return {
@@ -479,7 +479,7 @@ function respondHadir_(me, reg, dtWanted) {
   let dts = reg.filter(x => x.peran === 'dt' && x.sheet_id);
   if (me.peran === 'dt') dts = dts.filter(x => x.dt_kode === me.dt_kode);
   else if (dtWanted) dts = dts.filter(x => x.dt_kode === dtWanted);
-  const ok = {}; dts.forEach(x => { ok[x.dt_kode] = true; });
+  const ok = Object.create(null); dts.forEach(x => { ok[x.dt_kode] = true; });
   const read = (name, n) => {
     const sh = ss.getSheetByName(name);
     if (!sh || sh.getLastRow() < 2) return [];
@@ -540,12 +540,12 @@ function respondGs_(me, reg, dtWanted) {
   const hist = read('GS_BULANAN').filter(h => !scope || String(h.dist_kode) === scope.dt_kode);
   const mon = { cfg: cfg, hasList: toko.length > 0, bandedSku: bandedSku, perDt: [], noDt: [], manual: read('GS_MANUAL').slice(-60), recap: monRecap_(hist, read('GS_BULANAN_ASRT').filter(a => !scope || String(a.dist_kode) === scope.dt_kode), bandedSku, cfg) };
   if (toko.length) {
-    const kodes = {}; toko.forEach(t => { kodes[String(t.dist_kode)] = t.dist_nama; });
+    const kodes = Object.create(null); toko.forEach(t => { kodes[String(t.dist_kode)] = t.dist_nama; });
     asrtDts.forEach(x => {
       if (!kodes[String(x.dt_kode)]) return;
       try { mon.perDt.push(monForDt_(x, toko, bandedSku, cfg, hist)); } catch (err) { mon.perDt.push({ dist_kode: x.dt_kode, dist_nama: x.nama_dt, error: String(err) }); }
     });
-    const have = {}; asrtDts.forEach(x => { have[String(x.dt_kode)] = true; });
+    const have = Object.create(null); asrtDts.forEach(x => { have[String(x.dt_kode)] = true; });
     Object.keys(kodes).filter(k => !have[k]).forEach(k => mon.noDt.push({ dist_kode: k, dist_nama: kodes[k], stores: toko.filter(t => String(t.dist_kode) === k).length }));
   }
   // Ranking sales per BU (FOP, Banded, Assortment) dari DT dalam cakupan; DT yang gagal tidak menggagalkan yang lain.
@@ -586,7 +586,7 @@ function gsSetKpi_(k, aktual, catatan) {
 function computeGsLive_(in_) {
   const scorecard = in_.scorecard || [], ps = in_.ps || {}, asrt = in_.asrt || {}, mon = in_.mon || {};
   // snapshot per tanggal: {tanggal: {kpi: baris}}
-  const by = {};
+  const by = Object.create(null);
   scorecard.forEach(r => { const t = str_(r.tanggal); (by[t] = by[t] || {})[r.kpi] = r; });
   const snaps = Object.keys(by).sort().map(t => ({ tanggal: t, rows: by[t] }));
   const cur = snaps[snaps.length - 1], prev = snaps.length > 1 ? snaps[snaps.length - 2] : null;
@@ -724,12 +724,12 @@ function asrtNum_(v) {
 function computeAsrt_(dms, produk, outletMaster, dtKode, moq) {
   const need = moq || ASRT_MOQ;
   const col = (hdr, alts) => { const h = hdr.map(x => String(x).replace(/\s+/g, ' ').trim().toLowerCase()); for (let i = 0; i < alts.length; i++) { const k = h.indexOf(alts[i].toLowerCase()); if (k >= 0) return k; } return -1; };
-  const sku2bp = {};
+  const sku2bp = Object.create(null);
   if (produk.length) {
     const cS = col(produk[0], ['SKUCode']), cB = col(produk[0], ['LEVEL-9']);
     if (cS >= 0 && cB >= 0) produk.slice(1).forEach(r => { const a = String(r[cS]).trim(), b = String(r[cB]).trim(); if (a && b) sku2bp[a] = b; });
   }
-  const chOf = {}, nameOf = {}, registered = {};
+  const chOf = Object.create(null), nameOf = Object.create(null), registered = Object.create(null);
   let masterRows = 0;
   if (outletMaster.length) {
     const h = outletMaster[0], cC = col(h, ['Outlet Code']), cN = col(h, ['Outlet Name']), cT = col(h, ['Outlet Type Desc']);
@@ -751,7 +751,7 @@ function computeAsrt_(dms, produk, outletMaster, dtKode, moq) {
   body.forEach(r => { const d = cD >= 0 ? asrtIso_(r[cD]) : ''; if (d > maxIso) maxIso = d; });
   const bulan = maxIso.slice(0, 7);
   out.bulan = bulan; out.tanggalData = maxIso;
-  const net = {}, seen = {}, gsv = {};
+  const net = Object.create(null), seen = Object.create(null), gsv = Object.create(null);
   body.forEach(r => {
     const d = cD >= 0 ? asrtIso_(r[cD]) : '';
     if (bulan && d && d.slice(0, 7) !== bulan) return; // hanya bulan data terbaru
@@ -767,13 +767,13 @@ function computeAsrt_(dms, produk, outletMaster, dtKode, moq) {
     const k = o + '|' + bp;
     net[k] = (net[k] || 0) + asrtNum_(r[cQ]);
   });
-  const lines = {}, active = {};
+  const lines = Object.create(null), active = Object.create(null);
   Object.keys(net).forEach(k => {
     const o = k.slice(0, k.indexOf('|'));
     if (net[k] > 0) active[o] = true;
     if (net[k] >= need) lines[o] = (lines[o] || 0) + 1;
   });
-  const agg = {};
+  const agg = Object.create(null);
   Object.keys(seen).forEach(o => {
     const ch = chOf[o];
     if (ch === undefined) { out.unmapped.push({ outlet: o, nama: seen[o].nama, salesman: seen[o].sm, gsv: Math.round(seen[o].gsv), terakhir: seen[o].last, lines: lines[o] || 0 }); return; }
@@ -815,7 +815,7 @@ function readTrendAsrt_(ss) {
 
 /** Pure. Baseline per toko = rata-rata lines bulan yang ADA barisnya di rentang [from, to]. -> { 'dist|outlet': {baseline, bulan} }. */
 function asrtBaseline_(trendRows, from, to) {
-  const lo = from || ASRT_BASE_FROM, hi = to || ASRT_BASE_TO, acc = {};
+  const lo = from || ASRT_BASE_FROM, hi = to || ASRT_BASE_TO, acc = Object.create(null);
   (trendRows || []).forEach(r => {
     if (r.periode < lo || r.periode > hi) return;
     const k = r.dist_kode + '|' + r.outlet_kode, a = acc[k] = acc[k] || { sum: 0, per: {} };
@@ -829,7 +829,7 @@ function asrtBaseline_(trendRows, from, to) {
 
 /** Pure. Target per toko = baseline x (1 + growth), hanya toko dengan baseline > 0. */
 function asrtTargetPerToko_(baselineMap, growth) {
-  const g = typeof growth === 'number' ? growth : GS_CFG_DEFAULT.asrt_growth, out = {};
+  const g = typeof growth === 'number' ? growth : GS_CFG_DEFAULT.asrt_growth, out = Object.create(null);
   Object.keys(baselineMap || {}).forEach(k => { if (baselineMap[k].baseline > 0) out[k] = baselineMap[k].baseline * (1 + g); });
   return out;
 }
@@ -922,7 +922,7 @@ function computeSalesRank_(in_) {
   out.bulan = bulan; out.tanggalData = maxIso;
 
   // MASTER_PRODUK: basepack dan BU per SKU
-  const sku2bp = {}, sku2bu = {};
+  const sku2bp = Object.create(null), sku2bu = Object.create(null);
   if (produk.length) {
     const pS = col(produk[0], ['SKUCode']), pB = col(produk[0], ['LEVEL-9']), pU = col(produk[0], ['BU']);
     produk.slice(1).forEach(r => {
@@ -932,7 +932,7 @@ function computeSalesRank_(in_) {
     });
   }
   // Identitas salesman: nama dari tab DSR, channel '-' = nonaktif
-  const nameOf = {}, inactive = {};
+  const nameOf = Object.create(null), inactive = Object.create(null);
   if (dsr.length) {
     const dK = col(dsr[0], ['kode_dsr']), dN = col(dsr[0], ['nama_dsr']), dC = col(dsr[0], ['channel']);
     dsr.slice(1).forEach(r => {
@@ -942,7 +942,7 @@ function computeSalesRank_(in_) {
     });
   }
   // Channel toko dari OUTLET_MASTER (kode berawalan kode DT dipotong, seperti computeAsrt_)
-  const chOf = {};
+  const chOf = Object.create(null);
   if (outletMaster.length) {
     const cC = col(outletMaster[0], ['Outlet Code']), cT = col(outletMaster[0], ['Outlet Type Desc']);
     if (cC >= 0) outletMaster.slice(1).forEach(r => {
@@ -961,7 +961,7 @@ function computeSalesRank_(in_) {
     if (g) monitored.push({ o: String(s.outlet_kode).trim(), g: g });
   });
   // EVB kuartal: SKU banded yang dibeli di bulan lain dalam kuartal yang sama (dari GS_BULANAN)
-  const prior = {};
+  const prior = Object.create(null);
   hist.forEach(h => {
     if (String(h.periode) >= bulan || monQuarter_(h.periode) !== monQuarter_(bulan)) return;
     const o = String(h.outlet_kode).trim(); prior[o] = prior[o] || {};
@@ -969,8 +969,8 @@ function computeSalesRank_(in_) {
   });
 
   // Satu putaran baris DMS bulan data
-  const att = {}, wk = {}, bpNet = {}, skuNet = {};
-  const attAll = {}, wkAll = {}, bpAll = {};   // gabungan semua BU, untuk skor total DSR (plan 022)
+  const att = Object.create(null), wk = Object.create(null), bpNet = Object.create(null), skuNet = Object.create(null);
+  const attAll = Object.create(null), wkAll = Object.create(null), bpAll = Object.create(null);   // gabungan semua BU, untuk skor total DSR (plan 022)
   const add = (root, a, b, c, q) => { const x = root[a] = root[a] || {}, y = x[b] = x[b] || {}; y[c] = (y[c] || 0) + q; };
   body.forEach(r => {
     const d = asrtIso_(r[cD]); if (!d || d.slice(0, 7) !== bulan) return;
@@ -989,21 +989,21 @@ function computeSalesRank_(in_) {
   });
 
   const need = Math.max(1, Math.round(cfg.fop_weekly || 3));
-  const tanpaBu = {}; bandedSku.forEach(b => { if (!sku2bu[String(b.sku_kode).trim()]) tanpaBu[String(b.sku_kode).trim()] = true; });
+  const tanpaBu = Object.create(null); bandedSku.forEach(b => { if (!sku2bu[String(b.sku_kode).trim()]) tanpaBu[String(b.sku_kode).trim()] = true; });
   out.catatan.bandedTanpaBu = Object.keys(tanpaBu).length;
-  const namedSeen = {};
+  const namedSeen = Object.create(null);
 
   RANK_BU.forEach(def => {
     const bu = def[0];
     if (!att[bu]) return;
     // atribusi: qty bersih terbanyak (harus positif), seri -> kode lebih kecil
-    const owner = {};
+    const owner = Object.create(null);
     Object.keys(att[bu]).forEach(o => {
       let best = '', bq = 0;
       Object.keys(att[bu][o]).forEach(sm => { const q = att[bu][o][sm]; if (q > bq || (q === bq && q > 0 && rankCodeLess_(sm, best))) { best = sm; bq = q; } });
       if (best) owner[o] = best;
     });
-    const sales = {};
+    const sales = Object.create(null);
     const entry = sm => sales[sm] = sales[sm] || { kode: sm, nama: nameOf[sm] || sm, tokoFop: 0, fop: { n: 0, weekly: 0, pct: null, spmN: 0, spmWeekly: 0 }, tokoBanded: 0, banded: { n: 0, hit: 0, pct: null }, tokoAsrt: 0, asrt: { toko: 0, lines: 0, perToko: 0 } };
     let belum = 0;
     monitored.forEach(m => {
@@ -1044,7 +1044,7 @@ function computeSalesRank_(in_) {
 
   // Atribusi TOTAL (semua BU digabung): salesman dengan qty bersih total terbanyak (seri: kode lebih kecil).
   // Per toko dikeluarkan hanya angka ringkas; PS dan target Assortment ditempel kemudian oleh computeDsrTotals_.
-  const grpOf = {}; monitored.forEach(m => { grpOf[m.o] = m.g; });
+  const grpOf = Object.create(null); monitored.forEach(m => { grpOf[m.o] = m.g; });
   Object.keys(attAll).forEach(o => {
     let best = '', bq = 0;
     Object.keys(attAll[o]).forEach(sm => { const q = attAll[o][sm]; if (q > bq || (q === bq && q > 0 && rankCodeLess_(sm, best))) { best = sm; bq = q; } });
@@ -1085,7 +1085,7 @@ function rankSales_(perDt, minToko) {
     banded: s => ({ n: s.tokoBanded, nilai: s.banded.pct, ex: { hit: s.banded.hit } }),
     asrt: s => ({ n: s.tokoAsrt, nilai: s.asrt.perToko, ex: { lines: s.asrt.lines, toko: s.asrt.toko } }),
   };
-  const raw = {};
+  const raw = Object.create(null);
   (perDt || []).forEach(d => {
     if (!d || d.error || !d.bu) return;
     if (d.tanggalData > out.tanggalData) { out.tanggalData = d.tanggalData; out.bulan = d.bulan; }
@@ -1126,7 +1126,7 @@ function rankSales_(perDt, minToko) {
  * peringkat di antara baris DT yang sama saja (nilai sama berbagi peringkat: 1, 2, 2, 4). Baris tanpa rank (belum cukup toko) tidak disentuh.
  */
 function rankWithinDt_(rows, field) {
-  const f = field || 'nilai', per = {};
+  const f = field || 'nilai', per = Object.create(null);
   (rows || []).forEach(r => {
     if (r.rank == null) return;
     const t = per[r.dt_kode] = per[r.dt_kode] || { n: 0, prev: null };
@@ -1170,7 +1170,7 @@ function r2gParseNgdms_(aoa) {
   }
   if (hi < 0) return null;
   const get = (r, k) => ix[k] == null ? '' : r[ix[k]];
-  const byCode = {};
+  const byCode = Object.create(null);
   for (let i = hi + 1; i < aoa.length; i++) {
     const r = aoa[i] || [];
     const kode = r2gKode_(get(r, 'salesman')); if (!kode) continue;
@@ -1205,7 +1205,7 @@ function computeDsrR2g_(in_) {
   let periode = perKey(cfg.periode);
   if (!periode) periode = tT.rows.map(r => perKey(r2gAt_(r, tp))).sort().pop() || '';
   out.periode = periode;
-  const tgt = {};
+  const tgt = Object.create(null);
   tT.rows.forEach(r => {
     const per = perKey(r2gAt_(r, tp)), k = r2gKode_(r2gAt_(r, tT.col('kode_dsr'))); if (per !== periode || !k) return;
     tgt[k] = { bw: r2gNum_(r2gAt_(r, tT.col('target_ss_bw'))), pc: r2gNum_(r2gAt_(r, tT.col('target_ss_pc'))), hc: r2gNum_(r2gAt_(r, tT.col('target_ss_hc'))), fo: r2gNum_(r2gAt_(r, tT.col('target_ss_fo'))) };
@@ -1215,7 +1215,7 @@ function computeDsrR2g_(in_) {
 
   // MASTER_PRODUK
   const tP = r2gTable_(T.MASTER_PRODUK), pS = tP.col('SKUCode'), pB = tP.col('LEVEL-9'), pU = tP.col('BU');
-  const sku2base = {}, base2bu = {};
+  const sku2base = Object.create(null), base2bu = Object.create(null);
   tP.rows.forEach(r => {
     const sku = r2gStr_(r2gAt_(r, pS)), bp = r2gStr_(r2gAt_(r, pB)); if (!bp) return;
     if (sku) sku2base[sku] = bp;
@@ -1224,7 +1224,7 @@ function computeDsrR2g_(in_) {
 
   // OUTLET_MASTER -> pjp[kodeToko] = daftar pemilik
   const tO = r2gTable_(T.OUTLET_MASTER), oC = tO.col('Outlet Code'), oN = tO.col('Outlet Name'), oS = tO.col('Salesman');
-  const pjp = {};
+  const pjp = Object.create(null);
   tO.rows.forEach(r => {
     const full = r2gStr_(r2gAt_(r, oC)); if (!full) return;
     const suffix = dtKode && full.indexOf(dtKode) === 0 && full.length > dtKode.length ? full.slice(dtKode.length) : full;
@@ -1236,7 +1236,7 @@ function computeDsrR2g_(in_) {
   // DMS_EXTRACT: SS aktual (hanya baris ber-BU dikenal), pemilik per BU (baris terakhir menang), qty per basepack per toko
   const tE = r2gTable_(T.DMS_EXTRACT);
   const cK = tE.col('Salesman', 'DSR Code (Hygiene)'), cBu = tE.col('Sub_division', 'Category'), cG = tE.col('GSV'), cO = tE.col('Outlet', 'Kode Outlet Bersih'), cON = tE.col('Outlet Name', 'OutletName'), cSku = tE.col('SKUCode', 'SKU Code'), cQty = tE.col('TotalQuantity(PCS)', 'TotalQuantity (PCS)');
-  const ssAct = {}, ownerByBu = {}, qtyBy = {}, outlets = {};
+  const ssAct = Object.create(null), ownerByBu = Object.create(null), qtyBy = Object.create(null), outlets = Object.create(null);
   if (cK >= 0 && cG >= 0) tE.rows.forEach(r => {
     const kode = r2gKode_(r[cK]); if (!kode) return;
     const d = dsrByKode(kode); if (!d) return;
@@ -1267,7 +1267,7 @@ function computeDsrR2g_(in_) {
   }
 
   // NGDMS_ASRT: cocokkan ke DSR lewat nama dulu, kode salesman sebagai cadangan
-  const ng = r2gParseNgdms_(T.NGDMS_ASRT), asrt = {};
+  const ng = r2gParseNgdms_(T.NGDMS_ASRT), asrt = Object.create(null);
   if (ng) ng.rows.forEach(r => {
     const d = byName(r.nama) || dsrByKode(r.kode); if (!d) return;
     const o = asrt[d.kode] = asrt[d.kode] || { e2eT: 0, e2sT: 0, e2eA: 0, e2sA: 0 };
@@ -1275,7 +1275,7 @@ function computeDsrR2g_(in_) {
   });
 
   // NORMS_SKU: Pasti Laku = Everbilled + Redlines; Pasti Untung = Width + NPD
-  const iq = {}; active.forEach(d => { iq[d.kode] = { pastiLaku: { tot: 0, ach: 0 }, pastiUntung: { tot: 0, ach: 0 } }; });
+  const iq = Object.create(null); active.forEach(d => { iq[d.kode] = { pastiLaku: { tot: 0, ach: 0 }, pastiUntung: { tot: 0, ach: 0 } }; });
   const tN = r2gTable_(T.NORMS_SKU), nPt = tN.col('PACKTYPE'), nOut = tN.col('OutletCode'), nSku = tN.col('LEVEL-9'), nSub = tN.col('SUB DIVISION2'), nSoq = tN.col('Target SOQ (in pcs)', 'Target SOQ', 'SOQ');
   if (!(tN.rows.length && (nPt < 0 || nOut < 0 || nSoq < 0))) tN.rows.forEach(r => {
     const suffix = r2gStr_(r[nOut]).replace(/^B/i, ''); if (!suffix) return;
@@ -1347,11 +1347,11 @@ function computeDsrTotals_(in_) {
   (in_.dts || []).forEach(d => {
     if (!d || d.error || !d.total) return;
     const psMap = d.ps || {}, tmap = d.asrtTarget || {}, r2gAll = (d.r2g && d.r2g.dsr) || {};
-    const per = {};
+    const per = Object.create(null);
     (d.total.stores || []).forEach(s => { (per[s.sm] = per[s.sm] || []).push(s); });
     Object.keys(per).forEach(sm => {
       if (d.total.inactive && d.total.inactive[sm]) return;
-      const mine = per[sm], mk = {};
+      const mine = per[sm], mk = Object.create(null);
       const kpi = {};
       const mkKpi = (key, capaian, pct, n, detail) => {
         const no = capaian === null || capaian === undefined || !isFinite(capaian);
@@ -1375,7 +1375,7 @@ function computeDsrTotals_(in_) {
       const bV = bS.length ? hit / bS.length : null;
       mkKpi('banded', bV === null ? null : bV / bT, bV, bS.length, { hit: hit, target: bT });
       // Assortment: aktual / target (+15% vs baseline) atas toko bertarget milik DSR
-      const keys = [], lines = {};
+      const keys = [], lines = Object.create(null);
       mine.forEach(s => { const k = d.dist_kode + '|' + s.o; keys.push(k); lines[k] = s.ln; });
       const as = asrtScoreForStores_(keys, lines, tmap);
       mkKpi('asrt', as.pct, as.pct, as.tokoTarget, { lines: as.aktual, target: as.target, tokoNaik: as.tokoNaik, tanpaBaseline: as.tanpaBaseline });
@@ -1474,7 +1474,7 @@ function respondRank_(me, reg) {
   const dts = reg.filter(x => x.peran === 'dt' && x.sheet_id);
   const rankRes = dts.map(x => salesRankForDt_(x, toko, bandedSku, cfg, hist));
   const rk = rankSales_(rankRes, cfg.rank_min_toko);
-  const bu = {};
+  const bu = Object.create(null);
   Object.keys(rk.bu).forEach(k => {
     const b = rk.bu[k];
     bu[k] = { label: b.label, fop: b.fop.map(rankPublicRow_), banded: b.banded.map(rankPublicRow_), asrt: b.asrt.map(rankPublicRow_),
@@ -1489,21 +1489,21 @@ function respondRank_(me, reg) {
 
 /** Skor total DSR (plan 022) untuk respons view=rank: gabungan hasil per DT + PS + target Assortment + R2G, lalu diperingkat. */
 function rankTotalForRes_(ss, dts, rankRes, cfg) {
-  const ps = readObjs_(ss, 'GS_PS'), latest = {};
+  const ps = readObjs_(ss, 'GS_PS'), latest = Object.create(null);
   ps.forEach(r => { const k = String(r.dist_kode).trim() + '|' + String(r.outlet_kode).trim(); const t = String(r.tanggal); if (!(k in latest) || t >= latest[k].t) latest[k] = { t: t, st: String(r.status).trim() }; });
   const trend = asrtTrendInfo_(ss, cfg.asrt_growth);
   const targets = rankTargetsFromScorecard_(readObjs_(ss, 'GS_SCORECARD'));
-  const byDt = {}; dts.forEach(x => { byDt[x.dt_kode] = x; });
+  const byDt = Object.create(null); dts.forEach(x => { byDt[x.dt_kode] = x; });
   const inDts = rankRes.map(d => {
     if (d.error) return { error: true };
-    const pre = String(d.dist_kode).trim() + '|', myPs = {}, myTarget = {};
+    const pre = String(d.dist_kode).trim() + '|', myPs = Object.create(null), myTarget = Object.create(null);
     Object.keys(latest).forEach(k => { if (k.indexOf(pre) === 0) myPs[k.slice(pre.length)] = latest[k].st; });
     if (trend.aktif) Object.keys(trend.target).forEach(k => { if (k.indexOf(pre) === 0) myTarget[k] = trend.target[k]; });
     return { dist_kode: d.dist_kode, dist_nama: d.dist_nama, total: d.total, ps: myPs, asrtTarget: myTarget, r2g: byDt[d.dist_kode] ? r2gForDt_(byDt[d.dist_kode]) : {} };
   });
   const rows = computeDsrTotals_({ dts: inDts, cfg: cfg, targets: targets });
   const rk = rankTotal_(rows, cfg.rank_min_toko);
-  const bobot = {}; RANK_KPI.forEach(k => { const v = cfg['rank_w_' + k]; bobot[k] = typeof v === 'number' && isFinite(v) && v >= 0 ? v : GS_CFG_DEFAULT['rank_w_' + k]; });
+  const bobot = Object.create(null); RANK_KPI.forEach(k => { const v = cfg['rank_w_' + k]; bobot[k] = typeof v === 'number' && isFinite(v) && v >= 0 ? v : GS_CFG_DEFAULT['rank_w_' + k]; });
   return { bobot: bobot, aktif: rankTotalAktif_(rows), rows: rk.rows.map(rankPublicRow_), belumCukup: rk.belumCukup.map(rankPublicRow_) };
 }
 
@@ -1566,7 +1566,7 @@ function monQuarter_(p) { return String(p).slice(0, 4) + '-Q' + Math.ceil(+Strin
  */
 function monWeeksOfMonth_(bulan) {
   const y = +bulan.slice(0, 4), m = +bulan.slice(5, 7), last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const res = [], idx = {};
+  const res = [], idx = Object.create(null);
   for (let d = 1; d <= last; d++) {
     const iso = bulan + '-' + (d < 10 ? '0' : '') + d, w = monIsoWeek_(iso), dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
     if (!(w in idx)) { idx[w] = res.length; res.push({ w: w, from: iso, to: iso, workdays: 0 }); }
@@ -1620,7 +1620,7 @@ function computeMon_(dms, stores, bandedSku, cfg, hist) {
   const weekPos = out.monthWeeks.map(x => x.w), curPos = weekPos.indexOf(out.week);
   if (curPos < 0) throw new Error('computeMon_: minggu data ' + out.week + ' tidak ada di monthWeeks ' + bulan);
   // EVB kuartal: SKU banded yang pernah dibeli di bulan-bulan sebelumnya dalam kuartal yang sama (dari rekap GS_BULANAN) + bulan data ini.
-  const prior = {}, qHave = {};
+  const prior = Object.create(null), qHave = Object.create(null);
   (hist || []).forEach(h => {
     if (String(h.periode) >= bulan || monQuarter_(h.periode) !== monQuarter_(bulan)) return;
     qHave[h.periode] = true;
@@ -1629,7 +1629,7 @@ function computeMon_(dms, stores, bandedSku, cfg, hist) {
   });
   out.qLabel = monQuarter_(bulan).split('-')[1] + ' ' + bulan.slice(0, 4);
   out.qMonths = Object.keys(qHave).sort().concat(bulan);
-  const wk = {}, sku = {};
+  const wk = Object.create(null), sku = Object.create(null);
   body.forEach(r => {
     const d = asrtIso_(r[cD]); if (!d || d.slice(0, 7) !== bulan) return;
     const o = String(r[cO]).trim(); if (!o) return;
@@ -1699,7 +1699,7 @@ const BUL_ASRT_HEADER = ['periode', 'dist_kode', 'dist_nama', 'channel', 'outlet
 
 /** Hari kerja terakhir bulan 'YYYY-MM' (bukan Minggu, bukan di daftar libur). libur = array 2D tab HARI_LIBUR (baris 1 header). */
 function monLastWorkingDay_(bulan, libur) {
-  const off = {}; (libur || []).slice(1).forEach(r => { const d = asrtIso_(r[0]); if (d) off[d] = true; });
+  const off = Object.create(null); (libur || []).slice(1).forEach(r => { const d = asrtIso_(r[0]); if (d) off[d] = true; });
   const y = +bulan.slice(0, 4), m = +bulan.slice(5, 7), last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   for (let d = last; d >= 1; d--) {
     const iso = bulan + '-' + (d < 10 ? '0' : '') + d, dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
@@ -1793,7 +1793,7 @@ function snapshotDt_(ss, r, toko, bandedSku, cfg) {
 function monRecap_(hist, asrtRows, bandedSku, cfg) {
   const total = { SPM: 0, MINIS: 0 }; bandedSku.forEach(b => { total[b.channel] = (total[b.channel] || 0) + 1; });
   const thr = { SPM: cfg.banded_spm, MINIS: cfg.banded_minis };
-  const periodes = {};
+  const periodes = Object.create(null);
   hist.forEach(h => { (periodes[h.periode] = periodes[h.periode] || []).push(h); });
   const out = [];
   Object.keys(periodes).sort().forEach(p => {
@@ -1802,7 +1802,7 @@ function monRecap_(hist, asrtRows, bandedSku, cfg) {
       const rows = periodes[p].filter(h => h.grup === g);
       if (!rows.length) return;
       const skus = h => String(h.banded_sku || '').split(',').map(x => x.trim()).filter(Boolean);
-      const evb = {};
+      const evb = Object.create(null);
       Object.keys(periodes).filter(x => monQuarter_(x) === q && x <= p).forEach(x => periodes[x].filter(h => h.grup === g).forEach(h => {
         const k = h.dist_kode + '|' + h.outlet_kode; evb[k] = evb[k] || {}; skus(h).forEach(c => { evb[k][c] = true; });
       }));
@@ -1882,9 +1882,9 @@ function simpanStok_(body) {
 function computeStokWc_(in_) {
   const parentOf = in_.parentOf || {}, today = String(in_.today || '');
   const par = sku => parentOf[sku] || sku;
-  const hargaBy = {};
+  const hargaBy = Object.create(null);
   (in_.harga || []).forEach(h => { const k = String(h.sku); if (!hargaBy[k]) hargaBy[k] = h; });
-  const isiOf = {};
+  const isiOf = Object.create(null);
   (in_.stok || []).forEach(s => { isiOf[String(s.sku)] = +s.isi || 1; });
   // Bulan terakhir data jual DT (JL) dan deret bulanan per SKU (semua bucket dijumlah)
   let JL = -1;
@@ -1899,7 +1899,7 @@ function computeStokWc_(in_) {
   let hari = 0;
   for (let i = JL - 2; i <= JL; i++) hari += monthDays(i);
   const minggu = hari / 7;
-  const rateOf = {};   // sku -> pcs per minggu
+  const rateOf = Object.create(null);   // sku -> pcs per minggu
   rec.forEach(r => {
     const h = hargaBy[r.sku];
     if (!h) return;
@@ -1911,7 +1911,7 @@ function computeStokWc_(in_) {
     r.v.forEach((g, k) => { const idx = r.i0 + k; if (idx >= JL - 2 && idx <= JL) kartonTot += (+g || 0) * 1000 / price; });
     rateOf[r.sku] = (rateOf[r.sku] || 0) + kartonTot / minggu * (isiOf[r.sku] || isi);
   });
-  const by = {};
+  const by = Object.create(null);
   const slot = sku => { const p = par(sku); return by[p] || (by[p] = { parent: p, skus: [], stokPcs: 0, ratePcsMgg: 0, wc: null }); };
   (in_.stok || []).forEach(s => {
     const sku = String(s.sku), g = slot(sku);
@@ -1931,7 +1931,7 @@ function stokWcHarga_(rows, iso) {
 
 /** Inti peringatan WC: baca MASTER_PRODUK Sheet DT (LEVEL-9), hitung lewat computeStokWc_, saring >= STOK_WC_WARN. stok = [{sku,karton,lusin,pcs,isi}]. */
 function stokWcWarnCore_(reg, stok, harga, jual) {
-  const parentOf = {};
+  const parentOf = Object.create(null);
   const sh = SpreadsheetApp.openById(reg.sheet_id).getSheetByName('MASTER_PRODUK');
   const produk = sh ? sh.getDataRange().getValues() : [];
   if (produk.length) {
@@ -1961,7 +1961,7 @@ function stokWcWarningsForDt_(reg, tanggal, clean) {
  */
 function stokWcPerDt_(dts, stokObjs, hargaObjs, jualObjs, tanggal, iso) {
   const harga = stokWcHarga_(hargaObjs, iso), hTgl = hargaObjs.length ? String(hargaObjs[0].tanggal_pl || '') : '';
-  const perDt = {};
+  const perDt = Object.create(null);
   dts.forEach(reg => {
     const dt = String(reg.dt_kode);
     if (!tanggal[dt]) return;
