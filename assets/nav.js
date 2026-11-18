@@ -40,7 +40,7 @@
     return `<a class="side-i" href="${href}"${it[3] && it[0] === page ? ' aria-current="page"' : ''}>${inner}</a>`;
   };
   const APP = window.MH_APP_NAME || 'Jendela Jasper', TAG = window.MH_APP_TAGLINE || 'Monitoring Pencapaian Sales Harian';
-  const LOGO = '<svg class="side-logo" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><rect width="512" height="512" rx="96" fill="#1E3656"/><g transform="translate(256 256) scale(1.3) translate(-256 -256)"><path d="M136 412V220a120 120 0 0 1 240 0v192z" fill="#FBF8F1"/><path d="M136 220h240M256 100v120M171 135l85 85M341 135l-85 85" stroke="#1E3656" stroke-width="14" stroke-linecap="round" fill="none"/><path d="M196 322l46 46 78-92" fill="none" stroke="#FEBA42" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></g></svg>';
+  const LOGO = '<svg class="side-logo" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><rect width="512" height="512" rx="112" fill="#001F5B"/><g transform="translate(256 258) scale(.9) translate(-210 -267)"><path d="M92 318V178.0A118.0 118.0 0 0 1 328 178.0V372A92 92 0 0 1 144 372V336H204V372A32 32 0 0 0 268 372V178.0A68.0 68.0 0 0 0 132 178.0V290Z" fill="#FFF"/><path d="M200.0 178.0L249 129M200.0 178.0V96.0M200.0 178.0L151 129M124.0 178.0H276.0" stroke="#FFF" stroke-width="22" fill="none"/><rect x="170.0" y="220.0" width="60" height="78" fill="#F8991C"/></g></svg>';
   nav.className = 'side';
   nav.setAttribute('aria-label', 'Navigasi utama');
   nav.innerHTML = `<div class="side-brand">${LOGO}<div class="side-bt"><b>${APP}</b><small>${TAG}</small></div>` +
