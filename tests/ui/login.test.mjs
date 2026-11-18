@@ -27,10 +27,12 @@ for (const file of FILES) {
     const page = await open(file, 'ui|' + file);
     try {
       const r = await page.eval(`(function(){var i=document.getElementById('codeInput'),l=document.querySelector('label[for=codeInput]'),e=document.getElementById('codeToggle'),b=document.getElementById('loginBtn');
-        var out={label:l&&l.textContent.trim(),name:document.querySelector('[data-app-name]').textContent,type0:i.type,ac:i.autocomplete,im:i.inputMode,cap:i.getAttribute('autocapitalize'),sp:i.spellcheck,h:i.getBoundingClientRect().height,eh:e.getBoundingClientRect().height,bh:b.getBoundingClientRect().height,ph:i.placeholder};
+        var out={label:l&&l.textContent.trim(),logo:(function(){var g=document.querySelector('img.lg-logo');return g&&{alt:g.alt,w:g.getAttribute('width'),h:g.getAttribute('height'),ok:g.complete&&g.naturalWidth>0}})(),tag:document.querySelector('[data-app-tagline]').textContent,type0:i.type,ac:i.autocomplete,im:i.inputMode,cap:i.getAttribute('autocapitalize'),sp:i.spellcheck,h:i.getBoundingClientRect().height,eh:e.getBoundingClientRect().height,bh:b.getBoundingClientRect().height,ph:i.placeholder};
         e.click(); out.type1=i.type; out.pressed1=e.getAttribute('aria-pressed'); out.txt1=e.textContent; e.click(); out.type2=i.type; out.txt2=e.textContent; return out;})()`);
       assert.equal(r.label, 'Kode akses');
-      assert.equal(r.name, 'Tifa');
+      assert.equal(r.logo.alt, 'Jendela Jasper', 'logo punya alt');
+      assert.ok(r.logo.w && r.logo.h && r.logo.ok, 'logo punya ukuran eksplisit dan termuat');
+      assert.equal(r.tag, 'Monitoring Pencapaian Sales Harian');
       assert.equal(r.type0, 'password'); assert.equal(r.type1, 'text'); assert.equal(r.type2, 'password');
       assert.equal(r.pressed1, 'true'); assert.equal(r.txt1, 'Sembunyikan'); assert.equal(r.txt2, 'Tampilkan');
       assert.equal(r.ac, 'current-password'); assert.equal(r.im, 'text'); assert.equal(r.cap, 'off'); assert.equal(r.sp, false);

@@ -12,7 +12,8 @@
   --ok:#12724A; --ok-bg:#DDF6E8; --minus:#B83829; --minus-bg:#F8DED7; --plus:#176DA6; --plus-bg:#E6F2FB; --warn-bg:#FDEBD3; --warn-ink:#8A4708;
   --gold:#E0A800; --silver:#9AA5B1; --bronze:#B8743A; --medal-ink:#3A2A00;
   --lime:#D9F25A; --lime-edge:#C3DF33; --lime-ink:#0F172A;
-  --warm:#A8461F; --warm-hover:#8F3A18; --warm-ink:#FFFFFF;
+  --logo-navy:#1E3656; --logo-amber:#FEBA42;
+  --warm:var(--logo-amber); --warm-hover:#EBA52E; --warm-ink:var(--logo-navy);
   --tint-1:#E6F2FB; --tint-2:#DDF6E8; --tint-3:#FDEBD3; --tint-4:#DDF3F8;
   --shadow:0 1px 2px rgba(15,23,42,.06),0 12px 32px rgba(48,160,229,.18); --shadow-s:0 1px 2px rgba(15,23,42,.05),0 8px 24px rgba(48,160,229,.12);
   --r:16px; --r-s:11px;
@@ -33,7 +34,8 @@
     --ok:#6CC592; --ok-bg:#16382B; --minus:#F59A86; --minus-bg:#3C2220; --plus:#8FCBF3; --plus-bg:#16355A; --warn-bg:#3A3110; --warn-ink:#F2D878;
     --tint-1:#16355A; --tint-2:#16382B; --tint-3:#3F3018; --tint-4:#12333F;
     --shadow:0 8px 28px rgba(0,0,0,.45); --shadow-s:0 2px 10px rgba(0,0,0,.35);
-    --warm:#E08A5C; --warm-hover:#EBA07A; --warm-ink:#2A1204;
+    --logo-navy:#1E3656; --logo-amber:#FEBA42;
+    --warm:var(--logo-amber); --warm-hover:#FFCB6B; --warm-ink:var(--logo-navy);
   }
 }
 
@@ -52,9 +54,10 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 
 /* ---------- login (satu komponen untuk lima halaman; lihat DESIGN.md "Login") ---------- */
 .login-wrap{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--bg)}
-.lg-brand{flex:0 0 auto;min-height:clamp(220px,45dvh,460px);background:var(--brand);color:#fff;display:flex;flex-direction:column;justify-content:space-between;gap:20px;padding:calc(28px + env(safe-area-inset-top,0px)) 24px 0;overflow:hidden}
-.lg-name{margin:0;font-weight:800;font-size:clamp(64px,22vw,120px);line-height:.88;letter-spacing:-.04em;text-transform:none;color:#fff}
-.lg-beat{display:block;width:100%;max-width:520px;height:auto;max-height:42%;min-height:60px;fill:#fff;flex:none}
+.lg-brand{flex:0 0 auto;background:var(--logo-navy);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:calc(28px + env(safe-area-inset-top,0px)) 24px 28px;overflow:hidden}
+.lg-name{margin:0;line-height:0}
+.lg-logo{display:block;width:min(300px,76vw);height:auto;aspect-ratio:520/430}
+.lg-tag{margin:0;max-width:320px;text-align:center;font-size:14px;font-weight:600;line-height:1.35;color:#D5DFEC}
 .lg-main{flex:1 1 auto;padding:32px 24px calc(40px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:flex-start;gap:20px}
 .lg-form{width:100%;max-width:360px;display:grid;gap:16px}
 .lg-title{margin:0;font-size:18px;font-weight:700;line-height:1.25;color:var(--ink)}
@@ -77,16 +80,10 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .lg-main [data-install]{width:100%;max-width:360px}
 @media (min-width:900px){
   .login-wrap{flex-direction:row}
-  .lg-brand{flex:1 1 55%;min-height:100dvh;padding:56px 56px 0;justify-content:space-between}
-  .lg-name{font-size:clamp(120px,14vw,200px)}
-  .lg-beat{max-width:640px;max-height:46%}
+  .lg-brand{flex:1 1 55%;min-height:100dvh;padding:56px}
+  .lg-logo{width:min(480px,36vw)}
+  .lg-tag{font-size:16px;max-width:420px}
   .lg-main{flex:1 1 45%;justify-content:center;align-items:flex-start;padding:48px clamp(32px,5vw,80px)}
-}
-@media (prefers-color-scheme:dark){.lg-brand{background:var(--brand-deep)}}
-@media (prefers-reduced-motion:no-preference){
-  .lg-beat rect{transform-box:fill-box;transform-origin:50% 100%;animation:lg-up .26s ease-out backwards}
-  .lg-beat rect:nth-child(5n+1){animation-delay:0s}.lg-beat rect:nth-child(5n+2){animation-delay:.03s}.lg-beat rect:nth-child(5n+3){animation-delay:.06s}.lg-beat rect:nth-child(5n+4){animation-delay:.09s}.lg-beat rect:nth-child(5n){animation-delay:.12s}
-  @keyframes lg-up{from{transform:scaleY(0)}}
 }
 .mark{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:16px;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;flex:none;letter-spacing:.02em}
 .field{display:grid;gap:6px}
@@ -180,6 +177,7 @@ dialog.dlg-confirm p{margin:0 0 16px;font-size:14px;line-height:1.5;color:var(--
 .side-bt{flex:1;min-width:0;display:grid}
 .side-bt b{font-size:15px;font-weight:700;line-height:1.2}
 .side-bt small{font-size:12px;color:var(--ink-2)}
+.side-logo{width:28px;height:28px;flex:none;display:block}
 .side-x{width:44px;height:44px;margin:-4px -6px -4px 0;border:0;border-radius:12px;background:transparent;color:var(--ink-2);display:grid;place-items:center;cursor:pointer;flex:none;padding:0}
 .side-g{display:grid;gap:2px;padding:10px 0 6px;border-top:1px solid var(--line)}
 .side-brand+.side-g{border-top:0}

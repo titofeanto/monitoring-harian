@@ -108,13 +108,15 @@
     b.setAttribute('aria-expanded', String(open)); d.hidden = !open; OPEN[b.dataset.kt] = open;
   }, true);
 
-  /* Layar login bersama (lihat DESIGN.md "Login"): nama aplikasi dari MH_APP_NAME, tombol tampilkan/sembunyikan kode,
+  /* Layar login bersama (lihat DESIGN.md "Login"): nama dan tagline aplikasi dari MH_APP_NAME / MH_APP_TAGLINE, tombol tampilkan/sembunyikan kode,
      dan aria-invalid pada kolom saat ada pesan galat. Tidak menyentuh mekanisme login halaman. */
   function initLogin() {
     const $ = id => document.getElementById(id), inp = $('codeInput'), eye = $('codeToggle'), err = $('loginErr');
     if (!inp) return;
-    const nm = window.MH_APP_NAME;
+    const nm = window.MH_APP_NAME, tg = window.MH_APP_TAGLINE;
     if (nm) [].forEach.call(document.querySelectorAll('[data-app-name]'), el => { el.textContent = nm; });
+    if (nm) [].forEach.call(document.querySelectorAll('img.lg-logo'), el => { el.alt = nm; });
+    if (tg) [].forEach.call(document.querySelectorAll('[data-app-tagline]'), el => { el.textContent = tg; });
     if (eye) eye.addEventListener('click', () => {
       const show = inp.type === 'password';
       inp.type = show ? 'text' : 'password';
