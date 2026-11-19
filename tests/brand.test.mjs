@@ -98,15 +98,15 @@ test('config: MH_APP_NAME dan MH_APP_TAGLINE terisi', () => {
 test('berkas logo ada dan layar login merujuk logo gelap', () => {
   for (const f of ['logo-gelap.png', 'logo-horizontal.png', 'logo-emblem.png']) assert.ok(png('assets/brand/' + f).w >= 400, f);
   const d = png('assets/brand/logo-gelap.png');
-  for (const f of HTML.slice(0, 5)) { const h = read(f); assert.match(h, new RegExp(`class="lg-logo" src="assets/brand/logo-gelap.png" width="${d.w}" height="${d.h}" alt="Jendela Jasper"`), f); }
+  for (const f of HTML.slice(0, 5)) { const h = read(f); assert.match(h, new RegExp(`class="lg-logo" src="assets/brand/logo-gelap.png\\?v=2" width="${d.w}" height="${d.h}" alt="Jendela Jasper"`), f); }
 });
 
 test('palet resmi (plan 032): token CSS, manifest, theme-color, lembar ikon', () => {
   const css = read('assets/style.css');
-  assert.match(css, /--logo-navy:#001F5B; --logo-amber:#F8991C; --logo-gray:#6D6E71;/);
+  assert.match(css, /--logo-navy:#10365B; --logo-blue:#174C7E; --logo-amber:#F5A623; --logo-gold:#FDBB45; --logo-ivory:#F7F1E5; --logo-gray:#747D87;/);
   const m = JSON.parse(read('manifest.webmanifest'));
-  assert.equal(m.theme_color, '#001F5B'); assert.equal(m.background_color, '#FFFFFF');
-  for (const f of HTML) assert.match(read(f), /<meta name="theme-color" content="#001F5B">/, f);
+  assert.equal(m.theme_color, '#10365B'); assert.equal(m.background_color, '#FFFFFF');
+  for (const f of HTML) assert.match(read(f), /<meta name="theme-color" content="#10365B">/, f);
   assert.ok(fs.existsSync(path.join(root, 'assets/brand/ikon-lembar.png')));
   assert.ok(fs.existsSync(path.join(root, 'assets/brand/sumber/lembar-logo-v2.jpg')));
   assert.ok(!fs.existsSync(path.join(root, 'assets/brand/favicon.svg')), 'favicon.svg lama diarsipkan');

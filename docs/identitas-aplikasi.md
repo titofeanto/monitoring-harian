@@ -10,7 +10,7 @@ Lembar merek v2 (plan 032, 2816x1536) menggantikan lembar lama untuk semua poton
 |---|---|---|---|
 | `sumber/lembar-logo-v2.jpg` | lembar merek terbaru pemilik (logo utama, horizontal, ikon/monogram, mono, gelap, palet) | 2816x1536 | |
 | `sumber/lembar-logo.jpg`, `sumber/logo-utama.jpg` | lembar lama (arsip) | 2576x1405 | |
-| `logo-gelap.png` | kotak Dark Background; latar diratakan jadi satu warna `#001F5B` persis (piksel dekat navy dipaksa navy, tanpa halo JPEG) supaya menyatu dengan bidang login | 621x444 | 520x430 |
+| `logo-gelap.png` | kotak Dark Background; latar diratakan jadi satu warna `#10365B` persis (piksel dekat navy dipaksa navy, tanpa halo JPEG; diwarnai ulang dari `#001F5B` saat palet paket merek dipakai) supaya menyatu dengan bidang login | 621x444 | 520x430 |
 | `logo-horizontal.png` | versi horizontal, latar kertas asli | 893x228 | 1010x205 |
 | `logo-emblem.png` | logo utama dengan tagline, dipotong rapat tanpa lingkaran penuh, latar kertas asli | 579x426 | 545x485 |
 | `sumber/ikon-resmi-2000.jpg` | **ikon aplikasi resmi dari pemilik** (JPEG; ubin putih bersudut membulat di atas latar putih kebiruan, monogram J-jendela). Sumber semua ikon di bawah | 2048x2048 | |
@@ -36,15 +36,20 @@ Lembar merek v2 (plan 032, 2816x1536) menggantikan lembar lama untuk semua poton
 
 **Keputusan favicon.** Monogram penuh masih terbaca di 32 dan 48 px (lengkung, atap, kait J, jendela amber), jadi favicon memakai desain resmi dan `favicon.svg` plan 032 tidak ditautkan lagi (tab modern memilih SVG bila ada, itu akan menampilkan desain lama). Tautan: png 16, 32, 48 lalu `apple-touch-icon`. **`background_color` manifest `#FFFFFF`** (layar splash Android memusatkan ikon di atas warna ini; ikon berlatar putih jadi menyatu tanpa kotak putih di atas navy); `theme_color` tetap navy `#001F5B`.
 
-## 2. Warna merek (palet resmi di lembar v2)
+## 2. Warna merek (palet paket aset merek, 2026-11-19)
+
+Sumber: `assets/brand/sumber/paket-merek/` (paket "JENDELA JASPER All Brand Assets" dari pemilik: logo transparan 574x496, palet, mini brand guide). Pemilik memilih palet paket ini menggantikan palet lembar v2 (`#001F5B`, `#F8991C`, `#6D6E71`). Catatan paket: logo dan ikon di dalamnya ekstraksi raster, bukan master vektor; palet hasil sampel dari poster.
 
 | Peran | Nilai | Token |
 |---|---|---|
-| Navy (bidang merek, ubin ikon, theme-color, manifest, blok login) | `#001F5B` | `--logo-navy` |
-| Amber (aksen, tombol Masuk, jendela dan grafik di ikon) | `#F8991C` | `--logo-amber` |
-| Abu (tagline, tepi) | `#6D6E71` | `--logo-gray` |
+| Deep Blue (bidang merek, theme-color, blok login; sama dengan latar `logo-gelap.png`) | `#10365B` | `--logo-navy` |
+| Navy Blue (warna huruf logo) | `#174C7E` | `--logo-blue` |
+| Orange (aksen, tombol Masuk) | `#F5A623` | `--logo-amber` |
+| Gold (hover tema gelap, aksen kedua) | `#FDBB45` | `--logo-gold` |
+| Ivory (latar kertas hangat; token tersedia, belum dipakai di layar) | `#F7F1E5` | `--logo-ivory` |
+| Gray (tagline, tepi) | `#747D87` | `--logo-gray` |
 
-Tombol Masuk (`--warm` = amber, teks `--warm-ink` = navy): kontras 7,1:1. Hover terang `#E08A10` (teks navy, 5,8:1); hover gelap `#FFAE45` (8,5:1). Biru tema aplikasi `--brand` (#176DA6) tidak diganti. Tema gelap memakai navy resmi yang sama untuk bidang merek (tidak dicerahkan).
+Tombol Masuk (`--warm` = orange, teks `--warm-ink` = Deep Blue): kontras 6,1:1. Hover terang `#DD9410` (4,9:1); hover gelap `#FDBB45` (7,3:1). Biru tema aplikasi `--brand` (#176DA6) tidak diganti. Ikon aplikasi resmi 2000 px tidak berubah (warnanya milik berkas itu). `manifest.webmanifest` `theme_color` = `#10365B`.
 
 ## 3. Nama pendek di layar utama
 

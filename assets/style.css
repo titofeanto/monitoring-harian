@@ -12,8 +12,8 @@
   --ok:#12724A; --ok-bg:#DDF6E8; --minus:#B83829; --minus-bg:#F8DED7; --plus:#176DA6; --plus-bg:#E6F2FB; --warn-bg:#FDEBD3; --warn-ink:#8A4708;
   --gold:#E0A800; --silver:#9AA5B1; --bronze:#B8743A; --medal-ink:#3A2A00;
   --lime:#D9F25A; --lime-edge:#C3DF33; --lime-ink:#0F172A;
-  --logo-navy:#001F5B; --logo-amber:#F8991C; --logo-gray:#6D6E71;
-  --warm:var(--logo-amber); --warm-hover:#E08A10; --warm-ink:var(--logo-navy);
+  --logo-navy:#10365B; --logo-blue:#174C7E; --logo-amber:#F5A623; --logo-gold:#FDBB45; --logo-ivory:#F7F1E5; --logo-gray:#747D87;
+  --warm:var(--logo-amber); --warm-hover:#DD9410; --warm-ink:var(--logo-navy);
   --tint-1:#E6F2FB; --tint-2:#DDF6E8; --tint-3:#FDEBD3; --tint-4:#DDF3F8;
   --shadow:0 1px 2px rgba(15,23,42,.06),0 12px 32px rgba(48,160,229,.18); --shadow-s:0 1px 2px rgba(15,23,42,.05),0 8px 24px rgba(48,160,229,.12);
   --r:16px; --r-s:11px;
@@ -34,8 +34,8 @@
     --ok:#6CC592; --ok-bg:#16382B; --minus:#F59A86; --minus-bg:#3C2220; --plus:#8FCBF3; --plus-bg:#16355A; --warn-bg:#3A3110; --warn-ink:#F2D878;
     --tint-1:#16355A; --tint-2:#16382B; --tint-3:#3F3018; --tint-4:#12333F;
     --shadow:0 8px 28px rgba(0,0,0,.45); --shadow-s:0 2px 10px rgba(0,0,0,.35);
-    --logo-navy:#001F5B; --logo-amber:#F8991C; --logo-gray:#6D6E71;
-    --warm:var(--logo-amber); --warm-hover:#FFAE45; --warm-ink:var(--logo-navy);
+    --logo-navy:#10365B; --logo-blue:#174C7E; --logo-amber:#F5A623; --logo-gold:#FDBB45; --logo-ivory:#F7F1E5; --logo-gray:#747D87;
+    --warm:var(--logo-amber); --warm-hover:#FDBB45; --warm-ink:var(--logo-navy);
   }
 }
 
