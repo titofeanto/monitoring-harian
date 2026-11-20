@@ -2,6 +2,7 @@
 // buildDummy({seed}) -> { pusat: {TAB: [header, ...baris]}, dts: { D01: {TAB...}, D02: {...} }, registry: [...], meta }
 // Tanggal "hari ini" dummy 2026-11-18; data sampai 2026-11-17 (MTD-1).
 import { makeRng } from './prng.mjs';
+import { buildKategori, sundayOnOrBefore, isoOf, msOf } from './kategori.mjs';
 
 export const TODAY = '2026-11-18';
 export const DATA_UNTIL = '2026-11-17';
@@ -419,7 +420,11 @@ export function buildDummy({ seed = 2026, tanpaData = false } = {}) {
     P.GS_PS = P.GS_PS.filter(r => !(r[2] === 'D02' && sm202.has(r[4])));
   }
 
-  const meta = { seed, catalog: { basepacks: cat.bps.length, skus: cat.skus.length, bandedSpm: cat.banded.SPM.length, bandedMinis: cat.banded.MINIS.length },
+  // ----- Menu Kategori (plan 034): tiga tab baru di Sheet pusat, dari PRNG turunan sendiri sehingga data lain tidak bergeser -----
+  const kat = buildKategori({ seed, cat, cutoff: isoOf(sundayOnOrBefore(msOf(DATA_UNTIL))), dataUntil: DATA_UNTIL, dts: DT_DEFS.map(d => ({ kode: d.kode, stores: gen[d.kode].stores })) });
+  P.GS_KAT_BULAN = kat.KAT_BULAN; P.GS_KAT_MINGGU = kat.KAT_MINGGU; P.GS_KAT_PRODUK = kat.KAT_PRODUK;
+
+  const meta = { seed, kategori: kat.meta, catalog: { basepacks: cat.bps.length, skus: cat.skus.length, bandedSpm: cat.banded.SPM.length, bandedMinis: cat.banded.MINIS.length },
     dts: {}, salesmen: DT_DEFS.flatMap(d => d.sales.map(s => ({ kode: s.kode, nama: s.nama, dt: d.kode, profile: s.profile }))) };
   DT_DEFS.forEach(d => { meta.dts[d.kode] = { monitored: gen[d.kode].monitored.length, total: gen[d.kode].stores.length, salesmen: d.sales.length }; });
   return { pusat: P, dts, registry, meta };

@@ -26,6 +26,8 @@ SEMUA data di sini FIKTIF: nama toko, salesman, produk, angka, dan kode akses (`
 - Perfect Store FULL, LITE, NOT PERFECT; stok dengan dua parent WC >= 100 per DT dan beberapa WC rendah; kehadiran 14 hari (terlambat, geo 0, tidak hadir).
 - Riwayat bulanan 2026-08..10 (`GS_BULANAN`, `GS_BULANAN_ASRT`) dan `GS_TREND_ASRT` (`dist_kode | outlet_kode | periode | lines`) untuk 2025-10..2025-12 dan 2026-01..10, sebagian toko baru dan sebagian berlubang. Dibaca `Code.gs` untuk target Assortment per toko (baseline Q4 2025 + 15%).
 
+- Menu Kategori (plan 034, `tests/dummy/kategori.mjs`): tab pusat `GS_KAT_BULAN` (Jan 2025 sampai Okt 2026), `GS_KAT_MINGGU` (potongan minggu dipotong di batas bulan, 91 hari terakhir, bulan cutoff, dan Nov 2025 sampai `LY_END`, plus Senin-Selasa 16-17 Nov setelah cutoff 15 Nov), `GS_KAT_PRODUK` (dua SKU terakhir sengaja tidak dipetakan). 13 brand fiktif, 8 Category Key, 4 division. Deret harian dibangkitkan dulu, baru dipotong ke tab bulan dan minggu, jadi dua tab konsisten. Ada toko yang berhenti beli kategori, merek yang tak pernah dibeli toko tertentu, toko INACTIVE yang berhenti sejak Maret 2026, dan satu toko (D01 A1001, Merek Teh) dengan retur: nilai negatif di Sep dan 3 Nov 2026. PRNG turunan (`sub('kategori')`), jadi data lain tidak bergeser. Fixture: `dummy-kategori.json` (pusat) dan `dummy-kategori-tmk.json` (akun DT).
+
 ## Menambah kasus
 
 Ubah `DT_DEFS` di `dataset.mjs` (pola toko per salesman: `'4'`, `'3'`, `'2'`, `'1'`, `'0'` = jumlah minggu order; `buProb`; `rasio` target) atau tab pusat di `buildDummy`, jalankan `npm run dummy`, lalu tambahkan pengecekan di `tests/dummy.test.mjs`.
