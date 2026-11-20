@@ -25,6 +25,13 @@ if (CLICK) { const steps = CLICK.split('|'); let i = 0, n = 0; const t = setInte
   const el = document.querySelector(st);
   if (el && el.getClientRects().length) { el.click(); i++; n = 0; } else if (++n > 40) clearInterval(t);
 }, 200); }
+// ?set=<id>=<nilai>|<id>=<nilai>: isi <select> itu (berurutan) dan kirim peristiwa change, untuk menguji filter.
+const SET = new URLSearchParams(location.search).get('set');
+if (SET) { const steps = SET.split('|'); let i = 0, n = 0; const t = setInterval(() => {
+  const st = steps[i]; if (st === undefined) { clearInterval(t); return; }
+  const k = st.indexOf('='), el = document.getElementById(st.slice(0, k));
+  if (el && el.getClientRects().length) { el.value = st.slice(k + 1); el.dispatchEvent(new Event('change', { bubbles: true })); i++; n = 0; } else if (++n > 40) clearInterval(t);
+}, 250); }
 // ?probe=1: tulis lebar gulir halaman ke atribut data-sw pada <html> ("scrollWidth/innerWidth") untuk uji gulir mendatar.
 if (new URLSearchParams(location.search).get('probe')) setTimeout(() => document.documentElement.setAttribute('data-sw', document.documentElement.scrollWidth + '/' + innerWidth), 2500);
 </script>`;

@@ -195,12 +195,25 @@ baris (menimpa), jadi aman diklik berkali-kali kalau data direvisi.
 - **"Tab TARGET tidak punya baris untuk periode ..."** — kolom `periode` di
   `TARGET` harus sama dengan `CONFIG!periode` (format `YYYY-MM`).
 
+### Menu Kategori: data mingguan dari Power BI
+
+Halaman `kategori.html` (menu Umum > Kategori) membaca tiga tab di Sheet pusat: `GS_KAT_BULAN`, `GS_KAT_MINGGU`, `GS_KAT_PRODUK`. Isi tiap minggu dari ekspor Power BI (`Extract BW HANA` digabung `ID Product Hierarchy`), kategori = Category Key. Kolom, aturan pemotongan minggu di batas bulan, dan cara menghitung cutoff ada di `docs/format-data-kategori.md`.
+
+| Kapan | Tab |
+|---|---|
+| Tiap minggu (setelah Minggu cutoff) | `GS_KAT_MINGGU` (ganti isi: bulan cutoff, 91 hari terakhir, bulan cutoff tahun lalu sampai cutoff dikurangi 364 hari) |
+| Awal bulan baru | `GS_KAT_BULAN` (tambah bulan penuh yang baru selesai; tahun lalu harus lengkap Jan sampai Des) |
+| Saat ada SKU baru | `GS_KAT_PRODUK` (hanya untuk kolom stok) |
+
+Akun pusat melihat semua DT; akun DT hanya DT sendiri. Tab kosong menampilkan keadaan kosong, bukan galat. W.C, RR in CS, dan In transit per kategori belum ada (butuh qty karton per kategori).
+
 ## Struktur file
 
 ```
 index.html                    halaman utama (login + 3 tab)
 assets/style.css               tampilan
 assets/app.js                  mesin hitung dari data mentah + logika halaman
+kategori.html                  menu Kategori (assets/kategori.js tampilan, assets/kat-calc.js rumus)
 assets/config.js               URL Apps Script Anda (isi di Langkah 4.3)
 google-apps-script/Code.gs      kode API, tempel ke Apps Script
 google-apps-script/appsscript.json  manifes Apps Script (referensi; tidak perlu diedit manual)

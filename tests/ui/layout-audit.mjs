@@ -16,6 +16,7 @@ export const PAGES = [
   { id: 'rank-total', url: '/ranking.html?fx=dummy-rank' },
   { id: 'rank-sheet', url: '/ranking.html?fx=dummy-rank&click=' + encodeURIComponent('[data-sel="102"]') },
   { id: 'rank-kpi', url: '/ranking.html?fx=dummy-rank&click=' + encodeURIComponent('[data-mode="kpi"]') },
+  ...['bycat', 'byout', 'insight', 'logika'].map(t => ({ id: 'kat-' + t, url: `/kategori.html?fx=dummy-kategori#${t}` })),
   ...['ring', 'sim', 'fruit'].map(t => ({ id: 'mh-' + t, url: `/index.html?fx=dummy-mh#${t}` })),
   { id: 'stok', url: '/cek-stok.html?fx=dummy-stok' },
   { id: 'hadir', url: '/kehadiran.html?fx=dummy-hadir' },
