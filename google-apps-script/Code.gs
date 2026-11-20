@@ -104,6 +104,7 @@ function doGet(e) {
     if (p.view === 'stok') return jsonOut(respondStok_(me, reg, String(p.dt || '').trim()));
     if (p.view === 'hadir') return jsonOut(respondHadir_(me, reg, String(p.dt || '').trim()));
     if (p.view === 'rank') return jsonOut(respondRank_(me, reg));   // ranking bersama: peran apa pun, lintas DT (hanya bidang aman, lihat rankPublicRow_)
+    if (p.view === 'kategori') return jsonOut(respondKategori_(me, reg));   // menu Kategori (plan 034): peran pusat semua DT, peran dt hanya DT sendiri
 
     if (me.peran === 'pusat') {
       const dts = reg.filter(r => r.peran === 'dt' && r.sheet_id);
@@ -2074,4 +2075,178 @@ function klaimKodeAdmin_(body) {
     props.setProperty(ADMIN_PROP, adminHash_(baru));
     return { ok: true };
   } finally { lock.releaseLock(); }
+}
+
+
+// ====================== MENU KATEGORI (plan 034) ======================
+// Analisa toko per Category Key. Rumus sama dengan halaman By Category v3 di Power BI. Data dari tiga tab Sheet pusat
+// (GS_KAT_BULAN, GS_KAT_MINGGU, GS_KAT_PRODUK); format di docs/format-data-kategori.md. Server menghitung pra-agregat per
+// (toko, category, brand) dan klien (assets/kat-calc.js) menjumlahkan sesuai filter.
+
+const KAT_CACHE = 'kategori_v1_';   // naikkan versi bila bentuk respons berubah
+const KAT_NONE = 'Tanpa kategori';
+const KAT_FIELDS = ['t', 'b', 'fy', 'ly', 'ty', 'r13', 'r5', 'lw', 'l2w', 'l3w', 'lm', 'l2m', 'l3m', 'l3', 'mty0', 'mty1', 'mty2', 'mty3', 'mty4', 'mty5', 'mty6', 'mty7', 'mty8', 'mty9', 'mty10', 'mty11',
+  'mly0', 'mly1', 'mly2', 'mly3', 'mly4', 'mly5', 'mly6', 'mly7', 'mly8', 'mly9', 'mly10', 'mly11'];
+
+function katIso_(ms) { const d = new Date(ms); return d.getUTCFullYear() + '-' + (d.getUTCMonth() < 9 ? '0' : '') + (d.getUTCMonth() + 1) + '-' + (d.getUTCDate() < 10 ? '0' : '') + d.getUTCDate(); }
+function katMs_(iso) { const p = String(iso).split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
+
+/**
+ * Pure. Gabungkan baris bulan dan baris potongan minggu menjadi pra-agregat per seri (dt, toko, division, category, brand).
+ * in_ = { bulan: [{periode:'YYYY-MM', dt, o, div, cat, br, v}], minggu: [{awal, akhir:'YYYY-MM-DD', dt, o, div, cat, br, v}] }  (sudah tervalidasi, v angka)
+ * Aturan (dua sumber tidak dijumlah untuk hari yang sama):
+ *   ty  = baris bulan tahun cutoff (sebelum bulan cutoff) + baris minggu dengan awal sesudah akhir bulan penuh terakhir, sampai cutoff
+ *   ly  = baris bulan tahun lalu sebelum bulan cutoff + baris minggu dengan awal >= awal bulan cutoff tahun lalu dan akhir <= LY_END
+ *   fy  = semua baris bulan tahun lalu
+ *   r13, r5, wk[LW,L2W,L3W] = baris minggu saja; m[LM,L2M,L3M] dari mty/mly (bulan cutoff sendiri dari baris minggu)
+ * return null bila tanpa baris minggu, atau { dataUntil, cutoff, lyEnd, hkTy, hkLy, lewatCutoff, mingguLintasBulan, bulanTerlalu, series:[...] }
+ */
+function computeKategori_(in_) {
+  const bulan = in_.bulan || [], minggu = in_.minggu || [], DAY = 86400000;
+  let until = '';
+  minggu.forEach(r => { if (r.akhir > until) until = r.akhir; });
+  if (!until) return null;
+  const um = katMs_(until), cut = um - new Date(um).getUTCDay() * DAY, cd = new Date(cut), cy = cd.getUTCFullYear(), cm = cd.getUTCMonth();
+  const cutIso = katIso_(cut), lyEnd = cut - 364 * DAY, lyEndIso = katIso_(lyEnd);
+  const hkTy = Math.round((cut - Date.UTC(cy, 0, 1)) / DAY) + 1, hkLy = Math.round((lyEnd - Date.UTC(cy - 1, 0, 1)) / DAY) + 1;
+  const lfmEnd = katIso_(Date.UTC(cy, cm, 0)), lyMonthStart = katIso_(Date.UTC(cy - 1, cm, 1));
+  const monthEnd = cut === Date.UTC(cy, cm + 1, 0);
+  const from13 = katIso_(cut - 90 * DAY), from5 = katIso_(cut - 34 * DAY), fromLw = katIso_(cut - 6 * DAY), fromL2 = katIso_(cut - 13 * DAY), fromL3 = katIso_(cut - 20 * DAY);
+  const map = Object.create(null), order = [];
+  const slot = r => {
+    const k = r.dt + '\u0001' + r.o + '\u0001' + r.div + '\u0001' + r.cat + '\u0001' + r.br;
+    let x = map[k];
+    if (!x) { x = map[k] = { dt: r.dt, o: r.o, division: r.div, category: r.cat, brand: r.br, fy: 0, ly: 0, ty: 0, r13: 0, r5: 0, wk: [0, 0, 0], m: [0, 0, 0], l3: 0, mty: new Array(12).fill(0), mly: new Array(12).fill(0) }; order.push(x); }
+    return x;
+  };
+  let bulanTerlalu = 0, lewatCutoff = 0, lintas = 0;
+  bulan.forEach(r => {
+    const y = +r.periode.slice(0, 4), m = +r.periode.slice(5, 7) - 1;
+    if (y === cy - 1) { const x = slot(r); x.fy += r.v; x.mly[m] += r.v; if (m < cm) x.ly += r.v; }
+    else if (y === cy) { if (m >= cm) { bulanTerlalu++; return; } const x = slot(r); x.ty += r.v; x.mty[m] += r.v; }
+  });
+  minggu.forEach(r => {
+    if (r.awal.slice(0, 7) !== r.akhir.slice(0, 7)) { lintas++; return; }
+    if (r.awal > cutIso) { lewatCutoff++; return; }
+    if (r.akhir > cutIso) { lintas++; return; }
+    const x = slot(r);
+    if (r.awal > lfmEnd && +r.awal.slice(0, 4) === cy) { x.ty += r.v; x.mty[+r.awal.slice(5, 7) - 1] += r.v; }
+    if (r.awal >= lyMonthStart && r.akhir <= lyEndIso) x.ly += r.v;
+    if (r.awal >= from13) x.r13 += r.v;
+    if (r.awal >= from5) x.r5 += r.v;
+    if (r.awal >= fromLw) x.wk[0] += r.v; else if (r.awal >= fromL2) x.wk[1] += r.v; else if (r.awal >= fromL3) x.wk[2] += r.v;
+  });
+  const base = monthEnd ? cm : cm - 1;
+  const mval = (x, i) => i >= 0 ? x.mty[i] : x.mly[12 + i];
+  const series = [];
+  order.forEach(x => {
+    x.m = [mval(x, base), mval(x, base - 1), mval(x, base - 2)];
+    x.l3 = mval(x, cm) + mval(x, cm - 1) + mval(x, cm - 2);
+    const rd = v => Math.round(v);
+    ['fy', 'ly', 'ty', 'r13', 'r5', 'l3'].forEach(k => { x[k] = rd(x[k]); });
+    x.wk = x.wk.map(rd); x.m = x.m.map(rd); x.mty = x.mty.map(rd); x.mly = x.mly.map(rd);
+    const all = [x.fy, x.ly, x.ty, x.r13, x.r5, x.l3].concat(x.wk, x.m, x.mty, x.mly);
+    if (all.some(v => v !== 0)) series.push(x);
+  });
+  return { dataUntil: until, cutoff: cutIso, lyEnd: lyEndIso, hkTy: hkTy, hkLy: hkLy, lewatCutoff: lewatCutoff, mingguLintasBulan: lintas, bulanTerlalu: bulanTerlalu, series: series };
+}
+
+/**
+ * Menu Kategori. Peran pusat: semua DT. Peran dt: hanya DT sendiri (respons memuat nama toko). Kode akses tidak pernah ada di respons.
+ * Respons: { mode:'kategori', cutoff, dataUntil, lyEnd, hkTy, hkLy, dts, salesmen:[{kode,nama,dt}], tokos:[{id,nama,dt,ch,sm}], brands:[{division,category,brand}],
+ *   fields, r:[[t,b,fy,ly,ty,r13,r5,lw,l2w,l3w,lm,l2m,l3m,l3,mty x12,mly x12]], stok:{tanggal:{dt:iso}, rows:[[dt,category,cs]]}|null, catatan }
+ */
+function respondKategori_(me, reg) {
+  const scope = me.peran === 'dt' ? me.dt_kode : 'ALL';
+  const hit = cacheGet_(KAT_CACHE + scope);
+  if (hit) return Object.assign({ mode: 'kategori', peran: me.peran, me: { dt_kode: me.peran === 'dt' ? me.dt_kode : '' } }, hit);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const bulanRaw = readObjs_(ss, 'GS_KAT_BULAN'), mingguRaw = readObjs_(ss, 'GS_KAT_MINGGU');
+  const kosong = [];
+  if (!bulanRaw.length) kosong.push('GS_KAT_BULAN');
+  if (!mingguRaw.length) kosong.push('GS_KAT_MINGGU');
+  if (kosong.length) return { error: 'no_data', tab: kosong, message: 'Data Kategori belum diisi. Isi tab ' + kosong.join(' dan ') + ' di Sheet pusat.' };
+
+  const allDts = reg.filter(x => x.peran === 'dt');
+  const known = Object.create(null), mine = Object.create(null), dtOf = Object.create(null);
+  allDts.forEach(x => { known[x.dt_kode] = true; if (me.peran !== 'dt' || x.dt_kode === me.dt_kode) { mine[x.dt_kode] = true; dtOf[x.dt_kode] = x; } });
+  const tokoRows = readObjs_(ss, 'GS_TOKO'), tokoOf = Object.create(null);
+  tokoRows.forEach(t => { tokoOf[String(t.dist_kode).trim() + '|' + String(t.outlet_kode).trim()] = t; });
+  const cat = { tanggalRusak: 0, gsvRusak: 0, tokoTakDikenal: 0, dtTakDikenal: 0 };
+  const norm = (r, mkDates) => {
+    const dt = String(r.dist_kode).trim(), o = String(r.outlet_kode).trim();
+    if (!known[dt]) { cat.dtTakDikenal++; return null; }
+    if (!mine[dt]) return null;
+    const d = mkDates(r); if (!d) { cat.tanggalRusak++; return null; }
+    const v = numOrNull_(r.gsv); if (v === null) { cat.gsvRusak++; return null; }
+    if (!tokoOf[dt + '|' + o]) { cat.tokoTakDikenal++; return null; }
+    if (v === 0) return null;
+    const c = str_(r.category).trim();
+    return Object.assign(d, { dt: dt, o: o, div: str_(r.division).trim() || KAT_NONE, cat: c || KAT_NONE, br: str_(r.brand).trim() || KAT_NONE, v: v });
+  };
+  const bulan = [], minggu = [];
+  bulanRaw.forEach(r => { const x = norm(r, q => { const p = cellText_(q.periode, ss, 'yyyy-MM'); return validMonth_(p) ? { periode: p } : null; }); if (x) bulan.push(x); });
+  mingguRaw.forEach(r => {
+    const x = norm(r, q => { const a = cellText_(q.awal, ss, 'yyyy-MM-dd'), b = cellText_(q.akhir, ss, 'yyyy-MM-dd'); return validDay_(a) && validDay_(b) && a <= b ? { awal: a, akhir: b } : null; });
+    if (x) minggu.push(x);
+  });
+  const res = computeKategori_({ bulan: bulan, minggu: minggu });
+  if (!res) return { error: 'no_data', tab: ['GS_KAT_MINGGU'], message: 'Data Kategori belum diisi. Tab GS_KAT_MINGGU tidak punya baris yang sah.' };
+
+  // Indeks toko dan brand (bilangan bulat) supaya respons kecil.
+  const tokoIdx = Object.create(null), brandIdx = Object.create(null), tokos = [], brands = [], salesmen = [], tidakAda = [];
+  res.series.forEach(x => {
+    const tk = x.dt + '|' + x.o;
+    if (tokoIdx[tk] === undefined) { const t = tokoOf[tk]; tokoIdx[tk] = tokos.length; tokos.push({ id: x.o, nama: str_(t.outlet_nama).trim(), dt: x.dt, ch: str_(t.channel).trim(), sm: -1 }); }
+    const bk = x.division + '\u0001' + x.category + '\u0001' + x.brand;
+    if (brandIdx[bk] === undefined) { brandIdx[bk] = brands.length; brands.push({ division: x.division, category: x.category, brand: x.brand }); }
+  });
+  // Salesman per toko: atribusi yang sama dengan ranking (qty bersih terbanyak, computeSalesRank_ lewat salesRankForDt_, cache bersama).
+  try {
+    const bandedSku = readObjs_(ss, 'GS_BANDED_SKU').map(b => ({ channel: str_(b.channel), sku_kode: str_(b.sku_kode), sku_nama: str_(b.sku_nama) }));
+    const cfg = readGsCfg_(ss), hist = readObjs_(ss, 'GS_BULANAN'), smIdx = Object.create(null);
+    allDts.filter(x => mine[x.dt_kode] && x.sheet_id).forEach(x => {
+      const rk = salesRankForDt_(x, tokoRows, bandedSku, cfg, hist);
+      if (!rk || rk.error || !rk.total) { tidakAda.push(x.dt_kode); return; }
+      const names = rk.total.names || {};
+      (rk.total.stores || []).forEach(s => {
+        const ti = tokoIdx[x.dt_kode + '|' + String(s.o).trim()]; if (ti === undefined) return;
+        const k = x.dt_kode + '|' + s.sm;
+        if (smIdx[k] === undefined) { smIdx[k] = salesmen.length; salesmen.push({ kode: String(s.sm), nama: String(names[s.sm] || s.sm), dt: x.dt_kode }); }
+        tokos[ti].sm = smIdx[k];
+      });
+    });
+  } catch (err) { allDts.forEach(x => { if (mine[x.dt_kode] && tidakAda.indexOf(x.dt_kode) < 0) tidakAda.push(x.dt_kode); }); }
+
+  const rows = res.series.map(x => [tokoIdx[x.dt + '|' + x.o], brandIdx[x.division + '\u0001' + x.category + '\u0001' + x.brand], x.fy, x.ly, x.ty, x.r13, x.r5].concat(x.wk, x.m, [x.l3], x.mty, x.mly));
+  const st = katStok_(ss, mine, cat);
+  const body = {
+    cutoff: res.cutoff, dataUntil: res.dataUntil, lyEnd: res.lyEnd, hkTy: res.hkTy, hkLy: res.hkLy,
+    dts: allDts.filter(x => mine[x.dt_kode]).map(x => ({ kode: x.dt_kode, nama: x.nama_dt })),
+    salesmen: salesmen, tokos: tokos, brands: brands, fields: KAT_FIELDS, r: rows, stok: st,
+    catatan: { tanggalRusak: cat.tanggalRusak, gsvRusak: cat.gsvRusak, tokoTakDikenal: cat.tokoTakDikenal, dtTakDikenal: cat.dtTakDikenal, mingguLintasBulan: res.mingguLintasBulan,
+      lewatCutoff: res.lewatCutoff, bulanTerlalu: res.bulanTerlalu, skuTanpaKategori: cat.skuTanpaKategori || 0, salesmanTidakTersedia: tidakAda },
+  };
+  cachePut_(KAT_CACHE + scope, body);
+  return Object.assign({ mode: 'kategori', peran: me.peran, me: { dt_kode: me.peran === 'dt' ? me.dt_kode : '' } }, body);
+}
+
+/** Stok SOH ekuivalen karton per DT x category dari STOK_GUDANG terbaru per DT, dipetakan SKU -> category lewat GS_KAT_PRODUK. null bila tak bisa dipetakan. */
+function katStok_(ss, mine, cat) {
+  const produk = readObjs_(ss, 'GS_KAT_PRODUK'), stok = readObjs_(ss, 'STOK_GUDANG').filter(r => mine[String(r.dt_kode)]);
+  if (!produk.length || !stok.length) return null;
+  const catOf = Object.create(null);
+  produk.forEach(p => { const k = str_(p.sku).trim(); if (k) catOf[k] = str_(p.category).trim() || KAT_NONE; });
+  const iso = v => cellText_(v, ss, 'yyyy-MM-dd'), tanggal = Object.create(null);
+  stok.forEach(r => { const dt = String(r.dt_kode), t = iso(r.tanggal); if (!tanggal[dt] || t > tanggal[dt]) tanggal[dt] = t; });
+  const sum = Object.create(null), tanpa = Object.create(null);
+  stok.forEach(r => {
+    const dt = String(r.dt_kode); if (iso(r.tanggal) !== tanggal[dt]) return;
+    const isi = +r.isi || 1, cs = ((+r.karton || 0) * isi + (+r.lusin || 0) * 12 + (+r.pcs || 0)) / isi;   // konversi sama dengan computeStokWc_ (pcs total / isi)
+    const sku = str_(r.sku).trim(), c = catOf[sku] || KAT_NONE;
+    if (!catOf[sku] && cs > 0) tanpa[sku] = true;
+    sum[dt + '\u0001' + c] = (sum[dt + '\u0001' + c] || 0) + cs;
+  });
+  cat.skuTanpaKategori = Object.keys(tanpa).length;
+  return { tanggal: tanggal, rows: Object.keys(sum).sort().map(k => { const p = k.split('\u0001'); return [p[0], p[1], Math.round(sum[k] * 10) / 10]; }) };
 }

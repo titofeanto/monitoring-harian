@@ -57,5 +57,5 @@ test('fixture: tanpa galat server, tanpa kode akses, di bawah 2 MB, dua parent W
     assert.ok(!t.includes('kode_akses'));
   });
   Object.values(built.files['dummy-stok.json'].wcWarn.perDt).forEach(l => assert.ok(l.length >= 2));
-  assert.equal(Object.keys(built.files).length, 7);
+  assert.equal(Object.keys(built.files).length, 9);   // 7 lama + dummy-kategori(-tmk) dari plan 034
 });

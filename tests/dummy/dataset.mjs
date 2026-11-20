@@ -168,7 +168,7 @@ function hargaRows(cat, rng) {
   return rows;
 }
 
-export function buildDummy({ seed = 2026, tanpaData = false } = {}) {
+export function buildDummy({ seed = 2026, tanpaData = false, katKosong = false } = {}) {
   const cat = buildCatalog(seed);
   const root = makeRng(seed);
   const registry = [{ kode_akses: ACCESS.pusat, peran: 'pusat', dt_kode: '', nama_dt: '', sheet_id: '', aktif: true }]
@@ -423,6 +423,7 @@ export function buildDummy({ seed = 2026, tanpaData = false } = {}) {
   // ----- Menu Kategori (plan 034): tiga tab baru di Sheet pusat, dari PRNG turunan sendiri sehingga data lain tidak bergeser -----
   const kat = buildKategori({ seed, cat, cutoff: isoOf(sundayOnOrBefore(msOf(DATA_UNTIL))), dataUntil: DATA_UNTIL, dts: DT_DEFS.map(d => ({ kode: d.kode, stores: gen[d.kode].stores })) });
   P.GS_KAT_BULAN = kat.KAT_BULAN; P.GS_KAT_MINGGU = kat.KAT_MINGGU; P.GS_KAT_PRODUK = kat.KAT_PRODUK;
+  if (katKosong) { P.GS_KAT_BULAN = [kat.KAT_BULAN[0]]; delete P.GS_KAT_MINGGU; }   // varian jalur kosong (fixture dummy-kategori-kosong.json)
 
   const meta = { seed, kategori: kat.meta, catalog: { basepacks: cat.bps.length, skus: cat.skus.length, bandedSpm: cat.banded.SPM.length, bandedMinis: cat.banded.MINIS.length },
     dts: {}, salesmen: DT_DEFS.flatMap(d => d.sales.map(s => ({ kode: s.kode, nama: s.nama, dt: d.kode, profile: s.profile }))) };

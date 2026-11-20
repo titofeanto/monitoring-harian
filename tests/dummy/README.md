@@ -4,7 +4,7 @@ SEMUA data di sini FIKTIF: nama toko, salesman, produk, angka, dan kode akses (`
 
 ## Cara menjalankan
 
-- `npm run dummy` menulis `tests/ui/fixtures/dummy-*.json` (7 berkas). Hasilnya identik tiap kali (PRNG berbenih, "sekarang" dibekukan di 2026-11-18).
+- `npm run dummy` menulis `tests/ui/fixtures/dummy-*.json` (9 berkas utama, plus varian). Hasilnya identik tiap kali (PRNG berbenih, "sekarang" dibekukan di 2026-11-18).
 - `node --test tests/` menjalankan `tests/dummy.test.mjs` bersama tes lain.
 - Lihat di halaman: `node tests/ui/shot.mjs great-sales skor dummy-gs-pusat 390 light` (pola sama untuk `ranking`, `cek-stok`, `kehadiran`, `index` dengan `dummy-rank`, `dummy-stok`, `dummy-hadir`, `dummy-mh`). Server uji sudah menerima `?fx=dummy-...` tanpa perubahan.
 

@@ -34,10 +34,16 @@ export function buildAll(seed = 2026) {
       'dummy-rank.json': call(ds, { view: 'rank', code: ACCESS.pusat }),
       'dummy-stok.json': call(ds, { view: 'stok', code: ACCESS.pusat }),
       'dummy-hadir.json': call(ds, { view: 'hadir', code: ACCESS.pusat }),
+      'dummy-kategori.json': call(ds, { view: 'kategori', code: ACCESS.pusat }),
+      'dummy-kategori-tmk.json': call(ds, { view: 'kategori', code: ACCESS.tmk }),   // akun DT: hanya DT sendiri
       'dummy-mh.json': call(ds, { code: ACCESS.tmk }),   // data mentah Monitoring Harian DT Timika
     },
     // Varian jalur kosong: Assortment tanpaData di semua DSR, DSR 202 tanpa PS. Fixture utama di atas tidak berubah.
-    varian: { 'dummy-rank-tanpadata.json': call(buildDummy({ seed, tanpaData: true }), { view: 'rank', code: ACCESS.pusat }) },
+    varian: {
+      'dummy-rank-tanpadata.json': call(buildDummy({ seed, tanpaData: true }), { view: 'rank', code: ACCESS.pusat }),
+      // Menu Kategori tanpa data: tab GS_KAT_MINGGU kosong -> { error:'no_data' } (fixture ini sengaja berisi galat, dilewati pemeriksa galat di bawah)
+      'dummy-kategori-kosong.json': call(buildDummy({ seed, katKosong: true }), { view: 'kategori', code: ACCESS.pusat }),
+    },
   };
 }
 
@@ -45,7 +51,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const { files, varian } = buildAll();
   const secrets = Object.values(ACCESS);
   for (const [name, obj] of Object.entries(Object.assign({}, files, varian))) {
-    if (obj.error) throw new Error(name + ': server mengembalikan galat ' + obj.error + ' ' + (obj.message || ''));
+    if (obj.error && !name.includes('kosong')) throw new Error(name + ': server mengembalikan galat ' + obj.error + ' ' + (obj.message || ''));
     const txt = JSON.stringify(obj);
     if (secrets.some(s => txt.includes(s)) || txt.includes('kode_akses')) throw new Error(name + ': memuat kode akses');
     if (txt.length > 2 * 1024 * 1024) throw new Error(name + ': lebih dari 2 MB');
