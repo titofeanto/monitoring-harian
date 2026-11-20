@@ -19,11 +19,12 @@
     user: '<circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 11l2 2 4-4"/>',
     me: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
     gauge: '<path d="M4 18a8 8 0 1 1 16 0M12 18l4-6"/>',
+    grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
     out: '<path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/>',
   };
   /* [kunci, label, ikon, halaman (untuk tombol tab) atau berkas tujuan] */
   const GROUPS = [
-    { t: 'Umum', items: [['rank', 'Ranking', 'trophy', 'ranking.html']] },   // terlihat di semua halaman, terbuka untuk akun mana pun
+    { t: 'Umum', items: [['rank', 'Ranking', 'trophy', 'ranking.html'], ['kategori', 'Kategori', 'grid', 'kategori.html']] },   // terlihat di semua halaman, terbuka untuk akun mana pun
     { t: 'Great Sales', p: 'gs', file: 'great-sales.html', items: [['skor', 'Skor', 'gauge'], ['fop', 'Weekly FOP', 'cal'], ['banded', 'Banded', 'box'], ['asrt', 'Assortment', 'layers'], ['ps', 'Perfect Store', 'store'], ['toko', 'Toko', 'pin']] },
     { t: 'Monitoring Harian', p: 'mon', file: 'index.html', items: [['ring', 'Ringkasan', 'chart'], ['sim', 'Simulator', 'sim'], ['fruit', 'Low Hanging Fruit', 'target']] },
     { t: 'Alat', items: [['stok', 'Cek Stok', 'box', 'cek-stok.html'], ['hadir', 'Kehadiran', 'user', 'kehadiran.html']] },
