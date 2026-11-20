@@ -111,3 +111,15 @@ test('insight: berhenti beli, peluang, naik, dan penetrasi', () => {
   const c = K.composition([0, 1, 2, 3], ti => rows[ti], 0, ['C1', 'C2'], 'weekly', HK, tokos);
   assert.equal(c.peers, 3); assert.equal(c.rows[0].status, 'aktif'); assert.equal(c.rows[1].status, 'belum');
 });
+
+test('mode bulanan: RR 13, RR 5, L3W/L2W/LW tampil "–"; rr3m dari 3 bulan penuh; label tanpa minggu', () => {
+  const K3 = { hkTy: 304, hkLy: 304, bulanan: true, d3: K.days3('2026-10-31') };
+  assert.equal(K3.d3, 92);                               // Agu 31 + Sep 30 + Okt 31
+  const m = K.M([row({ ty: 1000, l3: 920, m: [400, 300, 220] })], 'weekly', K3);
+  assert.equal(m.rr13, null); assert.equal(m.rr5, null); assert.equal(m.rr3m, 920 / 92 * 7);
+  const C = K.cols('weekly', true), cell = h => C.find(c => c.h === h).v(m, m);
+  ['RR 13', 'RR 5', 'L3W', 'L2W', 'LW'].forEach(h => assert.match(cell(h), /kt-na/));
+  const Cm = K.cols('monthly', true), cm = h => Cm.find(c => c.h === h).v(m, m);
+  assert.equal(cm('LM'), '0M'); assert.match(cm('RR 13'), /kt-na/);
+  assert.equal(K.periodLabel('2026-10-31', true), 'OKT 2026');
+});

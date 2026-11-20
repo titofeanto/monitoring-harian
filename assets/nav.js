@@ -24,7 +24,7 @@
   };
   /* [kunci, label, ikon, halaman (untuk tombol tab) atau berkas tujuan] */
   const GROUPS = [
-    { t: 'Umum', items: [['rank', 'Ranking', 'trophy', 'ranking.html'], ['kategori', 'Kategori', 'grid', 'kategori.html']] },   // terlihat di semua halaman, terbuka untuk akun mana pun
+    { t: 'Umum', items: [['rank', 'Ranking', 'trophy', 'ranking.html'], ['kategori', 'Dashboard Performa', 'grid', 'kategori.html']] },   // terlihat di semua halaman, terbuka untuk akun mana pun
     { t: 'Great Sales', p: 'gs', file: 'great-sales.html', items: [['skor', 'Skor', 'gauge'], ['fop', 'Weekly FOP', 'cal'], ['banded', 'Banded', 'box'], ['asrt', 'Assortment', 'layers'], ['ps', 'Perfect Store', 'store'], ['toko', 'Toko', 'pin']] },
     { t: 'Monitoring Harian', p: 'mon', file: 'index.html', items: [['ring', 'Ringkasan', 'chart'], ['sim', 'Simulator', 'sim'], ['fruit', 'Low Hanging Fruit', 'target']] },
     { t: 'Alat', items: [['stok', 'Cek Stok', 'box', 'cek-stok.html'], ['hadir', 'Kehadiran', 'user', 'kehadiran.html']] },

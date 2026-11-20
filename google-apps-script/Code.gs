@@ -362,6 +362,7 @@ function doPost(e) {
     if (body.action === 'setStatus') return jsonOut(setStatus_(body));
     if (body.action === 'gantiKodeAdmin') return jsonOut(gantiKodeAdmin_(body));
     if (body.action === 'klaimKodeAdmin') return jsonOut(klaimKodeAdmin_(body));
+    if (body.action === 'muatKategori') return jsonOut(muatKategori_(body));
     if (body.action !== 'simpanHasil') return jsonOut({ error: 'unknown_action' });
 
     const target = resolveTarget_(String(body.code || '').trim(), String(body.dt || '').trim());
@@ -2083,7 +2084,7 @@ function klaimKodeAdmin_(body) {
 // (GS_KAT_BULAN, GS_KAT_MINGGU, GS_KAT_PRODUK); format di docs/format-data-kategori.md. Server menghitung pra-agregat per
 // (toko, category, brand) dan klien (assets/kat-calc.js) menjumlahkan sesuai filter.
 
-const KAT_CACHE = 'kategori_v1_';   // naikkan versi bila bentuk respons berubah
+const KAT_CACHE = 'kategori_v2_';   // naikkan versi bila bentuk respons berubah
 const KAT_NONE = 'Tanpa kategori';
 const KAT_FIELDS = ['t', 'b', 'fy', 'ly', 'ty', 'r13', 'r5', 'lw', 'l2w', 'l3w', 'lm', 'l2m', 'l3m', 'l3', 'mty0', 'mty1', 'mty2', 'mty3', 'mty4', 'mty5', 'mty6', 'mty7', 'mty8', 'mty9', 'mty10', 'mty11',
   'mly0', 'mly1', 'mly2', 'mly3', 'mly4', 'mly5', 'mly6', 'mly7', 'mly8', 'mly9', 'mly10', 'mly11'];
@@ -2105,9 +2106,18 @@ function computeKategori_(in_) {
   const bulan = in_.bulan || [], minggu = in_.minggu || [], DAY = 86400000;
   let until = '';
   minggu.forEach(r => { if (r.akhir > until) until = r.akhir; });
-  if (!until) return null;
-  const um = katMs_(until), cut = um - new Date(um).getUTCDay() * DAY, cd = new Date(cut), cy = cd.getUTCFullYear(), cm = cd.getUTCMonth();
-  const cutIso = katIso_(cut), lyEnd = cut - 364 * DAY, lyEndIso = katIso_(lyEnd);
+  // Mode bulanan: tanpa baris minggu, cutoff = akhir bulan terakhir di GS_KAT_BULAN (bulan itu dianggap penuh).
+  // RR 13, RR 5, LW, L2W, L3W tidak bisa dihitung (tetap 0, klien menampilkan "–"); YTD LY = bulan yang sama tahun lalu.
+  let bulanan = false;
+  if (!until) {
+    let maxP = '';
+    bulan.forEach(r => { if (r.periode > maxP) maxP = r.periode; });
+    if (!maxP) return null;
+    bulanan = true;
+    until = katIso_(Date.UTC(+maxP.slice(0, 4), +maxP.slice(5, 7), 0));
+  }
+  const um = katMs_(until), cut = bulanan ? um : um - new Date(um).getUTCDay() * DAY, cd = new Date(cut), cy = cd.getUTCFullYear(), cm = cd.getUTCMonth();
+  const cutIso = katIso_(cut), lyEnd = bulanan ? Date.UTC(cy - 1, cm + 1, 0) : cut - 364 * DAY, lyEndIso = katIso_(lyEnd);
   const hkTy = Math.round((cut - Date.UTC(cy, 0, 1)) / DAY) + 1, hkLy = Math.round((lyEnd - Date.UTC(cy - 1, 0, 1)) / DAY) + 1;
   const lfmEnd = katIso_(Date.UTC(cy, cm, 0)), lyMonthStart = katIso_(Date.UTC(cy - 1, cm, 1));
   const monthEnd = cut === Date.UTC(cy, cm + 1, 0);
@@ -2122,8 +2132,8 @@ function computeKategori_(in_) {
   let bulanTerlalu = 0, lewatCutoff = 0, lintas = 0;
   bulan.forEach(r => {
     const y = +r.periode.slice(0, 4), m = +r.periode.slice(5, 7) - 1;
-    if (y === cy - 1) { const x = slot(r); x.fy += r.v; x.mly[m] += r.v; if (m < cm) x.ly += r.v; }
-    else if (y === cy) { if (m >= cm) { bulanTerlalu++; return; } const x = slot(r); x.ty += r.v; x.mty[m] += r.v; }
+    if (y === cy - 1) { const x = slot(r); x.fy += r.v; x.mly[m] += r.v; if (m < cm || (bulanan && m === cm)) x.ly += r.v; }
+    else if (y === cy) { if (m > cm || (m === cm && !bulanan)) { bulanTerlalu++; return; } const x = slot(r); x.ty += r.v; x.mty[m] += r.v; }
   });
   minggu.forEach(r => {
     if (r.awal.slice(0, 7) !== r.akhir.slice(0, 7)) { lintas++; return; }
@@ -2148,7 +2158,7 @@ function computeKategori_(in_) {
     const all = [x.fy, x.ly, x.ty, x.r13, x.r5, x.l3].concat(x.wk, x.m, x.mty, x.mly);
     if (all.some(v => v !== 0)) series.push(x);
   });
-  return { dataUntil: until, cutoff: cutIso, lyEnd: lyEndIso, hkTy: hkTy, hkLy: hkLy, lewatCutoff: lewatCutoff, mingguLintasBulan: lintas, bulanTerlalu: bulanTerlalu, series: series };
+  return { dataUntil: until, cutoff: cutIso, lyEnd: lyEndIso, hkTy: hkTy, hkLy: hkLy, bulanan: bulanan, lewatCutoff: lewatCutoff, mingguLintasBulan: lintas, bulanTerlalu: bulanTerlalu, series: series };
 }
 
 /**
@@ -2162,16 +2172,19 @@ function respondKategori_(me, reg) {
   if (hit) return Object.assign({ mode: 'kategori', peran: me.peran, me: { dt_kode: me.peran === 'dt' ? me.dt_kode : '' } }, hit);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const bulanRaw = readObjs_(ss, 'GS_KAT_BULAN'), mingguRaw = readObjs_(ss, 'GS_KAT_MINGGU');
-  const kosong = [];
-  if (!bulanRaw.length) kosong.push('GS_KAT_BULAN');
-  if (!mingguRaw.length) kosong.push('GS_KAT_MINGGU');
-  if (kosong.length) return { error: 'no_data', tab: kosong, message: 'Data Kategori belum diisi. Isi tab ' + kosong.join(' dan ') + ' di Sheet pusat.' };
+  // GS_KAT_MINGGU boleh kosong (mode bulanan, lihat computeKategori_); GS_KAT_BULAN wajib.
+  if (!bulanRaw.length) return { error: 'no_data', tab: ['GS_KAT_BULAN'], message: 'Data Kategori belum diisi. Isi tab GS_KAT_BULAN di Sheet pusat.' };
 
   const allDts = reg.filter(x => x.peran === 'dt');
   const known = Object.create(null), mine = Object.create(null), dtOf = Object.create(null);
   allDts.forEach(x => { known[x.dt_kode] = true; if (me.peran !== 'dt' || x.dt_kode === me.dt_kode) { mine[x.dt_kode] = true; dtOf[x.dt_kode] = x; } });
   const tokoRows = readObjs_(ss, 'GS_TOKO'), tokoOf = Object.create(null);
   tokoRows.forEach(t => { tokoOf[String(t.dist_kode).trim() + '|' + String(t.outlet_kode).trim()] = t; });
+  // Toko yang tidak ada di GS_TOKO tetap dipakai bila baris data membawa outlet_nama (ekspor Power BI); channel dari kolom channel.
+  bulanRaw.concat(mingguRaw).forEach(r => {
+    const k = String(r.dist_kode).trim() + '|' + String(r.outlet_kode).trim(), nm = str_(r.outlet_nama).trim();
+    if (!tokoOf[k] && nm) tokoOf[k] = { outlet_nama: nm, channel: str_(r.channel).trim() };
+  });
   const cat = { tanggalRusak: 0, gsvRusak: 0, tokoTakDikenal: 0, dtTakDikenal: 0 };
   const norm = (r, mkDates) => {
     const dt = String(r.dist_kode).trim(), o = String(r.outlet_kode).trim();
@@ -2191,7 +2204,7 @@ function respondKategori_(me, reg) {
     if (x) minggu.push(x);
   });
   const res = computeKategori_({ bulan: bulan, minggu: minggu });
-  if (!res) return { error: 'no_data', tab: ['GS_KAT_MINGGU'], message: 'Data Kategori belum diisi. Tab GS_KAT_MINGGU tidak punya baris yang sah.' };
+  if (!res) return { error: 'no_data', tab: ['GS_KAT_BULAN', 'GS_KAT_MINGGU'], message: 'Data Kategori belum diisi. Tab GS_KAT_BULAN dan GS_KAT_MINGGU tidak punya baris yang sah.' };
 
   // Indeks toko dan brand (bilangan bulat) supaya respons kecil.
   const tokoIdx = Object.create(null), brandIdx = Object.create(null), tokos = [], brands = [], salesmen = [], tidakAda = [];
@@ -2221,7 +2234,7 @@ function respondKategori_(me, reg) {
   const rows = res.series.map(x => [tokoIdx[x.dt + '|' + x.o], brandIdx[x.division + '\u0001' + x.category + '\u0001' + x.brand], x.fy, x.ly, x.ty, x.r13, x.r5].concat(x.wk, x.m, [x.l3], x.mty, x.mly));
   const st = katStok_(ss, mine, cat);
   const body = {
-    cutoff: res.cutoff, dataUntil: res.dataUntil, lyEnd: res.lyEnd, hkTy: res.hkTy, hkLy: res.hkLy,
+    cutoff: res.cutoff, dataUntil: res.dataUntil, lyEnd: res.lyEnd, hkTy: res.hkTy, hkLy: res.hkLy, bulanan: res.bulanan,
     dts: allDts.filter(x => mine[x.dt_kode]).map(x => ({ kode: x.dt_kode, nama: x.nama_dt })),
     salesmen: salesmen, tokos: tokos, brands: brands, fields: KAT_FIELDS, r: rows, stok: st,
     catatan: { tanggalRusak: cat.tanggalRusak, gsvRusak: cat.gsvRusak, tokoTakDikenal: cat.tokoTakDikenal, dtTakDikenal: cat.dtTakDikenal, mingguLintasBulan: res.mingguLintasBulan,
@@ -2229,6 +2242,47 @@ function respondKategori_(me, reg) {
   };
   cachePut_(KAT_CACHE + scope, body);
   return Object.assign({ mode: 'kategori', peran: me.peran, me: { dt_kode: me.peran === 'dt' ? me.dt_kode : '' } }, body);
+}
+
+const KAT_TABS = ['GS_KAT_BULAN', 'GS_KAT_MINGGU', 'GS_KAT_PRODUK'];
+const KAT_LOAD_MAX = 20000;
+/**
+ * POST action 'muatKategori' (kode peran pusat saja): isi tab GS_KAT_* di Sheet pusat per potongan.
+ * body = { code, tab, header:[...], rows:[[...]], mulai:true (kosongkan tab lalu tulis header), selesai:true (hapus cache Kategori) }
+ */
+function muatKategori_(body) {
+  const reg = readRegistry_(), me = reg.find(x => x.kode_akses === String(body.code || '').trim());
+  if (!me || me.peran !== 'pusat') { noteBadCode_(); return { error: 'invalid_code' }; }
+  const tab = String(body.tab || '');
+  if (KAT_TABS.indexOf(tab) < 0) return { error: 'bad_request', message: 'tab harus salah satu dari ' + KAT_TABS.join(', ') };
+  const header = Array.isArray(body.header) ? body.header.map(h => String(h).trim()) : null, rows = Array.isArray(body.rows) ? body.rows : [];
+  if (!header || !header.length || header.length > 20) return { error: 'bad_request', message: 'header tidak sah' };
+  if (rows.length > KAT_LOAD_MAX) return { error: 'bad_request', message: 'rows terlalu banyak (maks ' + KAT_LOAD_MAX + ' per potongan)' };
+  if (rows.some(r => !Array.isArray(r) || r.length !== header.length)) return { error: 'bad_request', message: 'setiap baris harus sepanjang header' };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sh = ss.getSheetByName(tab);
+    if (!sh) sh = ss.insertSheet(tab);
+    if (body.mulai) {
+      sh.clearContents();
+      sh.getRange(1, 1, 1, header.length).setValues([header]);
+      sh.setFrozenRows(1);
+    } else {
+      const cur = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].map(h => String(h).trim());
+      if (cur.slice(0, header.length).join('|') !== header.join('|')) return { error: 'bad_request', message: 'header berbeda dengan isi tab; kirim potongan pertama dengan mulai:true' };
+    }
+    // Teks diawali apostrof supaya kode toko 18 digit dan periode YYYY-MM tidak diubah Sheets menjadi angka atau tanggal.
+    const clean = rows.map(r => r.map(c => typeof c === 'number' && isFinite(c) ? c : "'" + String(c == null ? '' : c).replace(/^'+/, '')));
+    if (clean.length) {
+      const start = sh.getLastRow() + 1;
+      if (sh.getMaxRows() < start + clean.length - 1) sh.insertRowsAfter(sh.getMaxRows(), start + clean.length - 1 - sh.getMaxRows());
+      sh.getRange(start, 1, clean.length, header.length).setValues(clean);
+    }
+    if (body.selesai) { cacheClearKey_(KAT_CACHE + 'ALL'); reg.filter(x => x.peran === 'dt').forEach(x => cacheClearKey_(KAT_CACHE + x.dt_kode)); }
+    return { ok: true, tab: tab, ditulis: clean.length, total: sh.getLastRow() - 1 };
+  } finally { lock.releaseLock(); }
 }
 
 /** Stok SOH ekuivalen karton per DT x category dari STOK_GUDANG terbaru per DT, dipetakan SKU -> category lewat GS_KAT_PRODUK. null bila tak bisa dipetakan. */

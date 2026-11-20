@@ -120,9 +120,46 @@ test('d. tab kosong atau tidak ada memberi no_data yang menyebut tab', () => {
   const noBulan = plain(ds); noBulan.pusat.GS_KAT_BULAN = [noBulan.pusat.GS_KAT_BULAN[0]];
   let r = call(serverFor(noBulan), { view: 'kategori', code: ACCESS.pusat });
   assert.equal(r.error, 'no_data'); assert.match(r.message, /GS_KAT_BULAN/);
+  // Tanpa GS_KAT_MINGGU: mode bulanan, bukan no_data.
   const noMinggu = plain(ds); delete noMinggu.pusat.GS_KAT_MINGGU;
   r = call(serverFor(noMinggu), { view: 'kategori', code: ACCESS.pusat });
-  assert.equal(r.error, 'no_data'); assert.match(r.message, /GS_KAT_MINGGU/);
+  assert.equal(r.error, undefined); assert.equal(r.bulanan, true); assert.ok(r.r.length > 0);
+  assert.ok(r.r.every(a => a[5] === 0 && a[6] === 0 && a[7] === 0 && a[8] === 0 && a[9] === 0), 'RR dan minggu kosong di mode bulanan');
+});
+
+test('d2. mode bulanan: cutoff akhir bulan terakhir, bulan itu ikut TY, YTD LY bulan yang sama', () => {
+  const res = ctxPure.computeKategori_({ bulan: [B('2025-01', 100), B('2025-10', 40), B('2025-11', 1000), B('2026-01', 300), B('2026-10', 400)], minggu: [] });
+  assert.equal(res.bulanan, true); assert.equal(res.cutoff, '2026-10-31'); assert.equal(res.dataUntil, '2026-10-31'); assert.equal(res.lyEnd, '2025-10-31');
+  assert.equal(res.hkTy, 304); assert.equal(res.hkLy, 304); assert.equal(res.bulanTerlalu, 0);
+  const s = one(res);
+  assert.equal(s.ty, 700); assert.equal(s.ly, 140); assert.equal(s.fy, 1140);
+  assert.deepEqual(s.m, [400, 0, 0]); assert.equal(s.l3, 400); assert.equal(s.r13, 0); assert.deepEqual(s.wk, [0, 0, 0]);
+  assert.equal(ctxPure.computeKategori_({ bulan: [], minggu: [] }), null);
+});
+
+test('d3. toko di luar GS_TOKO dipakai bila baris membawa outlet_nama', () => {
+  const x = plain(ds), b = x.pusat.GS_KAT_BULAN;
+  b[0] = b[0].concat(['outlet_nama', 'channel']);
+  for (let i = 1; i < b.length; i++) b[i] = b[i].concat(['', '']);
+  b.push(['2026-03', 'D01', 'BARU01', 'FOODS', 'Minuman', 'Merek Teh', 5e6, 'TOKO BARU', 'LOCAL MINIS']);
+  const r = call(serverFor(x), { view: 'kategori', code: ACCESS.pusat });
+  const t = r.tokos.find(k => k.id === 'BARU01');
+  assert.ok(t); assert.equal(t.nama, 'TOKO BARU'); assert.equal(t.ch, 'LOCAL MINIS'); assert.equal(r.catatan.tokoTakDikenal, 0);
+});
+
+test('d4. muatKategori: hanya kode pusat, tab terbatas, mulai menimpa, potongan berikut menambah', () => {
+  const x = plain(ds), ctx = serverFor(x);
+  const post = body => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).getContent());
+  const H = ['sku', 'category', 'brand', 'division'];
+  assert.equal(post({ action: 'muatKategori', code: ACCESS.d01 || 'salah', tab: 'GS_KAT_PRODUK', header: H, rows: [] }).error, 'invalid_code');
+  assert.equal(post({ action: 'muatKategori', code: ACCESS.pusat, tab: 'DAFTAR_DT', header: H, rows: [] }).error, 'bad_request');
+  assert.equal(post({ action: 'muatKategori', code: ACCESS.pusat, tab: 'GS_KAT_PRODUK', header: H, rows: [['1', 'a']] }).error, 'bad_request');
+  let r = post({ action: 'muatKategori', code: ACCESS.pusat, tab: 'GS_KAT_PRODUK', header: H, rows: [['0012', 'C', 'B', 'D']], mulai: true });
+  assert.equal(r.ok, true); assert.equal(r.total, 1);
+  r = post({ action: 'muatKategori', code: ACCESS.pusat, tab: 'GS_KAT_PRODUK', header: H, rows: [['0013', 'C', 'B', 'D'], ['0014', 'C', 'B', 'D']], selesai: true });
+  assert.equal(r.ok, true); assert.equal(r.total, 3);
+  r = post({ action: 'muatKategori', code: ACCESS.pusat, tab: 'GS_KAT_PRODUK', header: ['x'], rows: [['1']] });
+  assert.equal(r.error, 'bad_request');
 });
 
 test('e. tanggal, periode, dan gsv rusak dibuang dan dihitung; toko tak dikenal dihitung', () => {

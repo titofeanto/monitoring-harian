@@ -28,7 +28,9 @@
     });
     const b = basis === 'monthly' ? 365 / 12 : 7;
     o.avgFY = o.fy / 365 * b; o.avgSP = o.ly / K.hkLy * b; o.avgTY = o.ty / K.hkTy * b;
-    o.rr13 = o.r13 / 13 / 7 * b; o.rr5 = o.r5 / 5 / 7 * b;
+    // Mode bulanan (tanpa data minggu): RR 13 dan RR 5 tidak ada; rr3m = rata-rata 3 bulan penuh terakhir per basis.
+    o.rr13 = K.bulanan ? null : o.r13 / 13 / 7 * b; o.rr5 = K.bulanan ? null : o.r5 / 5 / 7 * b;
+    o.rr3m = K.d3 ? o.l3 / K.d3 * b : 0;
     o.a2a = o.avgFY !== 0 ? o.avgTY / o.avgFY - 1 : null;      // kosong bila pembanding 0 (DIVIDE di PBI)
     o.sp = o.avgSP !== 0 ? o.avgTY / o.avgSP - 1 : null;
     return o;
@@ -48,16 +50,16 @@
   function rp(v) { const a = Math.abs(v); return a >= 1e9 ? nf1.format(v / 1e9) + ' M' : a >= 1e6 ? nf1.format(v / 1e6) + ' jt' : a >= 1e3 ? nf0.format(v / 1e3) + ' rb' : nf0.format(v); }
 
   /** Kolom tabel pivot, urutan persis PBI. Satu kolom: { h, v:(m,total)=>teks/HTML, c:rata tengah, bar:(m,total)=>pecahan } atau { sp:1 } (spasi). */
-  function cols(basis) {
-    const w = basis !== 'monthly';
+  function cols(basis, bulanan) {
+    const w = basis !== 'monthly', na = '<span class="kt-na">–</span>', wk = i => m => bulanan ? na : fM(m.wk[i]), rr = k => m => m[k] == null ? na : fN(m[k]);
     return [
       { h: 'ABS FY LY', v: m => fN(m.fy) }, { h: 'ABS YTD LY', v: m => fN(m.ly) }, { h: 'ABS YTD TY', v: m => fN(m.ty) },
       { h: 'Contr LY', v: (m, t) => t.ly ? fP(m.ly / t.ly) : '–', c: 1, bar: (m, t) => t.ly ? m.ly / t.ly : 0, tot: '100,0%' },
       { h: 'Contr TY', v: (m, t) => t.ty ? fP(m.ty / t.ty) : '–', c: 1, bar: (m, t) => t.ty ? m.ty / t.ty : 0, tot: '100,0%' }, { sp: 1 },
       { h: 'Growth SP', v: m => fG(m.sp), c: 1 }, { h: 'Growth A2A', v: m => fG(m.a2a), c: 1 }, { sp: 1 },
       { h: 'AVG FY LY', v: m => fN(m.avgFY) }, { h: 'AVG SP LY', v: m => fN(m.avgSP) }, { h: 'AVG YTD TY', v: m => fN(m.avgTY) }, { sp: 1 },
-      { h: 'RR 13', v: m => fN(m.rr13) }, { h: 'RR 5', v: m => fN(m.rr5) }, { sp: 1 },
-      { h: w ? 'L3W' : 'L3M', v: m => fM(w ? m.wk[2] : m.m[2]) }, { h: w ? 'L2W' : 'L2M', v: m => fM(w ? m.wk[1] : m.m[1]) }, { h: w ? 'LW' : 'LM', v: m => fM(w ? m.wk[0] : m.m[0]) },
+      { h: 'RR 13', v: rr('rr13') }, { h: 'RR 5', v: rr('rr5') }, { sp: 1 },
+      { h: w ? 'L3W' : 'L3M', v: w ? wk(2) : m => fM(m.m[2]) }, { h: w ? 'L2W' : 'L2M', v: w ? wk(1) : m => fM(m.m[1]) }, { h: w ? 'LW' : 'LM', v: w ? wk(0) : m => fM(m.m[0]) },
     ];
   }
 
@@ -111,7 +113,9 @@
     return 1 + Math.round(((t - f) / 864e5 - 3 + ((f.getUTCDay() + 6) % 7)) / 7);
   }
   /** "NOV 2026 - WEEK 46" */
-  const periodLabel = iso => BULANP[+iso.slice(5, 7) - 1] + ' ' + iso.slice(0, 4) + ' - WEEK ' + isoWeek(iso);
+  const periodLabel = (iso, bulanan) => BULANP[+iso.slice(5, 7) - 1] + ' ' + iso.slice(0, 4) + (bulanan ? '' : ' - WEEK ' + isoWeek(iso));
+  /** Jumlah hari 3 bulan kalender terakhir sampai cutoff (awal bulan ke-2 sebelum bulan cutoff s/d cutoff). */
+  const days3 = iso => { const p = iso.split('-'); return Math.round((Date.UTC(+p[0], +p[1] - 1, +p[2]) - Date.UTC(+p[0], +p[1] - 3, 1)) / 864e5) + 1; };
   const dateLabel = iso => (+iso.slice(8, 10)) + ' ' + BULAN[+iso.slice(5, 7) - 1] + ' ' + iso.slice(0, 4);
 
   /** Insight satu kategori. stores = indeks toko pada filter; itemsOf(ti) = baris toko itu yang lolos filter. */
@@ -128,7 +132,7 @@
       .sort((p, q) => (p.m.sp == null ? -1 : p.m.sp) - (q.m.sp == null ? -1 : q.m.sp)).slice(0, 6);
     const naik = all.filter(x => x.m.sp != null && x.m.sp > 0.2 && x.m.l3 > 0).sort((p, q) => q.m.sp - p.m.sp).slice(0, 5);
     const med = Object.create(null);
-    buyers.forEach(x => { (med[x.tk.ch] = med[x.tk.ch] || []).push(x.m.rr13); });
+    buyers.forEach(x => { (med[x.tk.ch] = med[x.tk.ch] || []).push(x.m.rr13 == null ? x.m.rr3m : x.m.rr13); });
     Object.keys(med).forEach(c => { const v = med[c].sort((a, b) => a - b); med[c] = v[Math.floor(v.length / 2)]; });
     const pel = all.filter(x => aktifSet.has(x.t) && !x.ever).map(x => ({ t: x.t, tk: x.tk, pot: med[x.tk.ch] || 0 })).sort((a, b) => b.pot - a.pot).slice(0, 6);
     return { tot, buyers: buyers.length, aktif: aktif.length, turun, naik, pel, penetrasi: aktif.length ? buyers.length / aktif.length : 0 };
@@ -146,5 +150,5 @@
     }) };
   }
 
-  window.MHKat = { expand, M, fN, fM, fP, fG, rp, cols, rowsCategory, rowsOutlet, insight, composition, isoWeek, periodLabel, dateLabel, BULAN, NO_SM };
+  window.MHKat = { expand, M, fN, fM, fP, fG, rp, cols, rowsCategory, rowsOutlet, insight, composition, isoWeek, periodLabel, days3, dateLabel, BULAN, NO_SM };
 })();

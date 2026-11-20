@@ -33,7 +33,7 @@ test('halaman termuat: kepala, kolom pivot urut PBI, tanpa galat, menu aktif', {
     const h = await dom(8831, '/kategori.html?fx=dummy-kategori');
     assert.match(h, /Radar Weekly Report/); assert.match(h, /NOV 2026 - WEEK 46/); assert.match(h, /Periode hitung s\/d 15 Nov 2026/);
     assert.deepEqual(heads(h).slice(1), ['ABS FY LY', 'ABS YTD LY', 'ABS YTD TY', 'Contr LY', 'Contr TY', 'Growth SP', 'Growth A2A', 'AVG FY LY', 'AVG SP LY', 'AVG YTD TY', 'RR 13', 'RR 5', 'L3W', 'L2W', 'LW']);
-    assert.match(h, /aria-current="page"[^>]*>\s*<svg[^>]*>.*?<\/svg><span class="side-l">Kategori/s);
+    assert.match(h, /aria-current="page"[^>]*>\s*<svg[^>]*>.*?<\/svg><span class="side-l">Dashboard Performa/s);
     assert.ok(!/id="__errs"/.test(h));
     assert.match(h, /Stok gudang per kategori/); assert.match(h, /belum tersedia/);
   } finally { srv.close(); }

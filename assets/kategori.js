@@ -1,4 +1,4 @@
-/* Menu Kategori: analisa toko per Category Key, tampilan dan rumus mengikuti By Category v3 di Power BI.
+/* Menu Dashboard Performa (dulu Kategori): analisa toko per Category Key, tampilan dan rumus mengikuti By Category v3 di Power BI.
    Data dari Apps Script ?view=kategori (pra-agregat per toko x category x brand); hitungan di assets/kat-calc.js.
    Semua teks dari Sheet lewat esc(); tidak ada innerHTML mentah dari data. Peta berkunci teks memakai Object.create(null). */
 (function () {
@@ -68,7 +68,7 @@
 
   /* ---------- tabel pivot ---------- */
   function pivot(title, rowHead, rows, tot, noteTxt) {
-    const C = K.cols(S.basis);
+    const C = K.cols(S.basis, DATA.bulanan);
     const th = C.map(c => c.sp ? '<th class="kt-sp" aria-hidden="true"></th>' : '<th scope="col">' + c.h + '</th>').join('');
     const cell = (c, m) => c.sp ? '<td class="kt-sp"></td>' : c.bar
       ? '<td class="kt-c kt-db"><i style="width:' + Math.max(0, Math.min(100, c.bar(m, tot) * 220)).toFixed(0) + '%"></i><span>' + c.v(m, tot) + '</span></td>'
@@ -83,7 +83,8 @@
       rows.map(tr).join('') + total + '</tbody></table></div></section>';
   }
   const unit = () => S.basis === 'weekly' ? 'minggu' : 'bulan';
-  const note1 = () => 'GSV rupiah. AVG dan RR dalam rata-rata per ' + unit() + '. ' + (S.basis === 'weekly' ? 'L3W, L2W, LW' : 'L3M, L2M, LM') + ' dalam jutaan. Ketuk nama baris untuk membuka atau menutup.';
+  const note1 = () => 'GSV rupiah. AVG dan RR dalam rata-rata per ' + unit() + '. ' + (S.basis === 'weekly' ? 'L3W, L2W, LW' : 'L3M, L2M, LM') + ' dalam jutaan. ' +
+    (DATA.bulanan ? 'Data masih bulanan: RR 13, RR 5, L3W, L2W, LW tampil "–" sampai data mingguan dimuat. ' : '') + 'Ketuk nama baris untuk membuka atau menutup.';
 
   /* ---------- grafik area GSV per bulan (TY vs LY) ---------- */
   function areaChart(m) {
@@ -100,7 +101,7 @@
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Tren GSV per bulan, ' + yr + ' dibanding ' + (yr - 1) + '">' + g + labels +
       '<path d="' + area(m.mly, 11) + '" class="kt-ar-ly"/><path d="' + line(m.mly, 11) + '" class="kt-ln-ly"/>' +
       '<path d="' + area(m.mty, cm) + '" class="kt-ar-ty"/><path d="' + line(m.mty, cm) + '" class="kt-ln-ty"/><circle cx="' + x(cm).toFixed(1) + '" cy="' + Math.max(T, y(m.mty[cm])).toFixed(1) + '" r="4" class="kt-dot"/></svg>' +
-      '<div class="kt-legend"><span><i class="kt-sw-ty"></i>' + yr + '</span><span><i class="kt-sw-ly"></i>' + (yr - 1) + '</span><span>' + esc(K.BULAN[cm]) + ' ' + yr + ' baru sampai ' + (+DATA.cutoff.slice(8, 10)) + '</span></div>';
+      '<div class="kt-legend"><span><i class="kt-sw-ty"></i>' + yr + '</span><span><i class="kt-sw-ly"></i>' + (yr - 1) + '</span>' + (DATA.bulanan ? '' : '<span>' + esc(K.BULAN[cm]) + ' ' + yr + ' baru sampai ' + (+DATA.cutoff.slice(8, 10)) + '</span>') + '</div>';
   }
 
   /* ---------- stok SOH per kategori (fase 1) ---------- */
@@ -142,7 +143,7 @@
       '<p class="hint kt-sum">' + r.buyers + ' dari ' + r.aktif + ' toko aktif membeli ' + esc(S.icat) + ' dalam 3 bulan terakhir (penetrasi ' + Math.round(r.penetrasi * 100) + '%). Growth A2A ' + K.fG(r.tot.a2a) + '.</p></section>' +
       '<div class="kt-row2"><section class="card kt-card"><h2>Perlu dikejar</h2><p class="hint">Berhenti beli 3 bulan terakhir, atau Growth SP turun lebih dari 20%.</p>' +
         list(r.turun, x => li(x, x.m.l3 === 0 ? '<span class="kt-tag kt-tdown">Berhenti beli</span>' : K.fG(x.m.sp)), 'Tidak ada.') + '</section>' +
-      '<section class="card kt-card"><h2>Peluang tambah toko</h2><p class="hint">Toko aktif yang belum pernah beli ' + esc(S.icat) + '. Angka kanan: perkiraan RR 13 dari median toko sejenis yang sudah beli.</p>' +
+      '<section class="card kt-card"><h2>Peluang tambah toko</h2><p class="hint">Toko aktif yang belum pernah beli ' + esc(S.icat) + '. Angka kanan: perkiraan ' + (DATA.bulanan ? 'rata-rata 3 bulan' : 'RR 13') + ' dari median toko sejenis yang sudah beli.</p>' +
         list(r.pel, x => li(x, '<b>' + K.fN(x.pot) + '</b>'), 'Semua toko aktif sudah pernah beli.') + '</section></div>' +
       '<section class="card kt-card"><h2>Toko yang naik</h2><p class="hint">Growth SP lebih dari +20%.</p>' + list(r.naik, x => li(x, K.fG(x.m.sp)), 'Belum ada.') + '</section>' + pToko(st, cats);
   }
@@ -159,7 +160,7 @@
   }
   function pLogika() {
     const dl = [
-      ['ABS YTD TY', 'GSV 1 Jan sampai cutoff. Cutoff = hari Minggu terakhir pada atau sebelum tanggal data terakhir.'],
+      ['ABS YTD TY', DATA.bulanan ? 'GSV 1 Jan sampai cutoff. Data masih bulanan: cutoff = akhir bulan penuh terakhir yang dimuat.' : 'GSV 1 Jan sampai cutoff. Cutoff = hari Minggu terakhir pada atau sebelum tanggal data terakhir.'],
       ['ABS YTD LY, ABS FY LY', 'GSV tahun lalu pada rentang hari yang sama (cutoff dikurangi 364 hari), dan GSV satu tahun penuh tahun lalu.'],
       ['Contr TY, Contr LY', 'Nilai baris dibagi total semua baris, jadi porsi terhadap total filter.'],
       ['AVG YTD TY, AVG SP LY, AVG FY LY', 'GSV dibagi jumlah hari, dikali hari basis: 7 untuk Weekly, 365/12 untuk Monthly.'],
@@ -180,6 +181,7 @@
     return '<section class="card kt-card kt-logic"><h2>Rumus, sama dengan Power BI</h2><p class="hint">Nama kolom mengikuti tabel Formula di Dashboard Banupa 2026.</p><dl>' +
       dl.map(x => '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>').join('') + '</dl></section>' +
       '<section class="card kt-card kt-logic"><h2>Data yang dibutuhkan</h2><p class="hint">Tiga tab di Sheet pusat, diisi tiap minggu dari ekspor Power BI: GS_KAT_BULAN, GS_KAT_MINGGU, GS_KAT_PRODUK. Format lengkap ada di berkas docs/format-data-kategori.md di repositori.</p>' +
+      (DATA.bulanan ? '<p class="hint">Saat ini hanya data bulanan yang dimuat. RR 13, RR 5, L3W, L2W, dan LW butuh tab GS_KAT_MINGGU.</p>' : '') +
       '<p class="hint">Data sampai ' + esc(K.dateLabel(DATA.dataUntil)) + ', cutoff ' + esc(K.dateLabel(DATA.cutoff)) + ', pembanding tahun lalu sampai ' + esc(K.dateLabel(DATA.lyEnd)) + '.</p>' +
       (cat.length ? '<h3>Catatan data</h3><ul class="kt-notes">' + cat.map(t => '<li>' + t + '</li>').join('') + '</ul>' : '<p class="hint">Tidak ada catatan data.</p>') + '</section>';
   }
@@ -187,7 +189,7 @@
   /* ---------- kepala dan render ---------- */
   function headHtml() {
     const w = S.basis === 'weekly', n = storesOn().length;
-    return '<div class="kt-hd-t"><div><h2 class="kt-ttl">Radar ' + (w ? 'Weekly' : 'Monthly') + ' Report</h2><p class="kt-per">' + esc(K.periodLabel(DATA.cutoff)) + '</p>' +
+    return '<div class="kt-hd-t"><div><h2 class="kt-ttl">Radar ' + (w ? 'Weekly' : 'Monthly') + ' Report</h2><p class="kt-per">' + esc(K.periodLabel(DATA.cutoff, DATA.bulanan)) + '</p>' +
       '<p class="hint">Periode hitung s/d ' + esc(K.dateLabel(DATA.cutoff)) + ' · ' + n + ' toko</p></div>' +
       '<div class="kt-seg" role="group" aria-label="Basis perhitungan"><button type="button" data-basis="weekly" aria-pressed="' + w + '">Weekly</button><button type="button" data-basis="monthly" aria-pressed="' + !w + '">Monthly</button></div></div>';
   }
@@ -211,7 +213,7 @@
   }
   function empty(d) {
     DATA = null;
-    $('ktHead').innerHTML = '<div class="kt-hd-t"><div><h2 class="kt-ttl">Radar Kategori</h2><p class="hint">Belum ada data kategori.</p></div></div>';
+    $('ktHead').innerHTML = '<div class="kt-hd-t"><div><h2 class="kt-ttl">Dashboard Performa</h2><p class="hint">Belum ada data kategori.</p></div></div>';
     $('ktFilters').innerHTML = ''; $('ktTabs').hidden = true;
     $('ktPanel').innerHTML = '<section class="card kt-card"><h2>Data Kategori belum diisi</h2><p class="hint">' + esc(d.message || 'Isi tab GS_KAT_BULAN, GS_KAT_MINGGU, dan GS_KAT_PRODUK di Sheet pusat.') + '</p>' +
       '<p class="hint">Tab yang harus diisi: ' + esc((d.tab || ['GS_KAT_BULAN', 'GS_KAT_MINGGU']).join(', ')) + '. Format kolom ada di berkas docs/format-data-kategori.md di repositori. Isi lewat ekspor Power BI tiap minggu.</p></section>';
@@ -222,12 +224,14 @@
   function enter(d, code) {
     DATA = d; CODE = code;
     try { localStorage.setItem(LS_CODE, code); } catch (e) { /* mode privat */ }
-    KK = { hkTy: d.hkTy, hkLy: d.hkLy };
+    KK = { hkTy: d.hkTy, hkLy: d.hkLy, bulanan: !!d.bulanan, d3: K.days3(d.cutoff) };
+    if (d.bulanan && !enter.done) S.basis = 'monthly';   // data bulanan: kolom L3M, L2M, LM terisi
+    enter.done = true;
     ROWS = K.expand(d); BYTOKO = d.tokos.map(() => []); ROWS.forEach(p => { BYTOKO[p.t].push(p); });
     if (!d.dts.some(x => x.kode === S.dt)) S.dt = '';
     S.open = new Set(uniq(d.brands.map(b => 'd:' + b.division)));
     $('ktTabs').hidden = false; $('ktFilters').hidden = false;
-    window.MHFresh.set({ info: window.MHFresh.status(d.dataUntil, { label: 'Data Kategori', stale: 8 }) });
+    window.MHFresh.set({ info: window.MHFresh.status(d.dataUntil, { label: 'Data Dashboard Performa', stale: d.bulanan ? 45 : 8 }) });   // data bulanan wajar tertinggal sampai akhir bulan berikutnya
     $('csSub').textContent = d.dts.length === 1 ? d.dts[0].nama : '';
     window.MHBoot.done();
     $('loginScreen').hidden = true; $('appScreen').hidden = false;
