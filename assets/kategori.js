@@ -67,8 +67,8 @@
   };
 
   /* ---------- tabel pivot ---------- */
-  function pivot(title, rowHead, rows, tot, noteTxt) {
-    const C = K.cols(S.basis, DATA.bulanan);
+  function pivot(title, rowHead, rows, tot, noteTxt, stock) {
+    const C = K.cols(S.basis, DATA.bulanan, stock);
     const th = C.map(c => c.sp ? '<th class="kt-sp" aria-hidden="true"></th>' : '<th scope="col">' + c.h + '</th>').join('');
     const cell = (c, m) => c.sp ? '<td class="kt-sp"></td>' : c.bar
       ? '<td class="kt-c kt-db"><i style="width:' + Math.max(0, Math.min(100, c.bar(m, tot) * 220)).toFixed(0) + '%"></i><span>' + c.v(m, tot) + '</span></td>'
@@ -104,26 +104,29 @@
       '<div class="kt-legend"><span><i class="kt-sw-ty"></i>' + yr + '</span><span><i class="kt-sw-ly"></i>' + (yr - 1) + '</span>' + (DATA.bulanan ? '' : '<span>' + esc(K.BULAN[cm]) + ' ' + yr + ' baru sampai ' + (+DATA.cutoff.slice(8, 10)) + '</span>') + '</div>';
   }
 
-  /* ---------- stok SOH per kategori (fase 1) ---------- */
-  function stokCard() {
-    const st = DATA.stok; if (!st || !st.rows.length) return '';
-    const divOf = Object.create(null); DATA.brands.forEach(b => { divOf[b.category] = b.division; });
-    const rows = st.rows.filter(r => (!S.dt || r[0] === S.dt) && (!S.cat || r[1] === S.cat) && (!S.div || divOf[r[1]] === S.div));
-    if (!rows.length) return '';
-    const nama = Object.create(null); DATA.dts.forEach(d => { nama[d.kode] = d.nama; });
-    const tgl = DATA.dts.filter(d => st.tanggal[d.kode] && (!S.dt || d.kode === S.dt)).map(d => esc(d.nama) + ' ' + K.dateLabel(st.tanggal[d.kode])).join(', ');
-    return '<section class="card kt-card"><h2>Stok gudang per kategori</h2><p class="hint">SOH dalam karton (ekuivalen), stok terbaru: ' + tgl + '. RR in CS, W.C, dan In transit belum tersedia, butuh qty penjualan karton per kategori yang belum ada di data.</p>' +
-      '<div class="kt-pv" tabindex="0" role="region" aria-label="Stok gudang per kategori, tabel dapat digeser"><table class="kt-pivot kt-small"><thead><tr><th class="kt-rh" scope="col">Distributor / Category</th><th scope="col">SOH (CS)</th><th scope="col">RR in CS</th><th scope="col">W.C</th><th scope="col">In transit</th></tr></thead><tbody>' +
-      rows.map(r => '<tr><th scope="row" class="kt-rh"><span class="kt-lbl kt-leaf">' + esc(nama[r[0]] || r[0]) + ' / ' + esc(r[1]) + '</span></th><td>' + K.fN(r[2]) + '</td><td class="kt-na">belum tersedia</td><td class="kt-na">belum tersedia</td><td class="kt-na">belum tersedia</td></tr>').join('') +
-      '</tbody></table></div></section>';
-  }
 
   /* ---------- panel ---------- */
   function noToko() { return '<section class="card kt-card"><p class="kt-empty">Tidak ada toko pada filter ini. Ubah distributor, salesman, atau channel.</p></section>'; }
+  /** SOH karton dari stok gudang DT (filter distributor dan Division/Category/Brand), p = jalur baris [div, cat, brand]. null bila stok belum ada. */
+  function soh(p) {
+    const st = DATA.stok; if (!st || !st.rows.length) return null;
+    const want = [S.div, S.cat, S.br];
+    return st.rows.reduce((n, r) => {
+      if (S.dt && r[0] !== S.dt) return n;
+      for (let i = 0; i < 3; i++) { if (want[i] && r[i + 1] !== want[i]) return n; if (p && p[i] !== undefined && r[i + 1] !== p[i]) return n; }
+      return n + r[4];
+    }, 0);
+  }
+  function stokNote() {
+    const st = DATA.stok; if (!st || !st.rows.length) return 'Stok gudang belum ada (upload stok harian di aplikasi SBA). ';
+    const tgl = DATA.dts.filter(d => st.tanggal[d.kode] && (!S.dt || d.kode === S.dt)).map(d => d.nama + ' ' + K.dateLabel(st.tanggal[d.kode])).join(', ');
+    return 'SOH = stok gudang DT dalam karton (' + tgl + '), tidak ikut filter salesman dan channel. RR in CS dari 3 bulan terakhir. W.C dalam minggu, dihitung dari penjualan toko LMT saja. ';
+  }
   function pBycat() {
-    const its = items(), tot = K.M(its, S.basis, KK);
-    return pivot('SS Performance', 'Division / Category / Brand', K.rowsCategory(its, S.basis, KK, S.open), tot, note1()) +
-      '<section class="card kt-card"><h2>Tren GSV</h2><p class="hint">Area per bulan, tahun ini lawan tahun lalu, sesuai filter di atas.</p>' + areaChart(tot) + '</section>' + stokCard();
+    const its = items(), tot = K.M(its, S.basis, KK), rows = K.rowsCategory(its, S.basis, KK, S.open);
+    rows.forEach(r => { r.m.soh = soh(r.p); }); tot.soh = soh(null);
+    return pivot('SS Performance', 'Division / Category / Brand', rows, tot, stokNote() + note1(), true) +
+      '<section class="card kt-card"><h2>Tren GSV</h2><p class="hint">Area per bulan, tahun ini lawan tahun lalu, sesuai filter di atas.</p>' + areaChart(tot) + '</section>';
   }
   function pByout() {
     const its = items(), tot = K.M(its, S.basis, KK);

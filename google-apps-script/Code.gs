@@ -2084,10 +2084,10 @@ function klaimKodeAdmin_(body) {
 // (GS_KAT_BULAN, GS_KAT_MINGGU, GS_KAT_PRODUK); format di docs/format-data-kategori.md. Server menghitung pra-agregat per
 // (toko, category, brand) dan klien (assets/kat-calc.js) menjumlahkan sesuai filter.
 
-const KAT_CACHE = 'kategori_v2_';   // naikkan versi bila bentuk respons berubah
+const KAT_CACHE = 'kategori_v3_';   // naikkan versi bila bentuk respons berubah
 const KAT_NONE = 'Tanpa kategori';
 const KAT_FIELDS = ['t', 'b', 'fy', 'ly', 'ty', 'r13', 'r5', 'lw', 'l2w', 'l3w', 'lm', 'l2m', 'l3m', 'l3', 'mty0', 'mty1', 'mty2', 'mty3', 'mty4', 'mty5', 'mty6', 'mty7', 'mty8', 'mty9', 'mty10', 'mty11',
-  'mly0', 'mly1', 'mly2', 'mly3', 'mly4', 'mly5', 'mly6', 'mly7', 'mly8', 'mly9', 'mly10', 'mly11'];
+  'mly0', 'mly1', 'mly2', 'mly3', 'mly4', 'mly5', 'mly6', 'mly7', 'mly8', 'mly9', 'mly10', 'mly11', 'c3'];   // c3 = qty karton 3 bulan terakhir (sama rentangnya dengan l3), untuk RR in CS dan W.C
 
 function katIso_(ms) { const d = new Date(ms); return d.getUTCFullYear() + '-' + (d.getUTCMonth() < 9 ? '0' : '') + (d.getUTCMonth() + 1) + '-' + (d.getUTCDate() < 10 ? '0' : '') + d.getUTCDate(); }
 function katMs_(iso) { const p = String(iso).split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]); }
@@ -2126,21 +2126,21 @@ function computeKategori_(in_) {
   const slot = r => {
     const k = r.dt + '\u0001' + r.o + '\u0001' + r.div + '\u0001' + r.cat + '\u0001' + r.br;
     let x = map[k];
-    if (!x) { x = map[k] = { dt: r.dt, o: r.o, division: r.div, category: r.cat, brand: r.br, fy: 0, ly: 0, ty: 0, r13: 0, r5: 0, wk: [0, 0, 0], m: [0, 0, 0], l3: 0, mty: new Array(12).fill(0), mly: new Array(12).fill(0) }; order.push(x); }
+    if (!x) { x = map[k] = { dt: r.dt, o: r.o, division: r.div, category: r.cat, brand: r.br, fy: 0, ly: 0, ty: 0, r13: 0, r5: 0, wk: [0, 0, 0], m: [0, 0, 0], l3: 0, mty: new Array(12).fill(0), mly: new Array(12).fill(0), mtyc: new Array(12).fill(0), mlyc: new Array(12).fill(0) }; order.push(x); }
     return x;
   };
   let bulanTerlalu = 0, lewatCutoff = 0, lintas = 0;
   bulan.forEach(r => {
     const y = +r.periode.slice(0, 4), m = +r.periode.slice(5, 7) - 1;
-    if (y === cy - 1) { const x = slot(r); x.fy += r.v; x.mly[m] += r.v; if (m < cm || (bulanan && m === cm)) x.ly += r.v; }
-    else if (y === cy) { if (m > cm || (m === cm && !bulanan)) { bulanTerlalu++; return; } const x = slot(r); x.ty += r.v; x.mty[m] += r.v; }
+    if (y === cy - 1) { const x = slot(r); x.fy += r.v; x.mly[m] += r.v; x.mlyc[m] += r.c || 0; if (m < cm || (bulanan && m === cm)) x.ly += r.v; }
+    else if (y === cy) { if (m > cm || (m === cm && !bulanan)) { bulanTerlalu++; return; } const x = slot(r); x.ty += r.v; x.mty[m] += r.v; x.mtyc[m] += r.c || 0; }
   });
   minggu.forEach(r => {
     if (r.awal.slice(0, 7) !== r.akhir.slice(0, 7)) { lintas++; return; }
     if (r.awal > cutIso) { lewatCutoff++; return; }
     if (r.akhir > cutIso) { lintas++; return; }
     const x = slot(r);
-    if (r.awal > lfmEnd && +r.awal.slice(0, 4) === cy) { x.ty += r.v; x.mty[+r.awal.slice(5, 7) - 1] += r.v; }
+    if (r.awal > lfmEnd && +r.awal.slice(0, 4) === cy) { x.ty += r.v; x.mty[+r.awal.slice(5, 7) - 1] += r.v; x.mtyc[+r.awal.slice(5, 7) - 1] += r.c || 0; }
     if (r.awal >= lyMonthStart && r.akhir <= lyEndIso) x.ly += r.v;
     if (r.awal >= from13) x.r13 += r.v;
     if (r.awal >= from5) x.r5 += r.v;
@@ -2152,6 +2152,8 @@ function computeKategori_(in_) {
   order.forEach(x => {
     x.m = [mval(x, base), mval(x, base - 1), mval(x, base - 2)];
     x.l3 = mval(x, cm) + mval(x, cm - 1) + mval(x, cm - 2);
+    const cval = i => i >= 0 ? x.mtyc[i] : x.mlyc[12 + i];
+    x.c3 = Math.round((cval(cm) + cval(cm - 1) + cval(cm - 2)) * 100) / 100;
     const rd = v => Math.round(v);
     ['fy', 'ly', 'ty', 'r13', 'r5', 'l3'].forEach(k => { x[k] = rd(x[k]); });
     x.wk = x.wk.map(rd); x.m = x.m.map(rd); x.mty = x.mty.map(rd); x.mly = x.mly.map(rd);
@@ -2164,7 +2166,7 @@ function computeKategori_(in_) {
 /**
  * Menu Kategori. Peran pusat: semua DT. Peran dt: hanya DT sendiri (respons memuat nama toko). Kode akses tidak pernah ada di respons.
  * Respons: { mode:'kategori', cutoff, dataUntil, lyEnd, hkTy, hkLy, dts, salesmen:[{kode,nama,dt}], tokos:[{id,nama,dt,ch,sm}], brands:[{division,category,brand}],
- *   fields, r:[[t,b,fy,ly,ty,r13,r5,lw,l2w,l3w,lm,l2m,l3m,l3,mty x12,mly x12]], stok:{tanggal:{dt:iso}, rows:[[dt,category,cs]]}|null, catatan }
+ *   fields, r:[[t,b,fy,ly,ty,r13,r5,lw,l2w,l3w,lm,l2m,l3m,l3,mty x12,mly x12, c3]], stok:{tanggal:{dt:iso}, rows:[[dt,division,category,brand,cs]]}|null, catatan }
  */
 function respondKategori_(me, reg) {
   const scope = me.peran === 'dt' ? me.dt_kode : 'ALL';
@@ -2195,7 +2197,7 @@ function respondKategori_(me, reg) {
     if (!tokoOf[dt + '|' + o]) { cat.tokoTakDikenal++; return null; }
     if (v === 0) return null;
     const c = str_(r.category).trim();
-    return Object.assign(d, { dt: dt, o: o, div: str_(r.division).trim() || KAT_NONE, cat: c || KAT_NONE, br: str_(r.brand).trim() || KAT_NONE, v: v });
+    return Object.assign(d, { dt: dt, o: o, div: str_(r.division).trim() || KAT_NONE, cat: c || KAT_NONE, br: str_(r.brand).trim() || KAT_NONE, v: v, c: numOrNull_(r.cs) || 0 });
   };
   const bulan = [], minggu = [];
   bulanRaw.forEach(r => { const x = norm(r, q => { const p = cellText_(q.periode, ss, 'yyyy-MM'); return validMonth_(p) ? { periode: p } : null; }); if (x) bulan.push(x); });
@@ -2231,7 +2233,7 @@ function respondKategori_(me, reg) {
     });
   } catch (err) { allDts.forEach(x => { if (mine[x.dt_kode] && tidakAda.indexOf(x.dt_kode) < 0) tidakAda.push(x.dt_kode); }); }
 
-  const rows = res.series.map(x => [tokoIdx[x.dt + '|' + x.o], brandIdx[x.division + '\u0001' + x.category + '\u0001' + x.brand], x.fy, x.ly, x.ty, x.r13, x.r5].concat(x.wk, x.m, [x.l3], x.mty, x.mly));
+  const rows = res.series.map(x => [tokoIdx[x.dt + '|' + x.o], brandIdx[x.division + '\u0001' + x.category + '\u0001' + x.brand], x.fy, x.ly, x.ty, x.r13, x.r5].concat(x.wk, x.m, [x.l3], x.mty, x.mly, [x.c3]));
   const st = katStok_(ss, mine, cat);
   const body = {
     cutoff: res.cutoff, dataUntil: res.dataUntil, lyEnd: res.lyEnd, hkTy: res.hkTy, hkLy: res.hkLy, bulanan: res.bulanan,
@@ -2289,18 +2291,19 @@ function muatKategori_(body) {
 function katStok_(ss, mine, cat) {
   const produk = readObjs_(ss, 'GS_KAT_PRODUK'), stok = readObjs_(ss, 'STOK_GUDANG').filter(r => mine[String(r.dt_kode)]);
   if (!produk.length || !stok.length) return null;
-  const catOf = Object.create(null);
-  produk.forEach(p => { const k = str_(p.sku).trim(); if (k) catOf[k] = str_(p.category).trim() || KAT_NONE; });
+  const catOf = Object.create(null);   // sku -> 'division\u0001category\u0001brand'
+  produk.forEach(p => { const k = str_(p.sku).trim(); if (k) catOf[k] = [str_(p.division).trim() || KAT_NONE, str_(p.category).trim() || KAT_NONE, str_(p.brand).trim() || KAT_NONE].join('\u0001'); });
   const iso = v => cellText_(v, ss, 'yyyy-MM-dd'), tanggal = Object.create(null);
   stok.forEach(r => { const dt = String(r.dt_kode), t = iso(r.tanggal); if (!tanggal[dt] || t > tanggal[dt]) tanggal[dt] = t; });
   const sum = Object.create(null), tanpa = Object.create(null);
   stok.forEach(r => {
     const dt = String(r.dt_kode); if (iso(r.tanggal) !== tanggal[dt]) return;
     const isi = +r.isi || 1, cs = ((+r.karton || 0) * isi + (+r.lusin || 0) * 12 + (+r.pcs || 0)) / isi;   // konversi sama dengan computeStokWc_ (pcs total / isi)
-    const sku = str_(r.sku).trim(), c = catOf[sku] || KAT_NONE;
+    const sku = str_(r.sku).trim(), c = catOf[sku] || [KAT_NONE, KAT_NONE, KAT_NONE].join('\u0001');
     if (!catOf[sku] && cs > 0) tanpa[sku] = true;
     sum[dt + '\u0001' + c] = (sum[dt + '\u0001' + c] || 0) + cs;
   });
   cat.skuTanpaKategori = Object.keys(tanpa).length;
-  return { tanggal: tanggal, rows: Object.keys(sum).sort().map(k => { const p = k.split('\u0001'); return [p[0], p[1], Math.round(sum[k] * 10) / 10]; }) };
+  // rows: [dt, division, category, brand, cs]
+  return { tanggal: tanggal, rows: Object.keys(sum).sort().map(k => { const p = k.split('\u0001'); return [p[0], p[1], p[2], p[3], Math.round(sum[k] * 10) / 10]; }) };
 }

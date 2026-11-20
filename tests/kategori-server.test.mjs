@@ -97,9 +97,10 @@ test('b2. nama toko, salesman, channel, brand, stok tiba; catatan terisi', () =>
   assert.ok(t.nama && t.ch);
   assert.ok(r.salesmen.length >= 6 && r.tokos.some(x => x.sm >= 0));
   assert.ok(r.brands.every(b => b.division && b.category && b.brand));
-  assert.equal(r.stok.rows.filter(x => x[1] === 'Tanpa kategori').length, 2);   // satu per DT
+  assert.equal(r.stok.rows.filter(x => x[2] === 'Tanpa kategori').length, 2);   // satu per DT; baris [dt, division, category, brand, cs]
   assert.ok(r.catatan.skuTanpaKategori >= 2);
-  const csA = r.stok.rows.filter(x => x[0] === 'D01').reduce((s, x) => s + x[2], 0);
+  assert.ok(r.stok.rows.every(x => x.length === 5 && x[1] && x[3]));
+  const csA = r.stok.rows.filter(x => x[0] === 'D01').reduce((s, x) => s + x[4], 0);
   const st = ds.pusat.STOK_GUDANG.slice(1).filter(x => x[0] === 'D01').reduce((s, x) => s + (x[3] * x[6] + x[4] * 12 + x[5]) / x[6], 0);
   assert.ok(Math.abs(csA - st) < 0.5, csA + ' vs ' + st);
 });
@@ -133,6 +134,7 @@ test('d2. mode bulanan: cutoff akhir bulan terakhir, bulan itu ikut TY, YTD LY b
   assert.equal(res.hkTy, 304); assert.equal(res.hkLy, 304); assert.equal(res.bulanTerlalu, 0);
   const s = one(res);
   assert.equal(s.ty, 700); assert.equal(s.ly, 140); assert.equal(s.fy, 1140);
+  assert.equal(s.c3, 0);
   assert.deepEqual(s.m, [400, 0, 0]); assert.equal(s.l3, 400); assert.equal(s.r13, 0); assert.deepEqual(s.wk, [0, 0, 0]);
   assert.equal(ctxPure.computeKategori_({ bulan: [], minggu: [] }), null);
 });
@@ -198,4 +200,12 @@ test('h. hasil di-cache: panggilan kedua tidak membaca tab lagi', () => {
   const a = ctx.doGet({ parameter: { view: 'kategori', code: ACCESS.pusat } }).getContent();
   vm.runInContext('readObjs_ = () => { throw new Error("tidak boleh membaca"); };', ctx);
   assert.equal(ctx.doGet({ parameter: { view: 'kategori', code: ACCESS.pusat } }).getContent(), a);
+});
+
+test('d5. c3 = karton 3 bulan terakhir (rentang sama dengan l3), ikut di kolom terakhir respons', () => {
+  const C = (periode, v, c) => Object.assign(B(periode, v), { c });
+  const s = one(ctxPure.computeKategori_({ bulan: [C('2026-07', 1, 100), C('2026-08', 1, 10), C('2026-09', 1, 20), C('2026-10', 1, 30.5), C('2025-10', 1, 999)], minggu: [] }));
+  assert.equal(s.c3, 60.5);
+  const r = call(serverFor(ds), { view: 'kategori', code: ACCESS.pusat });
+  assert.equal(r.fields[38], 'c3'); assert.ok(r.r.every(a => a.length === 39));
 });

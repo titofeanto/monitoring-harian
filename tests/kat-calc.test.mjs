@@ -123,3 +123,14 @@ test('mode bulanan: RR 13, RR 5, L3W/L2W/LW tampil "–"; rr3m dari 3 bulan penu
   assert.equal(cm('LM'), '0M'); assert.match(cm('RR 13'), /kt-na/);
   assert.equal(K.periodLabel('2026-10-31', true), 'OKT 2026');
 });
+
+test('stok di tabel: SOH, RR in CS, W.C (minggu) di depan kolom ABS', () => {
+  const K3 = { hkTy: 304, hkLy: 304, bulanan: true, d3: 92 };
+  const m = K.M([row({ c3: 92, l3: 1 })], 'monthly', K3); m.soh = 70;
+  assert.equal(m.rrcs, 92 / 92 * 365 / 12); assert.equal(m.cs7, 7);
+  const C = K.cols('monthly', true, true);
+  assert.deepEqual(plain(C.slice(0, 3).map(c => c.h)), ['SOH (CS)', 'RR in CS', 'W.C']);
+  assert.equal(C[2].v(m, m), '10,0');
+  assert.match(C[0].v(Object.assign({}, m, { soh: null }), m), /kt-na/);
+  assert.equal(K.cols('monthly', true).find(c => c.h === 'SOH (CS)'), undefined);
+});

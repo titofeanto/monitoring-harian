@@ -1,7 +1,7 @@
 /* Hitungan menu Kategori (plan 034). Murni, tanpa DOM: dipakai assets/kategori.js di browser dan tests/kat-calc.test.mjs di Node.
    Rumus sama dengan halaman By Category v3 di Power BI (tabel Formula). Server (view=kategori) sudah menggabungkan bulan + minggu per
    toko x category x brand; di sini hanya menjumlahkan baris sesuai filter lalu menghitung ukuran turunan.
-   Baris hasil expand(): { t, b, tk, br, fy, ly, ty, r13, r5, wk:[LW,L2W,L3W], m:[LM,L2M,L3M], l3, mty[12], mly[12] }. */
+   Baris hasil expand(): { t, b, tk, br, fy, ly, ty, r13, r5, wk:[LW,L2W,L3W], m:[LM,L2M,L3M], l3, mty[12], mly[12], c3 }. c3 = qty karton 3 bulan terakhir. */
 (function () {
   const nf0 = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 });
   const nf1 = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -14,15 +14,15 @@
     return (d.r || []).map(a => ({
       t: a[0], b: a[1], tk: d.tokos[a[0]], br: d.brands[a[1]],
       fy: a[2], ly: a[3], ty: a[4], r13: a[5], r5: a[6], wk: [a[7], a[8], a[9]], m: [a[10], a[11], a[12]], l3: a[13],
-      mty: a.slice(14, 26), mly: a.slice(26, 38),
+      mty: a.slice(14, 26), mly: a.slice(26, 38), c3: a[38] || 0,
     }));
   }
 
   /** Ukuran satu kumpulan baris. basis 'weekly' (B = 7) atau 'monthly' (B = 365/12). K = { hkTy, hkLy }. */
   function M(items, basis, K) {
-    const o = { fy: 0, ly: 0, ty: 0, r13: 0, r5: 0, wk: [0, 0, 0], m: [0, 0, 0], mty: new Array(12).fill(0), mly: new Array(12).fill(0), l3: 0, n: items.length };
+    const o = { fy: 0, ly: 0, ty: 0, r13: 0, r5: 0, wk: [0, 0, 0], m: [0, 0, 0], mty: new Array(12).fill(0), mly: new Array(12).fill(0), l3: 0, c3: 0, n: items.length };
     items.forEach(p => {
-      o.fy += p.fy; o.ly += p.ly; o.ty += p.ty; o.r13 += p.r13; o.r5 += p.r5; o.l3 += p.l3;
+      o.fy += p.fy; o.ly += p.ly; o.ty += p.ty; o.r13 += p.r13; o.r5 += p.r5; o.l3 += p.l3; o.c3 += p.c3 || 0;
       for (let i = 0; i < 3; i++) { o.wk[i] += p.wk[i]; o.m[i] += p.m[i]; }
       for (let i = 0; i < 12; i++) { o.mty[i] += p.mty[i]; o.mly[i] += p.mly[i]; }
     });
@@ -31,6 +31,8 @@
     // Mode bulanan (tanpa data minggu): RR 13 dan RR 5 tidak ada; rr3m = rata-rata 3 bulan penuh terakhir per basis.
     o.rr13 = K.bulanan ? null : o.r13 / 13 / 7 * b; o.rr5 = K.bulanan ? null : o.r5 / 5 / 7 * b;
     o.rr3m = K.d3 ? o.l3 / K.d3 * b : 0;
+    o.rrcs = K.d3 ? o.c3 / K.d3 * b : 0;          // RR in CS: rata-rata karton per basis dari 3 bulan terakhir
+    o.cs7 = K.d3 ? o.c3 / K.d3 * 7 : 0;           // karton per minggu, pembagi W.C
     o.a2a = o.avgFY !== 0 ? o.avgTY / o.avgFY - 1 : null;      // kosong bila pembanding 0 (DIVIDE di PBI)
     o.sp = o.avgSP !== 0 ? o.avgTY / o.avgSP - 1 : null;
     return o;
@@ -50,9 +52,15 @@
   function rp(v) { const a = Math.abs(v); return a >= 1e9 ? nf1.format(v / 1e9) + ' M' : a >= 1e6 ? nf1.format(v / 1e6) + ' jt' : a >= 1e3 ? nf0.format(v / 1e3) + ' rb' : nf0.format(v); }
 
   /** Kolom tabel pivot, urutan persis PBI. Satu kolom: { h, v:(m,total)=>teks/HTML, c:rata tengah, bar:(m,total)=>pecahan } atau { sp:1 } (spasi). */
-  function cols(basis, bulanan) {
+  const fW = v => nf1.format(z(v));
+  /** stock = true: kolom stok di depan seperti PBI (SOH, RR in CS, W.C). m.soh diisi pemanggil (stok gudang DT, bukan per toko). */
+  function cols(basis, bulanan, stock) {
     const w = basis !== 'monthly', na = '<span class="kt-na">–</span>', wk = i => m => bulanan ? na : fM(m.wk[i]), rr = k => m => m[k] == null ? na : fN(m[k]);
-    return [
+    const st = stock ? [
+      { h: 'SOH (CS)', v: m => m.soh == null ? na : fN(m.soh) }, { h: 'RR in CS', v: m => m.c3 ? fW(m.rrcs) : na },
+      { h: 'W.C', v: m => m.soh == null || !m.cs7 ? na : fW(m.soh / m.cs7), c: 1 }, { sp: 1 },
+    ] : [];
+    return st.concat([
       { h: 'ABS FY LY', v: m => fN(m.fy) }, { h: 'ABS YTD LY', v: m => fN(m.ly) }, { h: 'ABS YTD TY', v: m => fN(m.ty) },
       { h: 'Contr LY', v: (m, t) => t.ly ? fP(m.ly / t.ly) : '–', c: 1, bar: (m, t) => t.ly ? m.ly / t.ly : 0, tot: '100,0%' },
       { h: 'Contr TY', v: (m, t) => t.ty ? fP(m.ty / t.ty) : '–', c: 1, bar: (m, t) => t.ty ? m.ty / t.ty : 0, tot: '100,0%' }, { sp: 1 },
@@ -60,7 +68,7 @@
       { h: 'AVG FY LY', v: m => fN(m.avgFY) }, { h: 'AVG SP LY', v: m => fN(m.avgSP) }, { h: 'AVG YTD TY', v: m => fN(m.avgTY) }, { sp: 1 },
       { h: 'RR 13', v: rr('rr13') }, { h: 'RR 5', v: rr('rr5') }, { sp: 1 },
       { h: w ? 'L3W' : 'L3M', v: w ? wk(2) : m => fM(m.m[2]) }, { h: w ? 'L2W' : 'L2M', v: w ? wk(1) : m => fM(m.m[1]) }, { h: w ? 'LW' : 'LM', v: w ? wk(0) : m => fM(m.m[0]) },
-    ];
+    ]);
   }
 
   const byTy = (a, b) => b.m.ty - a.m.ty;
@@ -77,13 +85,13 @@
     const rank = mp => [...mp.entries()].map(([k, v]) => ({ k, v, m: M(flat(v), basis, K) })).sort(byTy);
     rank(tree).forEach(D => {
       const dk = 'd:' + D.k, dop = open.has(dk);
-      out.push({ lv: 1, key: dk, label: D.k, kids: 1, open: dop, m: D.m });
+      out.push({ lv: 1, key: dk, label: D.k, kids: 1, open: dop, m: D.m, p: [D.k] });
       if (!dop) return;
       rank(D.v).forEach(C => {
         const ck = 'c:' + D.k + '|' + C.k, cop = open.has(ck);
-        out.push({ lv: 2, key: ck, label: C.k, kids: 1, open: cop, m: C.m });
+        out.push({ lv: 2, key: ck, label: C.k, kids: 1, open: cop, m: C.m, p: [D.k, C.k] });
         if (!cop) return;
-        rank(C.v).forEach(Bn => out.push({ lv: 3, key: 'b:' + D.k + '|' + C.k + '|' + Bn.k, label: Bn.k, kids: 0, open: false, m: Bn.m }));
+        rank(C.v).forEach(Bn => out.push({ lv: 3, key: 'b:' + D.k + '|' + C.k + '|' + Bn.k, label: Bn.k, kids: 0, open: false, m: Bn.m, p: [D.k, C.k, Bn.k] }));
       });
     });
     return out;

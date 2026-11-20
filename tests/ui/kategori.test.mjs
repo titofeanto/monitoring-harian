@@ -32,10 +32,10 @@ test('halaman termuat: kepala, kolom pivot urut PBI, tanpa galat, menu aktif', {
   try {
     const h = await dom(8831, '/kategori.html?fx=dummy-kategori');
     assert.match(h, /Radar Weekly Report/); assert.match(h, /NOV 2026 - WEEK 46/); assert.match(h, /Periode hitung s\/d 15 Nov 2026/);
-    assert.deepEqual(heads(h).slice(1), ['ABS FY LY', 'ABS YTD LY', 'ABS YTD TY', 'Contr LY', 'Contr TY', 'Growth SP', 'Growth A2A', 'AVG FY LY', 'AVG SP LY', 'AVG YTD TY', 'RR 13', 'RR 5', 'L3W', 'L2W', 'LW']);
+    assert.deepEqual(heads(h).slice(1), ['SOH (CS)', 'RR in CS', 'W.C', 'ABS FY LY', 'ABS YTD LY', 'ABS YTD TY', 'Contr LY', 'Contr TY', 'Growth SP', 'Growth A2A', 'AVG FY LY', 'AVG SP LY', 'AVG YTD TY', 'RR 13', 'RR 5', 'L3W', 'L2W', 'LW']);
     assert.match(h, /aria-current="page"[^>]*>\s*<svg[^>]*>.*?<\/svg><span class="side-l">Dashboard Performa/s);
     assert.ok(!/id="__errs"/.test(h));
-    assert.match(h, /Stok gudang per kategori/); assert.match(h, /belum tersedia/);
+    assert.doesNotMatch(h, /Stok gudang per kategori/); assert.match(h, /SOH = stok gudang DT/); assert.doesNotMatch(h, /Satu login untuk semua/);
   } finally { srv.close(); }
 });
 
@@ -75,9 +75,9 @@ test('angka pivot sama dengan hitungan independen dari tab dummy (ABS YTD TY, FY
   const srv = await startServer(8834, 'light');
   try {
     const c = totCells(await dom(8834, '/kategori.html?fx=dummy-kategori'));
-    assert.equal(c[0], nf0(fy)); assert.equal(c[2], nf0(ty));
-    assert.equal(c[7], (a2a < 0 ? '▼ ' : '▲ ') + (Math.abs(a2a) * 100).toFixed(1).replace('.', ',') + '%');
-    assert.equal(c[13], nf0(r13 / 13));   // indeks termasuk kolom spasi
+    assert.equal(c[4], nf0(fy)); assert.equal(c[6], nf0(ty));
+    assert.equal(c[11], (a2a < 0 ? '▼ ' : '▲ ') + (Math.abs(a2a) * 100).toFixed(1).replace('.', ',') + '%');
+    assert.equal(c[17], nf0(r13 / 13));   // indeks termasuk 3 kolom stok dan kolom spasi
   } finally { srv.close(); }
 });
 
@@ -85,7 +85,7 @@ test('keadaan kosong menyebut tab; galat jaringan menampilkan pesan dengan jalan
   const srv = await startServer(8835, 'light');
   try {
     const e = await dom(8835, '/kategori.html?fx=dummy-kategori-kosong');
-    assert.match(e, /Data Kategori belum diisi/); assert.match(e, /GS_KAT_MINGGU/); assert.match(e, /docs\/format-data-kategori\.md/);
+    assert.match(e, /Data Kategori belum diisi/); assert.match(e, /GS_KAT_BULAN/); assert.match(e, /docs\/format-data-kategori\.md/);
     assert.ok(!/<table class="kt-pivot">/.test(e));
     const g = await dom(8835, '/kategori.html?fx=tidak-ada', 20000);
     assert.match(g, /Tidak bisa terhubung/); assert.match(g, /id="bootRetry"/);
